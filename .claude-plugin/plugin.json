@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin.json",
+  "name": "conductor",
+  "displayName": "Conductor",
+  "description": "Mixed-model orchestration at `high` effort — Ultracode-grade output without the Ultracode premium. Routes design/taste lanes to Claude and mechanical/verification lanes to the Codex CLI, with cross-family review gates.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Ivan Oboth"
+  },
+  "license": "MIT",
+  "keywords": [
+    "orchestration",
+    "multi-agent",
+    "codex",
+    "code-review",
+    "verification"
+  ]
+}

@@ -1,0 +1,73 @@
+# Conductor
+
+Mixed-model orchestration for Claude Code — Ultracode-grade output without the Ultracode premium.
+
+The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** Everything else is dispatched to the lane that fits it — Claude for design and judgment, the Codex CLI for mechanical execution and cross-family verification. Every lane's work is then checked by the *other* model family, because same-family review misses what a different family catches.
+
+## Install
+
+```
+/plugin marketplace add <owner>/conductor-plugin
+/plugin install conductor@agent-ops
+```
+
+Then `/conductor:conductor` (or just say "conduct this" / "orchestrate at high").
+
+For a whole team, commit this to the project's `.claude/settings.json` instead:
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "agent-ops": { "source": { "source": "github", "repo": "<owner>/conductor-plugin" } }
+  },
+  "enabledPlugins": { "conductor@agent-ops": true }
+}
+```
+
+## What's in the box
+
+| Component | What it is |
+|---|---|
+| `skills/conductor` | The orchestration loop: model routing, lane table, dispatch, cross-verify, review HTML |
+| `skills/codex-review` | Independent second-opinion review of a diff, via the Codex CLI |
+| `skills/codex-computer-use` | Codex drives the running app and captures screenshots you then read |
+| `skills/agent-browser` | Local browser automation CLI |
+| `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
+| `agents/design-lane` | Opus 5 @ `xhigh` — taste-critical surfaces |
+| `agents/bulk-lane` | Opus 5 @ `low` — mechanical work that still needs repo idiom |
+| `agents/verify-lane` | Opus 5 @ `max` — adversarial verification |
+| `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically |
+| `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
+
+## Prerequisites
+
+Conductor degrades gracefully — a missing piece disables that lane, it doesn't break the skill. But you get the full value only with all of these:
+
+**Required for the Claude lanes**
+- Claude Code with access to Opus-class models. `model: "opus"` and `model: "fable"` must be available on your plan, or the design/judgment lanes silently fall back to your session model — which defeats the routing.
+
+**Required for the Codex lanes** (execution, `codex-review`, `codex-computer-use`)
+- Codex CLI installed and authenticated: `npm install -g @openai/codex`, then `codex login`.
+- Without it, cross-family verification degrades to Claude reviewing Claude — precisely the failure mode this plugin exists to avoid. Conductor will still run; the independence guarantee will not.
+- Check your own effort setting: `~/.codex/config.toml` → `model` and `model_reasoning_effort`. These are independent of the Claude session's effort.
+
+**Required for browser verification**
+- `npm install -g agent-browser` (used by both the Claude and Codex verification lanes).
+
+**Optional**
+- `gh` CLI, authenticated — only for `run-report`'s GitHub steps. Without it, run-report closes with the in-session summary and the review HTML, which is a valid close.
+- Python 3 — only for the telemetry ledger.
+
+## Model routing
+
+The routing table lives in `skills/conductor/SKILL.md` and is the plugin's own source of truth — it isn't read from your `CLAUDE.md`. The short version: **effort is the first knob, not the model tier.** Re-run a lane at higher effort before escalating to a more expensive model, and drop effort before dropping to a cheaper family. Cost is a tie-breaker only; when the axes conflict for anything that ships, intelligence > taste > cost.
+
+Adjust the table to your own pricing and plan — it's directional, not universal.
+
+## Cost note
+
+Conductor spends less than Ultracode by spending deliberately, not by spending little. Dispatched lanes bill to *your* account: Opus lanes against your Claude plan, codex lanes against your OpenAI account. A large fan-out is still a large bill.
+
+## License
+
+MIT

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "agent-ops",
+  "owner": {
+    "name": "Ivan Oboth"
+  },
+  "description": "Mixed-model orchestration tooling for Claude Code.",
+  "plugins": [
+    {
+      "name": "conductor",
+      "source": "./",
+      "description": "Mixed-model orchestration at `high` effort: Claude for design and judgment, Codex CLI for mechanical execution and cross-family verification."
+    }
+  ]
+}

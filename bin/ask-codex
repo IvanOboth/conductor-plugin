@@ -1,0 +1,150 @@
+#!/bin/bash
+# ask-codex - Invoke Codex from Claude or terminal
+# Usage: ask-codex "your prompt here"
+#        echo "prompt" | ask-codex
+#        ask-codex --context file.md "analyze this"
+
+set -e
+
+# Show help
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+  echo "Usage: ask-codex [OPTIONS] \"prompt\""
+  echo ""
+  echo "Options:"
+  echo "  --context, -c FILE   Include file contents as context"
+  echo "  --model, -m MODEL    Specify model (default: codex default)"
+  echo "  --readonly, -r       Use read-only sandbox (no file writes)"
+  echo "  --clean              Extract only final response (strip session logs)"
+  echo "  --output, -o FILE    Write Codex plan to this file (Codex writes it directly)"
+  echo "  --debug-log FILE     Save raw session transcript to this file"
+  echo "  --help, -h           Show this help"
+  echo ""
+  echo "Examples:"
+  echo "  ask-codex \"Review this code for bugs\""
+  echo "  ask-codex --readonly \"What files handle auth?\""
+  echo "  ask-codex --context spec.md \"Implement this feature\""
+  echo "  ask-codex --clean --output plan.md \"Create an implementation plan\""
+  exit 0
+fi
+
+# Parse arguments
+CONTEXT_FILE=""
+PROMPT=""
+MODEL=""
+SANDBOX="workspace-write"
+CLEAN=false
+OUTPUT_FILE=""
+DEBUG_LOG=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --context|-c)
+      CONTEXT_FILE="$2"
+      shift 2
+      ;;
+    --model|-m)
+      MODEL="$2"
+      shift 2
+      ;;
+    --readonly|-r)
+      SANDBOX="read-only"
+      shift
+      ;;
+    --full-auto)
+      SANDBOX="workspace-write"
+      shift
+      ;;
+    --clean)
+      CLEAN=true
+      shift
+      ;;
+    --output|-o)
+      OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    --debug-log)
+      DEBUG_LOG="$2"
+      shift 2
+      ;;
+    *)
+      PROMPT="$1"
+      shift
+      ;;
+  esac
+done
+
+# Read from stdin if no prompt provided and stdin is not a terminal
+if [[ -z "$PROMPT" ]] && [[ ! -t 0 ]]; then
+  PROMPT=$(cat)
+fi
+
+if [[ -z "$PROMPT" ]]; then
+  echo "Usage: ask-codex [--context file.md] [--model model] [--readonly] \"prompt\"" >&2
+  echo "Run 'ask-codex --help' for more information." >&2
+  exit 1
+fi
+
+# If --output is set, inject file-writing instructions into the prompt
+if [[ -n "$OUTPUT_FILE" ]]; then
+  # Make path absolute if relative
+  if [[ "$OUTPUT_FILE" != /* ]]; then
+    OUTPUT_FILE="$(pwd)/$OUTPUT_FILE"
+  fi
+  PROMPT="$PROMPT
+
+IMPORTANT OUTPUT INSTRUCTION: After completing your research and analysis, write your COMPLETE final response as a clean markdown file to: $OUTPUT_FILE
+Do NOT include investigation notes, tool call logs, or reasoning steps in the file — only the polished final document.
+The file must be self-contained and ready to read."
+fi
+
+# Build context prefix if provided
+if [[ -n "$CONTEXT_FILE" ]] && [[ -f "$CONTEXT_FILE" ]]; then
+  CONTEXT_CONTENT=$(cat "$CONTEXT_FILE")
+  PROMPT="Context from $CONTEXT_FILE:
+
+$CONTEXT_CONTENT
+
+---
+
+$PROMPT"
+fi
+
+# Build command
+CMD="codex exec"
+
+if [[ -n "$MODEL" ]]; then
+  CMD="$CMD --model $MODEL"
+fi
+
+CMD="$CMD --sandbox $SANDBOX --full-auto --enable multi_agent"
+
+# For --clean mode, use Codex's native -o flag to extract just the final response
+# This replaces the old awk parser which broke when Codex changed its output format
+CLEAN_TMPFILE=""
+if [[ "$CLEAN" == true ]]; then
+  CLEAN_TMPFILE=$(mktemp /tmp/codex-clean-XXXXXX.txt)
+  CMD="$CMD -o $CLEAN_TMPFILE"
+fi
+
+# Execute — keep stderr separate from stdout
+echo "--- Codex Response ---" >&2
+RAW_OUTPUT=$($CMD "$PROMPT" 2>/dev/null) || true
+echo "--- End Codex Response ---" >&2
+
+# Save debug log if requested
+if [[ -n "$DEBUG_LOG" ]]; then
+  echo "$RAW_OUTPUT" > "$DEBUG_LOG"
+fi
+
+# Output: --clean uses the -o extracted last message, otherwise raw output
+if [[ "$CLEAN" == true ]] && [[ -n "$CLEAN_TMPFILE" ]]; then
+  if [[ -s "$CLEAN_TMPFILE" ]]; then
+    cat "$CLEAN_TMPFILE"
+  else
+    # Fallback: if -o file is empty, output raw (Codex may not have written to it)
+    echo "$RAW_OUTPUT"
+  fi
+  rm -f "$CLEAN_TMPFILE"
+else
+  echo "$RAW_OUTPUT"
+fi
