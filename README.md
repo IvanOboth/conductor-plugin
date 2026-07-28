@@ -13,6 +13,19 @@ The main loop stays the orchestrator at `high` effort and never delegates three 
 
 Then `/conductor:conductor` (or just say "conduct this" / "orchestrate at high").
 
+> The marketplace clones over **SSH**, so for a private repo you need an SSH key on your GitHub account in addition to repo access. If you'd rather not use SSH: `gh repo clone IvanOboth/conductor-plugin`, then `/plugin marketplace add ./conductor-plugin`.
+
+### Without the plugin system
+
+If you'd rather have the files in your own `~/.claude` tree:
+
+```bash
+gh repo clone IvanOboth/conductor-plugin
+cd conductor-plugin && ./install.sh          # --dry-run to preview, --uninstall to remove
+```
+
+It copies the skills and agents into place, puts `ask-codex` on your PATH, and rewrites `${CLAUDE_PLUGIN_ROOT}` (which only resolves inside a real plugin) to absolute paths. You lose automatic updates — re-run it after a `git pull`.
+
 For a whole team, commit this to the project's `.claude/settings.json` instead:
 
 ```json
