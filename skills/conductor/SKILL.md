@@ -122,6 +122,15 @@ Then launch independent lanes in the same turn:
 - To run GPT-5.6 Sol *inside* a `Workflow` (the `model:` param only accepts Claude models), spawn a thin wrapper agent (`model: 'fable'`, `effort: 'low'`) whose prompt writes a self-contained codex prompt, runs `ask-codex` via Bash, and returns the result.
 - **File collision rule:** no two write-lanes share a file. Codex has no worktree isolation — if two write-lanes must touch the same file, serialize them or give the file to one lane and a follow-up order to the other.
 
+**While the lanes run: do not poll.** Background agents and background Bash are harness-tracked — when one finishes you are **re-invoked automatically** with its result. Writing a "bounded wait for lanes" loop, a sleep, or a repeated file-existence check buys you nothing and costs a shell command, tokens, and wall-clock per poll. Dispatch, then either work on something independent or end the turn; the notification is the wake signal.
+
+The exceptions are narrow — state the harness can't see:
+
+- External systems with no notification path: a CI run, a deploy, a remote queue. Use `Monitor` with an until-condition, or a wakeup sized to how fast that state actually changes — not a 30-second tick.
+- A codex lane whose *report file* is the deliverable and whose process has already exited. Read the file; don't wait for it.
+
+If a lane hangs, that's a lane to stop and re-dispatch, not a lane to poll harder.
+
 **3. Cross-verify (cheap, different eyes).** Each lane's work is checked by the *other* model family.
 
 - Claude built UI → `codex-computer-use` verifies the running app: run the type checks, drive `agent-browser` (its own `--session` name — never the shared one), capture screenshots at the viewports that matter into `<scratchpad>/verify/`, and write a findings report.
