@@ -12,8 +12,8 @@ Usage (typical, as the closing step of a conductor run):
       --repo movit-demo --issue "movit#14" --outcome review \
       --since 2026-07-12T09:00:00Z
 
-Run-start registration (the opening step — makes the run visible as
-"on the desk now" in the graveyard dashboard while it executes):
+Run-start registration (the opening step — writes an in-flight entry so a
+run dashboard, if you have one, can show the run as active while it executes):
   python3 tools/conductor-report.py --start --run-id 2026-07-12-movit-pitch \
       --repo movit-demo --issue "movit#14" --title "Movit pitch build"
 The closing invocation above removes the entry automatically.
