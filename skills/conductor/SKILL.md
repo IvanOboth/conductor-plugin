@@ -18,6 +18,8 @@ Reach for conductor's fan-out when the work has **separable lanes** — design v
 
 **Lane count follows the work, not a habit.** The three lane *kinds* (design / mechanical / verification) and the three bundled lane *agents* are a taxonomy and a menu — not a quota. One `design-lane` definition can be dispatched twelve times in one run. If the work-list has 20 independent items, that's 20 agents, not 3.
 
+**The size guideline is a ceiling, not a target.** `large` means *up to* 50, never *aim for* 50. Five items get five agents; twenty get twenty; one coupled change gets one. Derive the count from the work-list you actually scouted, then check it against the ceiling — never the reverse. Both directions are failures, and they cost differently: under-fanning silently drops coverage, over-fanning burns tokens and buys nothing. Splitting five items into twenty agents by inventing sub-tasks, or stacking redundant verifiers on a finding nobody disputes, is the same error as batching twenty files into four agents.
+
 Match the count to the shape of the work:
 
 | Shape | Sizing |
