@@ -14,6 +14,24 @@ effort: high
 
 Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
 
+## What earns an agent (gate this before sizing anything)
+
+Sizing answers *how many*. This answers *whether* — and it runs first. Getting this wrong is more expensive than getting the count wrong, because a wasted agent costs its full run and returns nothing.
+
+**Scouting is your job, not a lane.** Step 1 says scout the code yourself, and it means with `Grep`, `Glob`, `Read`, and `Bash` — not by dispatching agents to go look. Delegated discovery is the single most common waste in a conductor run: the agents burn a full context each, come back with prose you then have to re-verify, and answer worse than the grep you could have run in two seconds. **If a grep, find, `ls`, `git log`, or file read would answer it, run the command.** An orchestrator that doesn't know the codebase yet is not ready to write work orders — and reading it yourself is what makes the work orders precise enough for cheap lanes to succeed.
+
+**Every agent needs a deliverable contract.** Before dispatching, name the artifact that comes back: a file written, a diff applied, a report at a known path, a verdict with citations. An agent told to "investigate X and report findings" has no completion condition — it wanders, then goes idle without delivering. If you can't state what lands when it's done, you don't have a work order yet.
+
+**Fan out over a work-list you already have — never to produce one.** Discovery is one cheap step you run yourself (`grep -rl`, `git diff --name-only`); the fan-out is what happens *to the items it returns*. Spawning agents to find the items inverts that and pays the most for the least.
+
+Three questions before any dispatch:
+
+1. **Could a shell command answer this?** → Run the command.
+2. **What artifact does this agent return?** → No answer means no dispatch.
+3. **Is this discovery or execution?** → Discovery is yours. Execution and verification fan out.
+
+A run whose agents mostly *looked things up* has the shape inverted. The scouting is cheap and yours; the expensive parallelism belongs downstream of it.
+
 ## Sizing the fan-out
 
 **Lane count follows the work, not a habit.** The three lane *kinds* (design / mechanical / verification) and the three bundled lane *agents* are a taxonomy and a menu — not a quota. One `design-lane` definition can be dispatched twelve times in one run. If the work-list has 20 independent items, that's 20 agents, not 3.
@@ -24,10 +42,11 @@ Match the count to the shape of the work:
 
 | Shape | Sizing |
 |---|---|
-| Independent items (files, endpoints, findings, sources) | **One agent per item.** Don't batch items into a single agent to keep the count down — that's how coverage gets silently dropped. |
+| Independent items (files, endpoints, findings, sources) — **already enumerated** | **One agent per item.** Don't batch items into a single agent to keep the count down — that's how coverage gets silently dropped. |
+| Finding out *what* the items are | **Zero agents.** That's a grep, and it's yours. |
 | Adversarial verification of a finding | 3 refuters, or 3 distinct lenses when the finding can fail in more than one way |
 | Competing approaches worth weighing | 3-5 independent attempts + judges, not one attempt iterated |
-| Discovery of unknown size (bugs, edge cases) | Loop until 2 consecutive rounds find nothing new — a fixed count misses the tail |
+| Open-ended hunting where the *answer set* is unknown (bugs, edge cases, security holes) | Loop until 2 consecutive rounds find nothing new — a fixed count misses the tail. Distinct from scouting: no grep answers "what bugs exist", but a grep does answer "which files exist". |
 | One coupled change | 1 agent. Splitting coupled work costs more than it saves. |
 
 **Spend the width where the agents are cheap.** A 30-file mechanical sweep is the *right* place for a wide fan-out — `gpt-5.6-sol` via codex, or `opus` at `effort: 'low'`, one agent per file. Cheap per-agent cost is exactly what makes breadth affordable; hedging to 4 agents there buys nothing and leaves 26 files unexamined. Reserve narrowness for expensive lanes (`xhigh`/`max` judgment), not cheap ones.
@@ -46,7 +65,7 @@ Match the count to the shape of the work:
 
 Claude Code flags runs above 25 agents (or ~1.5M projected tokens) as `Large workflow` in the task panel. That warning is advisory — it doesn't pause anything. If the work-list justifies the count, proceed; if you bound coverage for cost (top-N, sampling, no-retry), **`log()` what you dropped** so a partial sweep never reads as a complete one.
 
-The restraint elsewhere in this skill — "don't force a task to split", "don't dispatch what a few tool calls would finish" — is about *unnecessary* splits and orchestrator laziness. It is not a reason to under-serve genuinely parallel work.
+The restraint elsewhere in this skill — "don't force a task to split", "don't dispatch what a few tool calls would finish" — is about *unnecessary* splits and orchestrator laziness. It is not a reason to under-serve genuinely parallel work. But it applies with full force to discovery: width is for executing and verifying a known work-list, never for assembling one.
 
 ## Model routing
 
