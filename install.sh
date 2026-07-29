@@ -24,6 +24,7 @@ UNINSTALL=false
 
 SKILLS=(conductor codex-review codex-computer-use agent-browser run-report)
 AGENTS=(design-lane bulk-lane verify-lane)
+BINS=(ask-codex ask-claude)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -49,8 +50,8 @@ if $UNINSTALL; then
   for s in "${SKILLS[@]}"; do run rm -rf "${PREFIX}/skills/${s}"; done
   for a in "${AGENTS[@]}"; do run rm -f "${PREFIX}/agents/${a}.md"; done
   run rm -rf "${DATADIR}"
-  run rm -f "${BINDIR}/ask-codex"
-  echo "Done. (Your own ask-codex, if you had one, was overwritten on install — restore it from your dotfiles if needed.)"
+  for b in "${BINS[@]}"; do run rm -f "${BINDIR}/${b}"; done
+  echo "Done. (Your own ask-codex/ask-claude, if you had them, were overwritten on install — restore from your dotfiles if needed.)"
   exit 0
 fi
 
@@ -67,7 +68,9 @@ echo
 CLOBBER=()
 for s in "${SKILLS[@]}"; do [[ -e "${PREFIX}/skills/${s}" ]] && CLOBBER+=("skills/${s}"); done
 for a in "${AGENTS[@]}"; do [[ -e "${PREFIX}/agents/${a}.md" ]] && CLOBBER+=("agents/${a}.md"); done
-[[ -e "${BINDIR}/ask-codex" ]] && CLOBBER+=("$(basename "${BINDIR}")/ask-codex")
+for b in "${BINS[@]}"; do
+  [[ -e "${BINDIR}/${b}" ]] && CLOBBER+=("$(basename "${BINDIR}")/${b}")
+done
 
 if [[ ${#CLOBBER[@]} -gt 0 ]] && ! $DRY_RUN; then
   echo "These already exist and will be OVERWRITTEN:"
@@ -91,10 +94,13 @@ for a in "${AGENTS[@]}"; do
 done
 
 run cp "${SRC}/scripts/conductor-report.py" "${DATADIR}/conductor-report.py"
-run cp "${SRC}/bin/ask-codex" "${BINDIR}/ask-codex"
-run chmod +x "${BINDIR}/ask-codex"
 echo "  script   conductor-report.py"
-echo "  bin      ask-codex"
+
+for b in "${BINS[@]}"; do
+  run cp "${SRC}/bin/${b}" "${BINDIR}/${b}"
+  run chmod +x "${BINDIR}/${b}"
+  echo "  bin      ${b}"
+done
 
 # ${CLAUDE_PLUGIN_ROOT} only resolves inside a real plugin. Point the copies at
 # the absolute paths we just installed to, or the telemetry step silently no-ops.
@@ -102,14 +108,14 @@ if ! $DRY_RUN; then
   for f in "${PREFIX}/skills/conductor/SKILL.md" "${PREFIX}/skills/run-report/SKILL.md"; do
     [[ -f "$f" ]] || continue
     perl -pi -e "s{\\\$\\{CLAUDE_PLUGIN_ROOT\\}/scripts}{${DATADIR}}g; \
-                 s{\\\$\\{CLAUDE_PLUGIN_ROOT\\}/bin/ask-codex}{ask-codex}g" "$f"
+                 s{\\\$\\{CLAUDE_PLUGIN_ROOT\\}/bin/(ask-codex|ask-claude)}{\$1}g" "$f"
   done
   echo "  rewrote  \${CLAUDE_PLUGIN_ROOT} -> ${DATADIR}"
 fi
 
 echo
 if [[ ":${PATH}:" != *":${BINDIR}:"* ]]; then
-  echo "⚠  ${BINDIR} is not on your PATH — ask-codex won't be callable."
+  echo "⚠  ${BINDIR} is not on your PATH — ask-codex / ask-claude won't be callable."
   echo "   Add to your shell profile:  export PATH=\"${BINDIR}:\$PATH\""
   echo
 fi

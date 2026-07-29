@@ -4,12 +4,28 @@
   "owner": {
     "name": "Ivan Oboth"
   },
-  "description": "Mixed-model orchestration tooling for Claude Code.",
+  "description": "Agent-ops tooling for Claude Code: mixed-model orchestration, rigorous feature review, and interactive code explainers.",
   "plugins": [
     {
       "name": "conductor",
       "source": "./",
       "description": "Mixed-model orchestration at `high` effort: Claude for design and judgment, Codex CLI for mechanical execution and cross-family verification."
+    },
+    {
+      "name": "understand",
+      "source": {
+        "source": "github",
+        "repo": "IvanOboth/understand-plugin"
+      },
+      "description": "Interactive HTML explainers for a PR, diff, subsystem, or concept — with a runnable micro-world and a quiz that checks you actually understood it."
+    },
+    {
+      "name": "feature-council",
+      "source": {
+        "source": "github",
+        "repo": "IvanOboth/feature-council-plugin"
+      },
+      "description": "Sequential rigor workflow for significant features and rescue passes, plus the product-decision, root-fix, and intent-smell lenses it composes with."
     }
   ]
 }

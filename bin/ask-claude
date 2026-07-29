@@ -1,0 +1,146 @@
+#!/bin/bash
+# ask-claude - Invoke Claude from Codex or terminal
+# Usage: ask-claude "your prompt here"
+#        echo "prompt" | ask-claude
+#        ask-claude --context file.md "analyze this"
+
+set -e
+
+# Show help
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+  echo "Usage: ask-claude [OPTIONS] \"prompt\""
+  echo ""
+  echo "Options:"
+  echo "  --context, -c FILE   Include file contents as context"
+  echo "  --model, -m MODEL    Specify model (sonnet, opus, haiku)"
+  echo "  --plan               Use plan mode (read-only analysis)"
+  echo "  --accept-edits       Auto-accept file edits"
+  echo "  --stream             Stream text output (useful for long responses)"
+  echo "  --keep-env           Do NOT strip ANTHROPIC_* proxy vars (see below)"
+  echo "  --help, -h           Show this help"
+  echo ""
+  echo "Proxy safety:"
+  echo "  By default this strips ANTHROPIC_BASE_URL/AUTH_TOKEN/MODEL and friends so"
+  echo "  the call reaches Anthropic directly using your own Claude login. Without"
+  echo "  that, running under a local proxy (e.g. CLIProxyAPI serving a non-Claude"
+  echo "  model) silently routes this request back to the caller — you would be"
+  echo "  reviewing your own work while believing you got a second opinion."
+  echo "  Pass --keep-env only if you deliberately want the proxied model."
+  echo ""
+  echo "Examples:"
+  echo "  ask-claude \"Explain this architecture\""
+  echo "  ask-claude --plan \"What's the best approach for caching?\""
+  echo "  ask-claude --context plan.md \"Implement step 3\""
+  echo "  ask-claude --plan --stream \"Write a longer plan\""
+  exit 0
+fi
+
+# Parse arguments
+CONTEXT_FILE=""
+PROMPT=""
+MODEL=""
+PERMISSION_MODE="default"
+STREAM_MODE="false"
+KEEP_ENV="false"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --keep-env)
+      KEEP_ENV="true"
+      shift
+      ;;
+    --context|-c)
+      CONTEXT_FILE="$2"
+      shift 2
+      ;;
+    --model|-m)
+      MODEL="$2"
+      shift 2
+      ;;
+    --plan)
+      PERMISSION_MODE="plan"
+      shift
+      ;;
+    --accept-edits)
+      PERMISSION_MODE="acceptEdits"
+      shift
+      ;;
+    --stream)
+      STREAM_MODE="true"
+      shift
+      ;;
+    *)
+      PROMPT="$1"
+      shift
+      ;;
+  esac
+done
+
+# Read from stdin if no prompt provided and stdin is not a terminal
+if [[ -z "$PROMPT" ]] && [[ ! -t 0 ]]; then
+  PROMPT=$(cat)
+fi
+
+if [[ -z "$PROMPT" ]]; then
+  echo "Usage: ask-claude [--context file.md] [--model model] [--plan|--accept-edits] \"prompt\"" >&2
+  echo "Run 'ask-claude --help' for more information." >&2
+  exit 1
+fi
+
+# Build context prefix if provided
+if [[ -n "$CONTEXT_FILE" ]] && [[ -f "$CONTEXT_FILE" ]]; then
+  CONTEXT_CONTENT=$(cat "$CONTEXT_FILE")
+  PROMPT="Context from $CONTEXT_FILE:
+
+$CONTEXT_CONTENT
+
+---
+
+$PROMPT"
+fi
+
+# Strip proxy env by default.
+#
+# The whole point of ask-claude is to reach a *different* model family than the
+# caller. If the caller is itself Claude Code pointed at a local proxy (e.g.
+# CLIProxyAPI serving GPT-5.x), those ANTHROPIC_* vars are inherited by this
+# child process and the request loops straight back to the caller — a second
+# opinion that is actually the same model answering itself, with nothing in the
+# output to reveal it. Strip them so the call uses the real Claude login.
+ENV_PREFIX=""
+if [[ "$KEEP_ENV" != "true" ]]; then
+  if [[ -n "$ANTHROPIC_BASE_URL" ]]; then
+    echo "ask-claude: stripping ANTHROPIC_* (proxy detected at $ANTHROPIC_BASE_URL) — calling Claude directly" >&2
+  fi
+  ENV_PREFIX="env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_API_KEY \
+-u ANTHROPIC_MODEL -u ANTHROPIC_DEFAULT_OPUS_MODEL -u ANTHROPIC_DEFAULT_SONNET_MODEL \
+-u ANTHROPIC_DEFAULT_HAIKU_MODEL -u ANTHROPIC_SMALL_FAST_MODEL -u CLAUDE_CODE_SUBAGENT_MODEL"
+elif [[ -n "$ANTHROPIC_BASE_URL" ]]; then
+  echo "ask-claude: --keep-env set — request goes through $ANTHROPIC_BASE_URL, NOT to Claude" >&2
+fi
+
+# Build command
+CMD="$ENV_PREFIX claude --print"
+
+if [[ -n "$MODEL" ]]; then
+  CMD="$CMD --model $MODEL"
+fi
+
+CMD="$CMD --permission-mode $PERMISSION_MODE"
+
+# Execute and capture output
+echo "--- Claude Response ---" >&2
+
+if [[ "$STREAM_MODE" == "true" ]]; then
+  # Stream JSON events from Claude and extract only the text deltas.
+  #
+  # NOTE: We do NOT merge stderr into stdout here; stderr may contain non-JSON output
+  # which would break the JSON parser.
+  $CMD --verbose --output-format=stream-json --include-partial-messages "$PROMPT" \
+    2> >(cat >&2) \
+    | python3 -u -c $'import json,sys\nprinted_any=False\nlast_char=\"\"\n\ndef emit(s):\n  global printed_any,last_char\n  if not s:\n    return\n  printed_any=True\n  last_char=s[-1]\n  sys.stdout.write(s)\n  sys.stdout.flush()\n\nfor line in sys.stdin:\n  line=line.strip()\n  if not line:\n    continue\n  try:\n    obj=json.loads(line)\n  except Exception:\n    continue\n  t=obj.get(\"type\")\n  if t==\"stream_event\":\n    ev=obj.get(\"event\") or {}\n    ev_t=ev.get(\"type\")\n    if ev_t==\"content_block_start\":\n      cb=ev.get(\"content_block\") or {}\n      if cb.get(\"type\")==\"text\":\n        emit(cb.get(\"text\") or \"\")\n    elif ev_t==\"content_block_delta\":\n      delta=ev.get(\"delta\") or {}\n      if delta.get(\"type\")==\"text_delta\":\n        emit(delta.get(\"text\") or \"\")\n  elif t==\"result\" and not printed_any:\n    emit(obj.get(\"result\") or \"\")\n\nif printed_any and last_char!=\"\\n\":\n  sys.stdout.write(\"\\n\")\n'
+else
+  $CMD "$PROMPT" 2>&1
+fi
+
+echo "--- End Claude Response ---" >&2

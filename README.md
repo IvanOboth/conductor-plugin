@@ -50,6 +50,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 | `agents/bulk-lane` | Opus 5 @ `low` — mechanical work that still needs repo idiom |
 | `agents/verify-lane` | Opus 5 @ `max` — adversarial verification |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically |
+| `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
 | `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
 
 ## Prerequisites
