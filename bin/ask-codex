@@ -122,14 +122,33 @@ CMD="$CMD --sandbox $SANDBOX --full-auto --enable multi_agent"
 # This replaces the old awk parser which broke when Codex changed its output format
 CLEAN_TMPFILE=""
 if [[ "$CLEAN" == true ]]; then
-  CLEAN_TMPFILE=$(mktemp /tmp/codex-clean-XXXXXX.txt)
+  # BSD mktemp only substitutes TRAILING Xs — a .txt suffix after them leaves
+  # the template literal and invites collisions.
+  CLEAN_TMPFILE=$(mktemp "${TMPDIR:-/tmp}/codex-clean-XXXXXX")
   CMD="$CMD -o $CLEAN_TMPFILE"
 fi
 
-# Execute — keep stderr separate from stdout
+# Execute — keep stderr separate from stdout, but do NOT discard it.
+#
+# Discarding stderr and forcing success is how a broken lane becomes an invisible
+# one: codex refuses to run outside a git repo ("Not inside a trusted directory"),
+# and with `2>/dev/null || true` that surfaced to the caller as exit 0 with empty
+# output — indistinguishable from a successful run that had nothing to say.
 echo "--- Codex Response ---" >&2
-RAW_OUTPUT=$($CMD "$PROMPT" 2>/dev/null) || true
+CODEX_STDERR=$(mktemp "${TMPDIR:-/tmp}/codex-stderr-XXXXXX")
+# `set -e` is on: assign in a form that survives a non-zero exit so the handler
+# below actually runs instead of the script dying silently.
+CODEX_STATUS=0
+RAW_OUTPUT=$($CMD "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
 echo "--- End Codex Response ---" >&2
+
+if [[ $CODEX_STATUS -ne 0 ]] || { [[ -z "$RAW_OUTPUT" ]] && [[ -s "$CODEX_STDERR" ]]; }; then
+  echo "ask-codex: codex exited ${CODEX_STATUS} with no usable output." >&2
+  sed 's/^/  codex: /' "$CODEX_STDERR" >&2
+  rm -f "$CODEX_STDERR" "$CLEAN_TMPFILE"
+  exit $(( CODEX_STATUS == 0 ? 1 : CODEX_STATUS ))
+fi
+rm -f "$CODEX_STDERR"
 
 # Save debug log if requested
 if [[ -n "$DEBUG_LOG" ]]; then

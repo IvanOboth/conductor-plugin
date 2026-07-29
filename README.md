@@ -7,7 +7,7 @@ The main loop stays the orchestrator at `high` effort and never delegates three 
 ## Install
 
 ```
-/plugin marketplace add <owner>/conductor-plugin
+/plugin marketplace add IvanOboth/conductor-plugin
 /plugin install conductor@agent-ops
 ```
 
@@ -24,7 +24,7 @@ gh repo clone IvanOboth/conductor-plugin
 cd conductor-plugin && ./install.sh          # --dry-run to preview, --uninstall to remove
 ```
 
-It copies the skills and agents into place, puts `ask-codex` on your PATH, and rewrites `${CLAUDE_PLUGIN_ROOT}` (which only resolves inside a real plugin) to absolute paths. You lose automatic updates — re-run it after a `git pull`.
+It copies the skills and agents into place, puts `ask-codex` and `ask-claude` on your PATH, and rewrites `${CLAUDE_PLUGIN_ROOT}` (which only resolves inside a real plugin) to absolute paths. You lose automatic updates — re-run it after a `git pull`.
 
 For a whole team, commit this to the project's `.claude/settings.json` instead:
 
@@ -70,7 +70,7 @@ Conductor degrades gracefully — a missing piece disables that lane, it doesn't
 
 **Optional**
 - `gh` CLI, authenticated — only for `run-report`'s GitHub steps. Without it, run-report closes with the in-session summary and the review HTML, which is a valid close.
-- Python 3 — only for the telemetry ledger.
+- Python 3 — for the telemetry ledger, and for `ask-claude --stream` (which pipes Claude's stream-JSON through a small Python filter). Everything else works without it.
 
 ## Model routing
 
