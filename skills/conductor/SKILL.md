@@ -14,6 +14,38 @@ effort: high
 
 Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
 
+## Sizing the fan-out
+
+**Lane count follows the work, not a habit.** The three lane *kinds* (design / mechanical / verification) and the three bundled lane *agents* are a taxonomy and a menu — not a quota. One `design-lane` definition can be dispatched twelve times in one run. If the work-list has 20 independent items, that's 20 agents, not 3.
+
+Match the count to the shape of the work:
+
+| Shape | Sizing |
+|---|---|
+| Independent items (files, endpoints, findings, sources) | **One agent per item.** Don't batch items into a single agent to keep the count down — that's how coverage gets silently dropped. |
+| Adversarial verification of a finding | 3 refuters, or 3 distinct lenses when the finding can fail in more than one way |
+| Competing approaches worth weighing | 3-5 independent attempts + judges, not one attempt iterated |
+| Discovery of unknown size (bugs, edge cases) | Loop until 2 consecutive rounds find nothing new — a fixed count misses the tail |
+| One coupled change | 1 agent. Splitting coupled work costs more than it saves. |
+
+**Spend the width where the agents are cheap.** A 30-file mechanical sweep is the *right* place for a wide fan-out — `gpt-5.6-sol` via codex, or `opus` at `effort: 'low'`, one agent per file. Cheap per-agent cost is exactly what makes breadth affordable; hedging to 4 agents there buys nothing and leaves 26 files unexamined. Reserve narrowness for expensive lanes (`xhigh`/`max` judgment), not cheap ones.
+
+**Wide also survives interruption better.** On resume, cached results stop at the first agent that didn't finish and everything started after it re-runs — so many small agents preserve far more progress than a few long ones.
+
+**The real limits** (none of which is 3):
+
+| Limit | Value |
+|---|---|
+| Session size guideline | `small` <5 · `medium` <15 (default) · `large` <50 · `unrestricted`. **Advice, not a cap** — a task that calls for more overrides it. Set via `workflowSizeGuideline` in settings or `/config`. |
+| Concurrent agents | up to 16 (fewer on limited cores). Excess **queues** — passing 100 items still completes all 100. |
+| Total agents per run | 1,000 |
+| Items per `parallel()`/`pipeline()` call | 4,096 (hard error above, never silent truncation) |
+| Token budget | A "+500k"-style directive is a hard ceiling; `agent()` throws once spent |
+
+Claude Code flags runs above 25 agents (or ~1.5M projected tokens) as `Large workflow` in the task panel. That warning is advisory — it doesn't pause anything. If the work-list justifies the count, proceed; if you bound coverage for cost (top-N, sampling, no-retry), **`log()` what you dropped** so a partial sweep never reads as a complete one.
+
+The restraint elsewhere in this skill — "don't force a task to split", "don't dispatch what a few tool calls would finish" — is about *unnecessary* splits and orchestrator laziness. It is not a reason to under-serve genuinely parallel work.
+
 ## Model routing
 
 Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed unsupervised. **Taste** covers UI/UX, code quality, API design, and copy. **Cost** is directional, not list price.
