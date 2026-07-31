@@ -22,6 +22,12 @@ Sizing answers *how many*. This answers *whether* — and it runs first. Getting
 
 **Every agent needs a deliverable contract.** Before dispatching, name the artifact that comes back: a file written, a diff applied, a report at a known path, a verdict with citations. An agent told to "investigate X and report findings" has no completion condition — it wanders, then goes idle without delivering. If you can't state what lands when it's done, you don't have a work order yet.
 
+**An agent must be worth more than it costs.** An agent pays a fixed overhead every time: loading context, understanding the order, reporting back. That overhead only earns out when the item needs real reading, reasoning, or writing. **If an item is one tool call — a single mutation, one CLI invocation, a two-second edit — run it inline no matter how many items there are.** Four `npx convex run` calls are four seconds of your own turn; four agents to make those same calls is four agent-lifetimes to save nothing. This is orthogonal to coupling: items can be perfectly independent and still not worth an agent each.
+
+**Work that's already parallel downstream doesn't need agent parallelism.** Async provider jobs (renders, builds, CI, queued API work) run concurrently on their own side. Submitting N of them is N calls; the concurrency lives in the provider. Agents assigned to "wait for" those jobs are idle agents — submit, then read the results when they land.
+
+**Name the real reason when you go inline.** "It's a coupled chain" and "each item is one tool call" are different arguments, and only one of them is usually true. Reaching for *coupled* when the reason is *small* mislabels the case and generalizes badly — 20 independent file edits can be described as "an ordered chain" if you squint, and that's how genuinely parallel work gets serialized. State which it is.
+
 **Fan out over a work-list you already have — never to produce one.** Discovery is one cheap step you run yourself (`grep -rl`, `git diff --name-only`); the fan-out is what happens *to the items it returns*. Spawning agents to find the items inverts that and pays the most for the least.
 
 Three questions before any dispatch:
@@ -29,6 +35,7 @@ Three questions before any dispatch:
 1. **Could a shell command answer this?** → Run the command.
 2. **What artifact does this agent return?** → No answer means no dispatch.
 3. **Is this discovery or execution?** → Discovery is yours. Execution and verification fan out.
+4. **Is the item bigger than the agent's overhead?** → One tool call per item means inline, however many items there are.
 
 A run whose agents mostly *looked things up* has the shape inverted. The scouting is cheap and yours; the expensive parallelism belongs downstream of it.
 
@@ -48,6 +55,8 @@ Match the count to the shape of the work:
 | Competing approaches worth weighing | 3-5 independent attempts + judges, not one attempt iterated |
 | Open-ended hunting where the *answer set* is unknown (bugs, edge cases, security holes) | Loop until 2 consecutive rounds find nothing new — a fixed count misses the tail. Distinct from scouting: no grep answers "what bugs exist", but a grep does answer "which files exist". |
 | One coupled change | 1 agent. Splitting coupled work costs more than it saves. |
+| Many items, but each is a single tool call (mutations, CLI invocations, one-line edits) | **0 agents — inline.** Independent ≠ worth an agent. Agent overhead exceeds the work. |
+| Jobs that run async on a provider (renders, builds, CI) | **0 agents.** Submit them, then read results. The provider is the parallelism. |
 
 **Spend the width where the agents are cheap.** A 30-file mechanical sweep is the *right* place for a wide fan-out — `gpt-5.6-sol` via codex, or `opus` at `effort: 'low'`, one agent per file. Cheap per-agent cost is exactly what makes breadth affordable; hedging to 4 agents there buys nothing and leaves 26 files unexamined. Reserve narrowness for expensive lanes (`xhigh`/`max` judgment), not cheap ones.
 
@@ -113,12 +122,10 @@ The signature move: each lane is checked by the **other model family**. The two 
 
 **Bundled agents.** This plugin ships three pre-tuned lane agents with `model:` and `effort:` already set — `design-lane` (opus/xhigh), `bulk-lane` (opus/low), `verify-lane` (opus/max). Use them via the `Agent` tool when you want the effort pinned regardless of session effort; the plain `Agent` tool has no `effort` parameter of its own, so a subagent dispatched without one of these inherits the session's effort.
 
-**Pinning effort outside a Workflow.** Inside a `Workflow` you set it inline: `agent(prompt, {model: 'opus', effort: 'xhigh'})`. Everywhere else, effort comes from a *definition*, not a call — an agent definition in `~/.claude/agents/*.md` with `model:` and `effort:` in its frontmatter, dispatched by name. The three bundled lanes are exactly that, and writing your own is how you add a fourth. `SKILL.md` frontmatter accepts `model:`/`effort:` too, which pins the model a skill runs under.
-
 ## Orchestrator calibration (read before sizing lanes)
 
 - **Write work orders that assume self-verification.** Opus 5 verifies its own work unprompted. "Double-check your output", "add a final verification step", "spawn a verifier" in a work order produces over-verification and burned tokens, not more rigour — **delete that scaffolding**. Your own cross-family gate (§3) is the verification that matters, and it stays.
-- **Cap the fan-out you hand a lane.** Opus 5 delegates *reflexively*. If a design lane could recurse, say so explicitly in the order: *"do this yourself; do not spawn subagents"* — or give an explicit ceiling. Same goes for you as orchestrator: don't dispatch what a few tool calls would finish inline, and don't split coupled work. **This is about unjustified delegation, not breadth** — it is never a licence to under-serve a genuinely parallel work-list. Twenty independent items still get twenty agents; one coupled change still gets one.
+- **Cap the fan-out you hand a lane.** Opus 5 reaches for subagents readily. If a design lane could recurse, say so explicitly in the order: *"do this yourself; do not spawn subagents"* — or give an explicit ceiling. Same goes for you as orchestrator: don't dispatch what a few tool calls would finish inline.
 - **Scope discipline in the order.** Opus 5 can widen a task it judges under-specified. State what NOT to touch *and* that it should flag a concern in a sentence rather than re-scoping the work.
 
 ## The loop
@@ -212,21 +219,18 @@ If the run has no GitHub issue and no ledger configured, `run-report` degrades t
 Skip this section unless you route Claude Code's main loop through a local proxy to a non-Claude model (e.g. CLIProxyAPI serving GPT-5.6 Sol). **Detect it:** run `echo "$ANTHROPIC_BASE_URL"` — a `127.0.0.1` URL means proxied mode. This inverts the usual arrangement: the proxied model holds the judgment lanes and does most execution itself; Claude becomes the dispatched taste / second-family lane.
 
 - **The `Agent`/`Workflow` `model:` param cannot reach Claude models** through such a proxy — it has only the proxy's auth, so `model: "opus"` silently remaps and `model: "fable"` errors. Never dispatch a taste lane via `Agent`/`Workflow` in this mode; it would be the same model reviewing itself.
-- **Taste/design/judgment lanes go via `ask-claude`** — the mirror of `ask-codex`, bundled at `${CLAUDE_PLUGIN_ROOT}/bin/ask-claude` and on PATH once the plugin is installed. It strips `ANTHROPIC_BASE_URL`/`AUTH_TOKEN`/`MODEL` and friends **by default**, so the call reaches Anthropic on your own Claude login instead of looping back through the proxy (never add Claude auth to the proxy):
-  ```bash
-  ask-claude --context work-order.md --model opus \
-    "Execute this work order. Write your report to <scratchpad>/claude-N-report.md when done."
-  ```
-  `--model opus` for taste/design lanes; `--model claude-fable-5` when the lane needs top-shelf judgment. `--plan` for read-only analysis. `--keep-env` opts *out* of the stripping and deliberately routes to the proxied model — the one flag that turns this back into reviewing your own work, so use it only on purpose.
-
-  The env-stripping is the whole point of the wrapper. Hand-rolling the shell-out means remembering all seven variables, and forgetting one silently returns the proxied model's opinion dressed as a second family's:
+- **Taste/design/judgment lanes go via an env-stripped shell-out to real Claude**, which uses your own Claude login directly (never add Claude auth to the proxy):
   ```bash
   env -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_MODEL \
       -u ANTHROPIC_DEFAULT_OPUS_MODEL -u ANTHROPIC_DEFAULT_SONNET_MODEL \
       -u ANTHROPIC_DEFAULT_HAIKU_MODEL -u ANTHROPIC_SMALL_FAST_MODEL \
       -u CLAUDE_CODE_SUBAGENT_MODEL \
-    claude --model opus --dangerously-skip-permissions -p "…" --output-format text < /dev/null
+    claude --model opus --dangerously-skip-permissions \
+      -p "$(cat work-order.md)
+
+Write your report to <scratchpad>/claude-N-report.md when done." \
+      --output-format text < /dev/null
   ```
-  Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
+  `--model opus` for taste/design lanes; `--model claude-fable-5` when the lane needs top-shelf judgment. Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
 - **Codex lanes are unchanged** but become *same-family* with the orchestrator. Cross-family verification therefore routes the other way: send diff-taste review and anything user-facing to a Claude shell-out lane, and treat `codex-review` as a mechanics-only second pass, not the independent perspective.
 - Everything else holds: the orchestrator still never delegates the plan, work orders, or final review; still Reads screenshots itself; still runs the end gates and closes with `run-report`.
