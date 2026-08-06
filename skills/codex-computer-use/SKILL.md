@@ -11,12 +11,15 @@ Do **not** reach for this for ordinary code reading, typechecking, linting, or t
 
 Launching apps, simulators, or browsers to verify the requested work is fine without asking. Ask first only if the run could disrupt the user's environment beyond that — closing their apps, changing system settings, or acting on real accounts or data.
 
-## Two ways Codex does computer use
+## Three ways Codex does computer use
 
-1. **Headless shell (default — what this skill shells out to).** `codex exec` / `ask-codex` runs non-interactively and does computer use *through the shell*: `open -a`, `xcrun simctl` / Simulator, `agent-browser` or Playwright to drive a real browser, `screencapture` for pixels, `lsof`/`ps` to inspect a running server, `curl` against a local port. This covers the large majority of "go verify the running app" tasks and is fully scriptable, so it's the path a skill uses.
-2. **Desktop-app Computer Use plugin (interactive).** True GUI pointer/keyboard control of arbitrary apps lives in the **Codex desktop app** (installed at `~/.codex/computer-use/`), invoked *in the app* with `@Computer` or `@AppName` (e.g. `@Chrome`). It cannot be driven headlessly from a Claude shell-out — if a task genuinely needs a human-like click-through of a non-scriptable native app, tell the user to run it in the Codex app rather than pretending to do it here.
+1. **Headless shell (default).** `codex exec` / `ask-codex` runs non-interactively and does computer use *through the shell*: `open -a`, `xcrun simctl` / Simulator, `agent-browser` or Playwright to drive a real browser, `screencapture` for pixels, `lsof`/`ps` to inspect a running server, `curl` against a local port. Scriptable, isolated, cheap — still the first choice for anything web, CLI, or simulator. Codex also carries the Playwright MCP (`mcp__playwright__browser_*`) headlessly, so it can drive an isolated browser without `agent-browser` at all.
+2. **Headless GUI computer use — `node_repl` + `@oai/sky`.** The bundled `computer-use@openai-bundled` plugin registers a `node_repl` MCP server in `~/.codex/config.toml`, and **`codex exec` loads it** — so accessibility-tree reads, clicks, typing, and per-app screenshots of *arbitrary* macOS apps are reachable from a plain Claude shell-out. Verified 2026-08-07: a headless `codex exec -s danger-full-access` bootstrapped `sky`, listed apps, and returned Finder's AX tree plus a PNG. Use it when the target has no CLI and no scriptable surface — a native app, a menu-bar flow, an Xcode/Simulator GUI step, or Chrome under the user's *real* logged-in profile.
+3. **Codex desktop app (`@Computer` / `@AppName`).** The interactive front door to the same engine, at `~/.codex/computer-use/`. Reserve it for flows where a person should watch and intervene mid-run; a headless lane no longer has to hand a task back merely because it is GUI-shaped.
 
-If shell-level verification can prove the behavior (nearly always for web/CLI/simulator work), use path 1. Only escalate to the user + path 2 when the target can't be driven any other way.
+Take the cheapest rung that can prove the assertion: shell first, `sky` when nothing scriptable exists, the desktop app only when a human needs to be in the loop.
+
+**Two cautions on the `sky` path.** It drives the user's *actual* desktop — the app it touches is the app they are using. For ordinary web QA prefer `agent-browser` or Playwright in their own session; reach for `sky`-on-Chrome only when the real logged-in profile is the point, and name in the work order which windows and tabs are off limits. Second, the CU service writes screenshots to its own temp dir as `file://` URLs, so the prompt must tell Codex to copy them into your artifacts directory or you get a verdict with no evidence.
 
 ## Workflow
 
@@ -34,7 +37,19 @@ Write your findings to <scratchpad>/verify/report.md when done.
 "
 ```
 
-Equivalent direct form (the reference invocation): `codex exec -s workspace-write "<prompt>"`. Use `-s danger-full-access` only when Codex must act outside the repo working tree (e.g. launching a GUI app, writing screenshots to an arbitrary path) and workspace-write blocks it — never for acting on real accounts or data.
+Equivalent direct form (the reference invocation): `codex exec -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
+
+For a GUI target, drop to `codex exec` directly — `ask-codex` has no flag for full access (it offers only `--readonly` and workspace-write), and the lane needs to write screenshots outside the repo. This is the verified form:
+
+```bash
+codex exec -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
+  globalThis.sky = (await import('@oai/sky')).sky;
+<the steps, then the assertion>
+For each state that matters, call sky.get_app_state({ app: '<display name or bundle id>' }), copy the file:// path at state.screenshot.url into <scratchpad>/verify/NN-label.png, and write the verdict to <scratchpad>/verify/report.md.
+Touch no window other than <app>."
+```
+
+`sky` gives `get_app_state` / `list_apps` / `click` / `set_value` / `type_text` / `press_key` / `scroll` / `select_text` / `drag` / `perform_secondary_action`, all keyed on `element_index` from the accessibility tree. You do not need to spell those out — Codex loads the API from its own plugin skill; give it the target, the steps, and the assertion.
 
 - **Long runs** (browser flows, simulator boots) routinely exceed Bash's 10-minute timeout. Launch with `run_in_background: true` and a generous timeout, or poll for the report file.
 - **Artifacts, not stdout.** Codex's stdout is session-log noise. Have it save screenshots to a named directory and its findings to a report file — those are the deliverable.
