@@ -106,7 +106,7 @@ Effort is a **separate dial from model tier**, and it moves intelligence more th
 - **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same lane at higher effort. Before dropping opus → codex for cost, drop effort first.
 - **Terminal, DevOps, infra, CI, migrations**: `gpt-5.6-sol` via codex, first choice — its home turf, not merely the cheap option.
 - **Patterned multi-file refactors** (rename everywhere, apply a contract across modules): `gpt-5.6-sol`. Its patch format survives multi-file edits better than raw diffs, at roughly a quarter of the tokens.
-- **High-volume mechanical sweeps**: the Codex-specialised model, where a wide fan-out stops being a cost decision.
+- **High-volume mechanical sweeps**: `gpt-5.6-codex` — at roughly $1.75/$14 per Mtok a wide fan-out stops being a cost decision.
 - **Bulk / mechanical that still needs repo idiom to land right**: `opus` at `low`/`medium` — don't reach for `fable` for bulk.
 - **Messy repo-level bug hunts, unknown scope**: `opus` at `high`+. Do not route these to codex for cost.
 - **User-facing** (UI, copy, API design) needs taste ≥ 7: `opus` (default) or `fable`.
