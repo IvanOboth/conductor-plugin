@@ -455,6 +455,55 @@ On the desktop client: **Settings → Remote Orca Servers → Add**, then under 
 Active Server step, everything silently routes through the laptop** and they have rebuilt
 the exact problem this setup exists to escape.
 
+### 3e. Per-repo base ref — check this for every repo whose PR flow isn't `main`
+
+Orca's `worktree create` branches from the **repo's base ref**, and **unset means
+`refs/remotes/origin/main`**. For any repo that ships from a different branch — a
+`staging` or `develop` flow — every Orca worktree silently starts from the wrong base.
+Nothing errors. The work just lands on a branch that will conflict when it targets the
+real base.
+
+**Ask them, for each registered repo: what branch do PRs target?** Then check what Orca
+actually thinks:
+
+```bash
+orca repo list --json | python3 -c "
+import json,sys
+for r in json.load(sys.stdin)['result']['repos']:
+    print(f\"{r['displayName']:20} {r.get('worktreeBaseRef') or '(unset -> origin/main)'}\")
+"
+```
+
+Fix any that are wrong:
+
+```bash
+orca repo set-base-ref \
+  --repo path:/absolute/path/to/repo \
+  --ref refs/remotes/origin/staging
+```
+
+Then re-run the list and confirm `worktreeBaseRef` actually changed. **Verify the value,
+don't trust the UI** — this is a stored field, and the display can lag.
+
+Three things worth telling them:
+
+- **This needs the CLI fix from 3c.** On Linux every `orca` command fails with
+  `bad option: --no-sandbox` until that is applied, so do 3c first.
+- **Re-registering a repo resets it.** If they remove and re-add a project in Orca, the
+  base ref goes back to unset. Re-check after any re-register.
+- **Orca's base ref is not the only path to a wrong base.** A repo can also ship its own
+  `WorktreeCreate` hook that branches from **parent-checkout HEAD** rather than from any
+  configured ref — in which case a parent sitting on a stale or merged branch poisons
+  every new worktree regardless of what Orca is set to. If worktrees still come out wrong
+  after fixing the base ref, check what branch the parent checkout is actually on:
+
+  ```bash
+  git -C /path/to/repo rev-parse --abbrev-ref HEAD
+  ```
+
+  A parent that has drifted off its base is also, by design, **skipped** by the sync jobs
+  in Phase 6 — so it silently stays stale. The skip lines in the sync log are the tell.
+
 ### Tell them these five things before you finish the phase
 
 These are not steps — they are things that will bite weeks from now and be baffling
