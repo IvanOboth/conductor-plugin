@@ -539,7 +539,139 @@ wc -l ~/.claude/CLAUDE.md ~/.codex/AGENTS.md
 
 ---
 
-## Phase 6 — Acceptance run
+## Phase 6 — Keep the two machines in sync
+
+Two machines drift. Set this up now, before it costs someone a morning.
+
+There are **two separate things** to sync and they want different mechanisms. Conflating
+them is the mistake.
+
+### 6a. Code and notes → git, always
+
+Not rsync. Git is both the sync *and* the backup — every clone is a full history copy,
+and a VM session that hasn't pushed is invisible to every other machine and protected by
+nothing.
+
+The rule for them: **commit and push at every natural checkpoint**, not just end of day.
+
+On the **laptop**, pull every repo on a timer:
+
+```bash
+mkdir -p ~/bin ~/runs
+cat > ~/bin/pull-repos.sh <<'EOF'
+#!/usr/bin/env bash
+# Pull every repo in ~/dev. Skips anything dirty or off its base branch —
+# a cron job must never touch work in progress.
+set -u
+LOG="$HOME/runs/pull-repos.log"; mkdir -p "$HOME/runs"
+for d in "$HOME"/dev/*/; do
+  [ -d "$d/.git" ] || continue
+  name=$(basename "$d")
+  # dirty? leave it alone
+  [ -n "$(git -C "$d" status --porcelain)" ] && {
+    echo "$(date -u +%FT%TZ) SKIP $name (dirty)" >> "$LOG"; continue; }
+  branch=$(git -C "$d" rev-parse --abbrev-ref HEAD)
+  base=$(git -C "$d" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+  base="${base:-main}"
+  [ "$branch" != "$base" ] && {
+    echo "$(date -u +%FT%TZ) SKIP $name (on $branch, base $base)" >> "$LOG"; continue; }
+  out=$(git -C "$d" pull --ff-only 2>&1) || echo "$(date -u +%FT%TZ) FAIL $name: $out" >> "$LOG"
+done
+EOF
+chmod +x ~/bin/pull-repos.sh
+```
+
+Do the same on the **VM** — it needs to pick up what the laptop pushed.
+
+**The skip lines are the feature, not a limitation.** When a repo looks stale, the log
+says why: dirty tree, or sitting on a branch that isn't its base. Tell them to read
+`~/runs/pull-repos.log` before debugging anything else.
+
+### 6b. The personal layer — skills, agents, `CLAUDE.md`
+
+This is what people actually mean by "sync my VM with my Mac". Two designs, and the
+choice matters more than it looks.
+
+**Recommended: put it in a private git repo.**
+
+```bash
+cd ~/.claude && git init && git remote add origin git@github.com:<them>/claude-config.git
+# commit skills/, agents/, CLAUDE.md — NOT settings.json, NOT .credentials.json
+```
+
+Then pull on both machines from the same cron as 6a. Why this over rsync: **it edits in
+both directions**. Work now happens on the VM, so they *will* edit a skill there — and a
+one-way mirror silently destroys that edit on its next run. Git also gives them history
+and a diff when something changes underneath them.
+
+**Alternative: one-way rsync from the laptop**, if they want the laptop to be
+unambiguously the source of truth:
+
+```bash
+rsync -a --copy-links --delete \
+  --exclude='__pycache__/' --exclude='*.pyc' --exclude='.DS_Store' \
+  ~/.claude/skills/ <user>@<vm>:~/.claude/skills/
+```
+
+If they choose this, **say the consequence out loud**: `--delete` makes the VM a true
+mirror, so anything written there is destroyed on the next run. Never edit a skill on the
+VM under this design — edit on the laptop and let it propagate.
+
+**Never sync either way:** credentials, `settings.json` (the VM has its own hooks), or
+anything with a key in it.
+
+### 6c. The trap that wastes an afternoon
+
+**macOS is case-insensitive; Linux is not.** A skill whose entry file is `skill.md` loads
+fine on the laptop and is *invisible* on the VM — it syncs, it's on disk, and no agent can
+see it. Renaming needs two steps, because a one-step rename is a no-op on a
+case-insensitive filesystem:
+
+```bash
+mv skill.md tmp.md && mv tmp.md SKILL.md
+```
+
+Worth linting for it rather than rediscovering it:
+
+```bash
+for d in ~/.claude/skills/*/; do
+  f=$(find "$d" -maxdepth 1 -iname 'skill.md' -exec basename {} \; | head -1)
+  [ -z "$f" ] && echo "NO ENTRY FILE: $(basename "$d")"
+  [ -n "$f" ] && [ "$f" != "SKILL.md" ] && echo "WRONG CASE: $(basename "$d") has '$f'"
+done
+```
+
+**When a skill "isn't showing" on the VM, check the sync log and this lint before
+debugging the skill itself.** It is almost always one of the two.
+
+### 6d. Install the cron jobs
+
+```bash
+crontab -e
+```
+
+```cron
+*/30 * * * * $HOME/bin/pull-repos.sh
+```
+
+Every 30 minutes is right for repos — often enough to stay current, rare enough that it
+rarely collides with active work. The personal layer can be hourly; it changes far less.
+
+**On macOS, cron needs Full Disk Access** or it fails silently: System Settings → Privacy
+& Security → Full Disk Access → add `/usr/sbin/cron`. A laptop also only runs cron while
+awake, so a closed laptop simply doesn't sync — which is fine, because the VM is the
+machine that matters.
+
+Make every sync script a **quiet no-op when the other host is unreachable** (`ssh
+-o ConnectTimeout=8 -o BatchMode=yes <host> true || exit 0`) so it's safe on cron while
+travelling.
+
+**Check:** run each script by hand once, confirm `~/runs/*.log` is written, and confirm a
+file pushed from one machine appears on the other within one interval.
+
+---
+
+## Phase 7 — Acceptance run
 
 Do not report success until this passes. A checklist of installed things proves nothing —
 every failure mode above is silent.
@@ -557,7 +689,7 @@ Have them pick a small, real, already-scoped issue in a repo they know. Not a to
 - [ ] **An HTML review was handed over as a URL** — on a headless VM a disk path is a
       failed handoff
 - [ ] **The work was committed and pushed** — otherwise it exists on one VM and nowhere
-      else
+      else, and Phase 6's sync has nothing to carry
 
 ---
 
