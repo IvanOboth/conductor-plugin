@@ -300,6 +300,20 @@ app is a **client only** — it never becomes the runtime.
 Direct them to install Orca desktop on the laptop and Orca mobile on the phone. Both are
 **clients**. The runtime is the VM.
 
+**Ask which phone they have — the two paths are not the same.**
+
+- **iOS:** App Store, normal install, auto-updates.
+- **Android:** **APK only — Orca is not on Google Play.** Download `app-release.apk` from
+  <https://www.onorca.dev/download> in a full browser, then open it from Downloads or the
+  Files app. Android will ask for permission to install unknown apps: grant it to *only*
+  the browser or Files app, and **turn that permission back off afterwards**. On Samsung,
+  Auto Blocker will refuse the install — disable it in Settings, install, re-enable.
+
+Tell an Android user the ongoing cost up front: **a sideloaded APK does not auto-update.**
+Orca's Android builds ship every few days (three releases in the ten days to 31 Aug 2026),
+so staying current means re-downloading the APK by hand. If they would rather not, the
+web client works from any tailnet browser and needs no install at all.
+
 ### 3a. Install the AppImage
 
 **Ask them for the Linux AppImage download URL** from Orca's releases page — do not guess
