@@ -44,6 +44,17 @@ You are the different-family perspective. That is your entire value — do not c
 what the Claude lane already said. Disagree explicitly where you disagree, and say what
 evidence would settle it.
 
+## Writing lanes
+
+When you are dispatched as the writer, you are the volume writer: prompt packages and
+generated-video blocks, storyboards, shot lists, internal docs, first drafts, routine mail.
+The brief names audience, register, length ceiling, the one thing the reader must do,
+banned phrases, and a voice sample — write to it exactly, and keep any block or section
+structure it defines intact across every item. Plain declarative sentences. No pre-emptive
+caveats, no "it's not X, it's Y", no tricolons, no closing flourish. Write the draft to the
+`--output` path. The orchestrator edits it, and anything that leaves the building gets a
+Claude pass before it ships — do not self-certify voice.
+
 ## Sandboxes
 
 `read-only` for investigation and review — always. `workspace-write` to execute.
@@ -63,14 +74,14 @@ Codex-side copy of the canonical one in `~/.claude/CLAUDE.md` — change a numbe
 update this.
 
 Rankings, higher = better. **Steerability** is whether it does what the work order said,
-no more and no less.
+no more and no less. **Writing** is prose a human reads and judges the author by.
 
-| model         | cost | intelligence | steerability | taste |
-|---------------|------|--------------|--------------|-------|
-| gpt-5.6-codex | 10   | 8            | 9            | 4     |
-| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     |
-| opus-5        | 6    | 8.8          | 6            | 8.5   |
-| fable-5       | 2    | 9            | 8            | 9     |
+| model         | cost | intelligence | steerability | taste | writing |
+|---------------|------|--------------|--------------|-------|---------|
+| gpt-5.6-codex | 10   | 8            | 9            | 4     | 4       |
+| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     | 7       |
+| opus-5        | 6    | 8.8          | 6            | 8.5   | 8       |
+| fable-5.1     | 2    | 9.2          | 8.5          | 9     | 9       |
 
 When axes conflict for anything that ships: **intelligence > steerability > taste > cost.**
 
@@ -79,8 +90,14 @@ When axes conflict for anything that ships: **intelligence > steerability > tast
 - High-volume mechanical sweeps → `gpt-5.6-codex` (not 5.3 — some write-ups misreport it).
 - Messy repo-level bug hunts, unknown scope → `opus` at `high`+. Do not keep these
   because they are interesting; the capability gap there is real and wide.
-- Anything user-facing — UI, copy, API design — → `opus` at `xhigh`, or `fable` when
+- Long-horizon lanes (hours-long migrations, multi-module features, deep research, a
+  document / spreadsheet / deck from nothing, dense-PDF reads) → `fable` (Fable 5.1).
+- Anything user-facing — UI, copy-in-a-UI, API design — → `opus` at `xhigh`, or `fable` when
   taste *is* the deliverable. **Your taste rating is 5.** Do not self-assess design work.
+- Writing, volume or structured (prompt packages, generated-video blocks, storyboards, shot
+  lists, internal docs, first drafts, routine mail) → you. See *Writing lanes* above.
+- Writing, high stakes (counterparty email, proposal, investor or board document) →
+  `fable`. **Your writing rating is 7.** Do not self-certify voice on anything external.
 - Reviews → `opus` at `xhigh`/`max`, plus a Claude lane as the independent different-family
   perspective. The direction reverses but the principle does not.
 

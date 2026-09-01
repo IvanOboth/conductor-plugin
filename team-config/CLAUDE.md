@@ -20,17 +20,38 @@ from decomposition, parallel fan-out, or independent verification.
 Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed
 unsupervised. **Steerability** is whether it does what the work order said, no more and no
 less — it is what most often decides whether a dispatched lane comes back usable.
-**Taste** covers UI/UX, code quality, API design, and copy. **Cost** is directional.
+**Taste** covers UI/UX, code quality, API design, and copy-in-a-UI. **Writing** is prose a
+human reads and judges the author by — emails, proposals, long documents, scripts, prompt
+packages — a separate axis because a model can have taste in code and still write slop.
+**Cost** is directional.
 
-| model         | cost | intelligence | steerability | taste |
-|---------------|------|--------------|--------------|-------|
-| gpt-5.6-codex | 10   | 8            | 9            | 4     |
-| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     |
-| opus-5        | 6    | 8.8          | 6            | 8.5   |
-| fable-5       | 2    | 9            | 8            | 9     |
+| model         | cost | intelligence | steerability | taste | writing |
+|---------------|------|--------------|--------------|-------|---------|
+| gpt-5.6-codex | 10   | 8            | 9            | 4     | 4       |
+| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     | 7       |
+| opus-5        | 6    | 8.8          | 6            | 8.5   | 8       |
+| fable-5.1     | 2    | 9.2          | 8.5          | 9     | 9       |
 
 List prices per Mtok as of Sep 2026: `gpt-5.6-codex` $1.75/$14 · `gpt-5.6-sol` $4/$20 ·
-`opus-5` $5/$25 (batch $2.50/$12.50, Fast mode $10/$50) · `fable-5` $10/$50.
+`opus-5` $5/$25 (batch $2.50/$12.50, Fast mode $10/$50, cache reads $0.50) · `fable-5.1`
+$10/$50 (batch $5/$25, cache reads $0.25 — half of Opus 5's).
+
+**Fable 5.1 replaced Fable 5 on 2026-09-01** (`model: "fable"` resolves to it). Same list
+price, cache reads at a quarter, and the gains are where lanes run long: hours-long agentic
+coding, documents / spreadsheets / decks from a blank page, multistep research, dense-PDF
+vision, full-1M-context reasoning, computer use that recovers from failed steps. Anthropic's
+own guidance is the routing rule: **start with Opus 5; use Fable 5.1 for demanding reasoning
+and long-horizon work, or when Opus 5 at higher effort still falls short.** Counter four 5.1
+behaviours in a work order: one tool call per turn where Fable 5 batched (say "issue
+independent reads in one turn"); answers from memory at `low` effort (never dispatch it at
+`low` for research or verification); whole-file rewrites for small edits (say "targeted
+edits only"); denser prose with less formatting (writing orders ask for paragraph breaks).
+
+**Writing is its own routing problem.** Published head-to-heads (Jul–Sep 2026) still put
+Fable ahead of Sol on prose, and 5.1's prose is level with Fable 5's. Sol's writing is
+competent, plain, and cheap, and carries none of Claude's house tics — the "it's not X,
+it's Y" reflex, tricolons, the pre-emptive caveat, the closing flourish. Sol is the better
+*volume* writer even though Fable is the better *writer*; the split below follows.
 
 **Opus 5's numbers are effort-dependent — effort is the dial, not the model choice.** Read
 the intelligence column as ~8.8 at `xhigh`/`max` and ~8 at `medium`.
@@ -51,7 +72,8 @@ Opus when a task is *steerability-sensitive*, not when it is merely hard.
 - When axes conflict for anything that ships:
   **intelligence > steerability > taste > cost.**
 - **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same
-  lane at higher effort. Before dropping opus → codex for cost, drop effort first.
+  lane at higher effort. Before dropping opus → codex for cost, drop effort first. Never
+  run `fable` at `low` for anything that must look something up.
 - **Terminal, DevOps, infra, CI, migrations** → `gpt-5.6-sol` via codex, first choice.
   Terminal-Bench 88.8 vs ~83.1 — its home turf, not merely the cheap option.
 - **Patterned multi-file refactors** (rename everywhere, apply a contract across modules)
@@ -63,8 +85,21 @@ Opus when a task is *steerability-sensitive*, not when it is merely hard.
   `effort: 'low'`/`'medium'`. Don't reach for `fable` for bulk.
 - **Messy repo-level bug hunts, unknown scope** → `opus` at `high`+. Do NOT route these to
   codex for cost; 79.2 vs 64.6 is not a gap to spend for convenience.
-- **User-facing surfaces** (UI, copy, API design) need taste ≥ 7 → `opus` (default) or
-  `fable` when taste *is* the deliverable.
+- **Long-horizon lanes** (one lane that runs for hours or spans sessions: a large migration,
+  a multi-module feature, a deep research brief, a document / spreadsheet / deck from
+  nothing, a dense-PDF read) → `fable` at `high`+. The one place Fable 5.1 is the default
+  rather than the escalation.
+- **User-facing surfaces** (UI, copy-in-a-UI, API design) need taste ≥ 7 → `opus` (default)
+  or `fable` when taste *is* the deliverable.
+- **Writing, high stakes** (a counterparty email, a proposal, an investor or board document,
+  anything with your name on it) → `fable` at `high`, the bundled `write-lane` agent. Opus 5
+  at `xhigh` when the document is long and structured rather than voice-critical.
+- **Writing, volume or structured** (prompt packages and generated-video blocks, storyboards,
+  shot lists, internal docs, first drafts, routine mail) → `gpt-5.6-sol` via
+  `ask-codex --context brief.md --output draft.md`; you hold the brief and edit the draft.
+  A slop-and-cost bet, not a quality bet — anything that leaves the building still gets a
+  Fable or Opus edit pass. Every writing order states audience, register, length ceiling,
+  the reader's one action, banned phrases, and a voice sample.
 - **Reviews** → `opus` at `xhigh`/`max` is the default judgment lane. Escalate to `fable`
   when Opus at `max` has already missed. Add `gpt-5.6-sol` as an extra *independent*
   different-family perspective — a cross-family review catches what same-family review
@@ -77,7 +112,8 @@ Opus when a task is *steerability-sensitive*, not when it is merely hard.
   orchestrator stays Claude.** Sol loses the global picture over long horizons and needs
   more manual context management. Opus's weakness is obedience, which the orchestrator
   seat is the *least* sensitive to, because that is the seat you are reading. Give the
-  codex lane more of the dispatched surface, never the baton.
+  codex lane more of the dispatched surface, never the baton. Fable 5.1 is the best Claude
+  in that seat (steerability 8.5); running it as the main loop changes no lane routing.
 - **Cross-family routing is also availability insurance.** A setup with every lane on one
   provider has a single point of failure, and provider incidents do happen.
 - **Never pay for Fast mode on a dispatched lane** — 2× the price for the same
