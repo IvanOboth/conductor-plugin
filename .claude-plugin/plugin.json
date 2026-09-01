@@ -3,7 +3,7 @@
   "name": "conductor",
   "displayName": "Conductor",
   "description": "Mixed-model orchestration at `high` effort \u2014 Ultracode-grade output without the Ultracode premium. Routes design/taste lanes to Claude and mechanical/verification lanes to the Codex CLI, with cross-family review gates.",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "author": {
     "name": "Ivan Oboth"
   },

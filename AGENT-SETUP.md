@@ -443,24 +443,37 @@ thing they installed. Say this to them in as many words.
 
 ## Phase 5 — Config files
 
-Write these two. They are what decide whether conductor gets used well or cargo-culted.
+Write these two. They decide whether conductor gets used well or cargo-culted.
 
-- `~/.claude/CLAUDE.md` — the Claude-side brain: model routing, lane assignments, the
-  gates on what earns an agent, fan-out sizing, browser lane order, headless-host
-  handling.
-- `~/.codex/AGENTS.md` — the Codex-side mirror. Needed because when a codex lane runs,
-  *it* is making the decisions and it cannot see the Claude-side file.
+```bash
+curl -fL -o ~/.claude/CLAUDE.md \
+  https://raw.githubusercontent.com/IvanOboth/conductor-plugin/main/team-config/CLAUDE.md
+mkdir -p ~/.codex && curl -fL -o ~/.codex/AGENTS.md \
+  https://raw.githubusercontent.com/IvanOboth/conductor-plugin/main/team-config/AGENTS.md
+```
 
-**If the person who sent you here supplied their own versions of these two files, use
-theirs verbatim — do not merge, do not improve, do not reorder.** They are a team
-standard, and drift between copies is the failure this file exists to prevent.
+**On both machines — the laptop and the VM.** A codex lane makes its own decisions while
+it runs and cannot see the Claude-side file, so skipping `AGENTS.md` leaves half the
+orchestration unguided.
 
-If they did not, ask for them before writing anything. Do not invent a routing table.
+**If a `~/.claude/CLAUDE.md` already exists, do NOT overwrite it.** Show them the diff and
+merge — their existing project conventions matter. What they need from the team file is
+the routing table and the gates.
 
-One thing to flag if you do write them: leave the *gates* alone — "what earns an agent",
-the fan-out sizing rules, and the counter-instructions for reflexive delegation. Those
-are the parts that keep the bill predictable, and they are the parts a new user is most
-tempted to delete because they read as restrictive.
+If the person who sent them here supplied their own versions of these two files, use
+**theirs** verbatim instead — do not merge, do not improve, do not reorder. They are a
+team standard, and drift between copies is the failure this file exists to prevent.
+
+Tell them what to tune and what not to: the **lane assignments** and the **cost** column
+should reflect what they actually pay and work on. The **gates** — "what earns an agent",
+the fan-out sizing rules, the Opus counter-behaviours — should be left alone. Those read
+as restrictive and are the reason a fan-out costs what they expect.
+
+**Check:** both files exist and are non-empty.
+
+```bash
+wc -l ~/.claude/CLAUDE.md ~/.codex/AGENTS.md
+```
 
 ---
 
