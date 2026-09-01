@@ -78,13 +78,16 @@ The restraint elsewhere in this skill — "don't force a task to split", "don't 
 
 ## Model routing
 
-Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed unsupervised. **Taste** covers UI/UX, code quality, API design, and copy. **Cost** is directional, not list price.
+Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed unsupervised. **Steerability** is whether it does what the work order said, no more and no less — it is what most often decides whether a dispatched lane comes back usable. **Taste** covers UI/UX, code quality, API design, and copy. **Cost** is directional, not list price.
 
-| model       | cost | intelligence | taste |
-|-------------|------|--------------|-------|
-| gpt-5.6-sol | 9    | 8.3          | 5     |
-| opus-5      | 6    | 8.8          | 8.5   |
-| fable-5     | 2    | 9            | 9     |
+| model         | cost | intelligence | steerability | taste |
+|---------------|------|--------------|--------------|-------|
+| gpt-5.6-codex | 10   | 8            | 9            | 4     |
+| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     |
+| opus-5        | 6    | 8.8          | 6            | 8.5   |
+| fable-5       | 2    | 9            | 8            | 9     |
+
+Adjust these to your own plan and pricing — they are directional, not universal. Reviewed against published benchmarks and practitioner reports on 2026-09-01. Opus 5 has **not** regressed on capability: it leads where work is messy and repo-shaped (SWE-bench Pro 79.2% vs Sol's 64.6%, OSWorld 2.0 70.6 vs 62.6, ARC-AGI-3 30.2 vs 7.8). Sol leads terminal and patterned work (Terminal-Bench 2.1 88.8 vs ~83.1, DeepSWE v1.1 72.7 vs 68.8). What separates them in practice is **steerability**: Opus 5 is widely reported to expand scope beyond the ask, declare fixes complete while leaving pieces unimplemented, and delegate to subagents more readily than prior models — which is why the counter-instructions below exist. Route away from Opus when a task is steerability-sensitive, not when it is merely hard.
 
 Effort is a **separate dial from model tier**, and it moves intelligence more than a tier change does. Read Opus 5's intelligence as ~8.8 at `xhigh`/`max` and ~8 at `medium`.
 
@@ -99,10 +102,15 @@ Effort is a **separate dial from model tier**, and it moves intelligence more th
 **How to apply:**
 
 - These are defaults, not limits. If a cheaper lane's output doesn't meet the bar, re-run with more effort or a smarter model without asking. Judge the output, not the price tag — escalating costs less than shipping mediocre work.
-- Cost is a tie-breaker only. When axes conflict for anything that ships: **intelligence > taste > cost**.
+- Cost is a tie-breaker only. When axes conflict for anything that ships: **intelligence > steerability > taste > cost**.
 - **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same lane at higher effort. Before dropping opus → codex for cost, drop effort first.
-- **Bulk / mechanical** (clear-spec implementation, data analysis, migrations, refactors with exact anchors): `gpt-5.6-sol` via codex. When the mechanical work still needs repo idiom to land right, `opus` at `low`/`medium` is the cheap Claude alternative — don't reach for `fable` for bulk.
+- **Terminal, DevOps, infra, CI, migrations**: `gpt-5.6-sol` via codex, first choice — its home turf, not merely the cheap option.
+- **Patterned multi-file refactors** (rename everywhere, apply a contract across modules): `gpt-5.6-sol`. Its patch format survives multi-file edits better than raw diffs, at roughly a quarter of the tokens.
+- **High-volume mechanical sweeps**: the Codex-specialised model, where a wide fan-out stops being a cost decision.
+- **Bulk / mechanical that still needs repo idiom to land right**: `opus` at `low`/`medium` — don't reach for `fable` for bulk.
+- **Messy repo-level bug hunts, unknown scope**: `opus` at `high`+. Do not route these to codex for cost.
 - **User-facing** (UI, copy, API design) needs taste ≥ 7: `opus` (default) or `fable`.
+- **The plan, the work orders and the final review stay with the orchestrator, and the orchestrator stays Claude.** Independent practitioner consensus lands on exactly this split — Claude as project lead, Codex as contractor. Sol loses the global picture over long horizons and needs more manual context management; Opus's weakness is obedience, which the orchestrator seat is the least sensitive to because that is the seat a human is reading. Give the codex lane more of the dispatched surface, never the baton.
 - **Reviews of plans/implementations**: `opus` at `xhigh`/`max` is the default judgment lane. Escalate to `fable` when Opus at `max` has already missed, or when taste *is* the whole deliverable. Add `gpt-5.6-sol` as an extra *independent* (different-family) perspective — a cross-family review catches what same-family review misses, and that is the entire value of the codex verify lane.
 - **Runtime verification**: `gpt-5.6-sol`, by default, on any surface you can hand steps and an assertion — web, CLI, simulator, and now native GUI. It is the cheapest lane *and* the different family, so it costs almost nothing to run and its pass/fail is independent. Its ceiling is taste, not intelligence, which is exactly why the screenshots come back to you.
 - **Never use Haiku** for judgment work.

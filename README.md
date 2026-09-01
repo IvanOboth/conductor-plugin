@@ -13,6 +13,8 @@ The main loop stays the orchestrator at `high` effort and never delegates three 
 
 Then `/conductor:conductor` (or just say "conduct this" / "orchestrate at high").
 
+**Setting up a new machine?** [`AGENT-SETUP.md`](AGENT-SETUP.md) is a runbook written for an agent rather than a human — hand it to your coding agent and it will drive the whole setup: laptop CLIs, a remote Linux VM, Tailscale, Orca, this plugin, and an acceptance run. It has hard gates around the steps that can lock you out of your own box.
+
 > If the marketplace clone fails (it goes over SSH, which needs a key on your GitHub account): `gh repo clone IvanOboth/conductor-plugin`, then `/plugin marketplace add ./conductor-plugin`.
 
 ### Without the plugin system
