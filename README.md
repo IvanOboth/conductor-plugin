@@ -51,6 +51,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 | `agents/design-lane` | Opus 5 @ `xhigh` — taste-critical surfaces |
 | `agents/bulk-lane` | Opus 5 @ `low` — mechanical work that still needs repo idiom |
 | `agents/verify-lane` | Opus 5 @ `max` — adversarial verification |
+| `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of a codex-written draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically |
 | `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
 | `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
@@ -60,7 +61,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 Conductor degrades gracefully — a missing piece disables that lane, it doesn't break the skill. But you get the full value only with all of these:
 
 **Required for the Claude lanes**
-- Claude Code with access to Opus-class models. `model: "opus"` and `model: "fable"` must be available on your plan, or the design/judgment lanes silently fall back to your session model — which defeats the routing.
+- Claude Code with access to Opus-class models. `model: "opus"` and `model: "fable"` (Fable 5.1 as of 2026-09-01) must be available on your plan, or the design/judgment/writing lanes silently fall back to your session model — which defeats the routing.
 
 **Required for the Codex lanes** (execution, `codex-review`, `codex-computer-use`)
 - Codex CLI installed and authenticated: `npm install -g @openai/codex`, then `codex login`.

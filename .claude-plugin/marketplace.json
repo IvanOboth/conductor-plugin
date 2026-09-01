@@ -9,7 +9,7 @@
     {
       "name": "conductor",
       "source": "./",
-      "description": "Mixed-model orchestration at `high` effort: Claude for design and judgment, Codex CLI for mechanical execution and cross-family verification."
+      "description": "Mixed-model orchestration at `high` effort: Claude for design, judgment and high-stakes writing, Codex CLI for mechanical execution, volume writing and cross-family verification."
     }
   ]
 }

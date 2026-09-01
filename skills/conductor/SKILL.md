@@ -1,6 +1,6 @@
 ---
 name: conductor
-description: Ultracode-grade mixed-model orchestration WITHOUT the Ultracode premium. The main loop stays the orchestrator (any model, run at `high`) and never delegates the plan, the work orders, or the final review — everything else is dispatched to cheaper/specialist lanes. Opus 5 takes design-sensitive and judgment work (at high/max effort; Fable only as escalation); GPT-5.6 Sol (codex CLI) takes mechanical execution, independent second-opinion review, checks, and browser verification with screenshots. Use whenever the user says /conductor, "conduct this", "orchestrate at high", "optimized ultracode", "mixed-model ultracode", "use opus + codex", "have codex verify", or asks for a multi-stream build where token cost should be optimized without losing review quality. Prefer this over plain Ultracode when the task has clearly separable design vs mechanical vs verification lanes.
+description: Ultracode-grade mixed-model orchestration WITHOUT the Ultracode premium. The main loop stays the orchestrator (any model, run at `high`) and never delegates the plan, the work orders, or the final review — everything else is dispatched to cheaper/specialist lanes. Opus 5 takes design-sensitive and judgment work (at high/max effort); Fable 5.1 takes long-horizon lanes and high-stakes writing and is the escalation elsewhere; GPT-5.6 Sol (codex CLI) takes mechanical execution, volume writing, independent second-opinion review, checks, and browser verification with screenshots. Use whenever the user says /conductor, "conduct this", "orchestrate at high", "optimized ultracode", "mixed-model ultracode", "use opus + codex", "have codex verify", "have codex write the blocks", "writing lane", or asks for a multi-stream build where token cost should be optimized without losing review quality. Prefer this over plain Ultracode when the task has clearly separable design vs mechanical vs writing vs verification lanes.
 effort: high
 ---
 
@@ -12,7 +12,7 @@ effort: high
 
 ## When to invoke (on-demand, not always)
 
-Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
+Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs writing vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
 
 ## What earns an agent (gate this before sizing anything)
 
@@ -41,7 +41,7 @@ A run whose agents mostly *looked things up* has the shape inverted. The scoutin
 
 ## Sizing the fan-out
 
-**Lane count follows the work, not a habit.** The three lane *kinds* (design / mechanical / verification) and the three bundled lane *agents* are a taxonomy and a menu — not a quota. One `design-lane` definition can be dispatched twelve times in one run. If the work-list has 20 independent items, that's 20 agents, not 3.
+**Lane count follows the work, not a habit.** The four lane *kinds* (design / mechanical / writing / verification) and the four bundled lane *agents* are a taxonomy and a menu — not a quota. One `design-lane` definition can be dispatched twelve times in one run. If the work-list has 20 independent items, that's 20 agents, not 3.
 
 **The size guideline is a ceiling, not a target.** `large` means *up to* 50, never *aim for* 50. Five items get five agents; twenty get twenty; one coupled change gets one. Derive the count from the work-list you actually scouted, then check it against the ceiling — never the reverse. Both directions are failures, and they cost differently: under-fanning silently drops coverage, over-fanning burns tokens and buys nothing. Splitting five items into twenty agents by inventing sub-tasks, or stacking redundant verifiers on a finding nobody disputes, is the same error as batching twenty files into four agents.
 
@@ -78,16 +78,20 @@ The restraint elsewhere in this skill — "don't force a task to split", "don't 
 
 ## Model routing
 
-Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed unsupervised. **Steerability** is whether it does what the work order said, no more and no less — it is what most often decides whether a dispatched lane comes back usable. **Taste** covers UI/UX, code quality, API design, and copy. **Cost** is directional, not list price.
+Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed unsupervised. **Steerability** is whether it does what the work order said, no more and no less — it is what most often decides whether a dispatched lane comes back usable. **Taste** covers UI/UX, code quality, API design, and copy-in-a-UI. **Writing** is prose a human reads and judges the author by — emails, proposals, long documents, scripts, film prompt packages — a separate axis because a model can have taste in code and still write slop. **Cost** is directional, not list price.
 
-| model         | cost | intelligence | steerability | taste |
-|---------------|------|--------------|--------------|-------|
-| gpt-5.6-codex | 10   | 8            | 9            | 4     |
-| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     |
-| opus-5        | 6    | 8.8          | 6            | 8.5   |
-| fable-5       | 2    | 9            | 8            | 9     |
+| model         | cost | intelligence | steerability | taste | writing |
+|---------------|------|--------------|--------------|-------|---------|
+| gpt-5.6-codex | 10   | 8            | 9            | 4     | 4       |
+| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     | 7       |
+| opus-5        | 6    | 8.8          | 6            | 8.5   | 8       |
+| fable-5.1     | 2    | 9.2          | 8.5          | 9     | 9       |
 
 Adjust these to your own plan and pricing — they are directional, not universal. Reviewed against published benchmarks and practitioner reports on 2026-09-01. Opus 5 has **not** regressed on capability: it leads where work is messy and repo-shaped (SWE-bench Pro 79.2% vs Sol's 64.6%, OSWorld 2.0 70.6 vs 62.6, ARC-AGI-3 30.2 vs 7.8). Sol leads terminal and patterned work (Terminal-Bench 2.1 88.8 vs ~83.1, DeepSWE v1.1 72.7 vs 68.8). What separates them in practice is **steerability**: Opus 5 is widely reported to expand scope beyond the ask, declare fixes complete while leaving pieces unimplemented, and delegate to subagents more readily than prior models — which is why the counter-instructions below exist. Route away from Opus when a task is steerability-sensitive, not when it is merely hard.
+
+**Fable 5.1 replaced Fable 5 on 2026-09-01** (`claude-fable-5-1`; `model: 'fable'` resolves to it). Same list price ($10/$50), cache reads at a quarter of Fable 5's rate ($0.25/Mtok — half of Opus 5's), and the gains concentrate where lanes run long: hours-long agentic coding, documents / spreadsheets / decks built from a blank page, multistep research, dense-PDF vision, full-1M-context reasoning, and computer use that recovers from failed steps. Anthropic's own guidance is the routing rule: **start with Opus 5; use Fable 5.1 for demanding reasoning and long-horizon work, or when Opus 5 at higher effort still falls short.** Four 5.1 behaviours to counter in a work order: it may issue one tool call per turn where Fable 5 batched several (say "issue independent reads in one turn"); at `low` effort it answers from memory instead of searching (never dispatch it at `low` for research or verification); it rewrites whole files for small edits (say "targeted edits only"); and its prose runs denser with less formatting (writing orders ask for paragraph breaks explicitly).
+
+**Writing is its own routing problem.** Published head-to-heads (Jul–Sep 2026) still put Fable ahead of Sol on prose — top writing Arena Elo, ~70% blind-test wins, more natural email drafts — and 5.1's prose is rated level with Fable 5's. Sol's writing is competent, plain, and cheap, and it carries none of Claude's house tics: the "it's not X, it's Y" reflex, tricolons, the pre-emptive caveat, the em-dash cadence, the closing flourish. That makes Sol the better *volume* writer even though Fable is the better *writer*; the split below follows from that.
 
 Effort is a **separate dial from model tier**, and it moves intelligence more than a tier change does. Read Opus 5's intelligence as ~8.8 at `xhigh`/`max` and ~8 at `medium`.
 
@@ -95,7 +99,7 @@ Effort is a **separate dial from model tier**, and it moves intelligence more th
 |----------|---------|
 | `low`    | mechanical work with exact anchors, where only repo idiom is at stake |
 | `medium` | well-specified implementation against a clear contract |
-| `high`   | orchestration, design lanes, ordinary review |
+| `high`   | orchestration, design lanes, writing lanes, ordinary review |
 | `xhigh`  | hard judgment, adversarial verification, taste-critical surfaces |
 | `max`    | the call that must not be wrong |
 
@@ -103,15 +107,18 @@ Effort is a **separate dial from model tier**, and it moves intelligence more th
 
 - These are defaults, not limits. If a cheaper lane's output doesn't meet the bar, re-run with more effort or a smarter model without asking. Judge the output, not the price tag — escalating costs less than shipping mediocre work.
 - Cost is a tie-breaker only. When axes conflict for anything that ships: **intelligence > steerability > taste > cost**.
-- **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same lane at higher effort. Before dropping opus → codex for cost, drop effort first.
+- **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same lane at higher effort. Before dropping opus → codex for cost, drop effort first. Exception: never run `fable` at `low` for anything that must look something up.
 - **Terminal, DevOps, infra, CI, migrations**: `gpt-5.6-sol` via codex, first choice — its home turf, not merely the cheap option.
 - **Patterned multi-file refactors** (rename everywhere, apply a contract across modules): `gpt-5.6-sol`. Its patch format survives multi-file edits better than raw diffs, at roughly a quarter of the tokens.
 - **High-volume mechanical sweeps**: `gpt-5.6-codex` — at roughly $1.75/$14 per Mtok a wide fan-out stops being a cost decision.
 - **Bulk / mechanical that still needs repo idiom to land right**: `opus` at `low`/`medium` — don't reach for `fable` for bulk.
 - **Messy repo-level bug hunts, unknown scope**: `opus` at `high`+. Do not route these to codex for cost.
-- **User-facing** (UI, copy, API design) needs taste ≥ 7: `opus` (default) or `fable`.
-- **The plan, the work orders and the final review stay with the orchestrator, and the orchestrator stays Claude.** Independent practitioner consensus lands on exactly this split — Claude as project lead, Codex as contractor. Sol loses the global picture over long horizons and needs more manual context management; Opus's weakness is obedience, which the orchestrator seat is the least sensitive to because that is the seat a human is reading. Give the codex lane more of the dispatched surface, never the baton.
-- **Reviews of plans/implementations**: `opus` at `xhigh`/`max` is the default judgment lane. Escalate to `fable` when Opus at `max` has already missed, or when taste *is* the whole deliverable. Add `gpt-5.6-sol` as an extra *independent* (different-family) perspective — a cross-family review catches what same-family review misses, and that is the entire value of the codex verify lane.
+- **Long-horizon lanes** (one lane expected to run for hours or span sessions: a large migration, a multi-module feature, a deep research brief, a document / spreadsheet / deck built from nothing, a dense-PDF read): `fable` at `high`+. The one place Fable 5.1 displaces Opus 5 as the *default* rather than the escalation — long-horizon is exactly where 5.1 improved, and its cache-read price means a long session's re-read prefix costs half what it does on Opus.
+- **User-facing** (UI, copy-in-a-UI, API design) needs taste ≥ 7: `opus` (default) or `fable`.
+- **Writing, high stakes** (a counterparty email, a proposal, an investor or board document, anything that carries the user's name and gets judged): `fable` at `high` — the bundled `write-lane` agent. Opus 5 at `xhigh` is the cheaper alternative when the document is long and structured rather than voice-critical.
+- **Writing, volume or structured** (film prompt packages and generated-video blocks, storyboards and shot lists, internal docs, first drafts of long documents, routine mail): `gpt-5.6-sol` via `ask-codex --context brief.md --output draft.md`, with the orchestrator holding the brief and editing the draft. A **slop-and-cost bet, not a quality bet**: Sol is the other family, so it does not reproduce Claude's tics; its steerability 9 keeps a 30-block structure intact where Opus drifts; and it is ~2.5× cheaper per token. Anything that leaves the building still gets a Fable or Opus edit pass before it ships. Every writing order, either lane, states audience, register, length ceiling, the one thing the reader must do, banned phrases, and a sample of the voice.
+- **The plan, the work orders and the final review stay with the orchestrator, and the orchestrator stays Claude.** Independent practitioner consensus lands on exactly this split — Claude as project lead, Codex as contractor. Sol loses the global picture over long horizons and needs more manual context management; Opus's weakness is obedience, which the orchestrator seat is the least sensitive to because that is the seat a human is reading. Give the codex lane more of the dispatched surface, never the baton. Fable 5.1 is the best Claude in the orchestrator seat (steerability 8.5, and the seat that re-reads the cached prefix most gains most from its cache price); running it as the main loop changes nothing about the lane routing here.
+- **Reviews of plans/implementations**: `opus` at `xhigh`/`max` is the default judgment lane — half Fable's cost. Escalate to `fable` when Opus at `max` has already missed, or when taste *is* the whole deliverable. Add `gpt-5.6-sol` as an extra *independent* (different-family) perspective — a cross-family review catches what same-family review misses, and that is the entire value of the codex verify lane.
 - **Runtime verification**: `gpt-5.6-sol`, by default, on any surface you can hand steps and an assertion — web, CLI, simulator, and now native GUI. It is the cheapest lane *and* the different family, so it costs almost nothing to run and its pass/fail is independent. Its ceiling is taste, not intelligence, which is exactly why the screenshots come back to you.
 - **Never use Haiku** for judgment work.
 - **Never pay for Fast mode on a dispatched lane.** Same intelligence at 2× the price, just faster tokens — it's for interactive work where a human is watching, never for a background agent.
@@ -121,8 +128,11 @@ Effort is a **separate dial from model tier**, and it moves intelligence more th
 | Lane | Model | Transport | Send it |
 |------|-------|-----------|---------|
 | Judgment | Orchestrator (main loop, `high`) | main loop | Plan, work orders, reviewing every lane's output, integration, the user-facing summary |
-| Design | Opus 5 (default) / Fable (escalation) | `Agent` with `model: "opus"` (or the bundled `design-lane` agent), or Workflow `agent(prompt, {model: 'opus', effort: 'xhigh'})` | Components, visual grammar, copy with taste — anything where "looks right" is the acceptance test |
+| Design | Opus 5 (default) / Fable 5.1 (escalation) | `Agent` with `model: "opus"` (or the bundled `design-lane` agent), or Workflow `agent(prompt, {model: 'opus', effort: 'xhigh'})` | Components, visual grammar, copy with taste — anything where "looks right" is the acceptance test |
 | Execution | GPT-5.6 Sol | `Bash` → `ask-codex` (writes to the working tree) | Well-specified mechanical work: refactors, migrations, test authoring, wiring a defined API, sweeps with clear anchors |
+| Long-horizon | Fable 5.1 | `Agent` with `model: "fable"`, or Workflow `agent(prompt, {model: 'fable', effort: 'high'})` | One lane that runs for hours or spans sessions — a large migration, a deep research brief, a document / spreadsheet / deck from nothing, a dense-PDF read |
+| Writing (high stakes) | Fable 5.1 | Bundled `write-lane` agent (`fable`/`high`) | Counterparty email, proposal, investor or board document — anything that carries the user's name and gets judged |
+| Writing (volume) | GPT-5.6 Sol | `Bash` → `ask-codex --context brief.md --output draft.md` | Film prompt packages and generated-video blocks, storyboards, shot lists, internal docs, first drafts, routine mail — the orchestrator holds the brief and edits the draft; external copy gets a Claude pass before it ships |
 | Diff review | GPT-5.6 Sol | `codex-review` skill (or `Bash` → `ask-codex --readonly`) | Adversarial second-opinion review of a diff — the independent, different-family pass before it ships |
 | Runtime verification (mechanics) | GPT-5.6 Sol | `codex-computer-use` skill | **The default runtime lane.** Cheap unattended confirmation that the *running* thing works — launch it, drive `agent-browser`/Playwright/simulator, or drive a native GUI through `node_repl` + `@oai/sky`, capture screenshots into a directory you then Read, assert against the acceptance check |
 | Runtime verification (judgment) | Opus 5 | `Agent` with `model: "opus"` driving `agent-browser` (own `--session`) | Only when judgment is needed *while driving* — the next click depends on reading what's on screen, or the flow has no pre-statable step list. A flow you can write down as steps + an assertion belongs in the codex lane |
@@ -131,7 +141,7 @@ The signature move: each lane is checked by the **other model family**. The two 
 
 **Codex's runtime reach widened (verified 2026-08-07)** and the routing follows it. The bundled `computer-use` plugin registers a `node_repl` MCP server that `codex exec` loads, so a headless shell-out now reads accessibility trees, clicks, types, and screenshots *arbitrary macOS apps* — native apps, menu-bar flows, Xcode/Simulator GUI steps, Chrome under the real logged-in profile. Surfaces that used to be unverifiable without a human are now codex-lane work; send any runtime check you can state as steps + an assertion there, whatever the surface. What did **not** move is authority: gpt-5.6-sol's taste is 5, so it confirms mechanics and you judge the pixels. "Verified" from a codex lane means *it functioned*, never *it looks right*.
 
-**Bundled agents.** This plugin ships three pre-tuned lane agents with `model:` and `effort:` already set — `design-lane` (opus/xhigh), `bulk-lane` (opus/low), `verify-lane` (opus/max). Use them via the `Agent` tool when you want the effort pinned regardless of session effort; the plain `Agent` tool has no `effort` parameter of its own, so a subagent dispatched without one of these inherits the session's effort.
+**Bundled agents.** This plugin ships four pre-tuned lane agents with `model:` and `effort:` already set — `design-lane` (opus/xhigh), `bulk-lane` (opus/low), `verify-lane` (opus/max), `write-lane` (fable/high). Use them via the `Agent` tool when you want the effort pinned regardless of session effort; the plain `Agent` tool has no `effort` parameter of its own, so a subagent dispatched without one of these inherits the session's effort.
 
 ## Orchestrator calibration (read before sizing lanes)
 
@@ -152,13 +162,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/conductor-report.py" --start \
 
 Then launch independent lanes in the same turn:
 
-- Design lanes via the `Agent` tool (`model: "opus"` / `"fable"`, or the bundled `design-lane` agent) or a `Workflow` script (`agent(prompt, {model: 'opus', effort: 'xhigh'})`). Workflow when there's fan-out/pipelining — it's also where you can set per-lane effort inline; plain `Agent` for 1-2 lanes.
+- Design, long-horizon and high-stakes writing lanes via the `Agent` tool (`model: "opus"` / `"fable"`, or the bundled `design-lane` / `write-lane` agents) or a `Workflow` script (`agent(prompt, {model: 'opus', effort: 'xhigh'})`). Workflow when there's fan-out/pipelining — it's also where you can set per-lane effort inline; plain `Agent` for 1-2 lanes.
 - Codex lanes via `Bash` with `run_in_background: true`:
   ```bash
   ask-codex --context work-order.md "Execute this work order. Write a summary of files changed to <scratchpad>/codex-N-report.md when done."
   ```
-  Write the work order to a file first (`--context` carries it); have codex leave its report at a known path — its stdout is session-log noise, the report file is the deliverable. For verification lanes add `--readonly` and have it save screenshots to a named directory.
-- To run GPT-5.6 Sol *inside* a `Workflow` (the `model:` param only accepts Claude models), spawn a thin wrapper agent (`model: 'fable'`, `effort: 'low'`) whose prompt writes a self-contained codex prompt, runs `ask-codex` via Bash, and returns the result.
+  Write the work order to a file first (`--context` carries it); have codex leave its report at a known path — its stdout is session-log noise, the report file is the deliverable. For verification lanes add `--readonly` and have it save screenshots to a named directory. For a volume-writing lane the work order is the brief (audience, register, length ceiling, the reader's one action, banned phrases, a voice sample, and the block/section structure to keep) and `--output draft.md` is the deliverable.
+- To run GPT-5.6 Sol *inside* a `Workflow` (the `model:` param only accepts Claude models), spawn a thin wrapper agent (`model: 'opus'`, `effort: 'low'`) whose prompt writes a self-contained codex prompt, runs `ask-codex` via Bash, and returns the result — the wrapper does no thinking of its own, so the cheapest Claude that can run a shell command is the right one.
 - **File collision rule:** no two write-lanes share a file. Codex has no worktree isolation — if two write-lanes must touch the same file, serialize them or give the file to one lane and a follow-up order to the other.
 
 **While the lanes run: do not poll.** Background agents and background Bash are harness-tracked — when one finishes you are **re-invoked automatically** with its result. Writing a "bounded wait for lanes" loop, a sleep, or a repeated file-existence check buys you nothing and costs a shell command, tokens, and wall-clock per poll. Dispatch, then either work on something independent or end the turn; the notification is the wake signal.
@@ -173,8 +183,9 @@ If a lane hangs, that's a lane to stop and re-dispatch, not a lane to poll harde
 **3. Cross-verify (cheap, different eyes).** Each lane's work is checked by the *other* model family.
 
 - Claude built UI → `codex-computer-use` verifies the running app: run the type checks, drive `agent-browser` (its own `--session` name — never the shared one) or, for a non-scriptable/native surface, `node_repl` + `@oai/sky`; capture screenshots at the viewports that matter into `<scratchpad>/verify/`, and write a findings report.
-- Codex executed a refactor → an Opus 5/Fable lane (or you, if small) reviews the diff for taste and idiom drift; for a heavier independent pass on the diff itself, use `codex-review`.
+- Codex executed a refactor → an Opus 5 / Fable 5.1 lane (or you, if small) reviews the diff for taste and idiom drift; for a heavier independent pass on the diff itself, use `codex-review`.
 - You **Read the screenshots yourself.** GPT-5.6 Sol confirms mechanics ("page loads, no console errors"); only you and the taste lane judge whether it *looks* right. Never accept "verified" on a visual change without seeing the pixels.
+- Codex wrote the draft → you edit it against the brief, and anything external gets a `write-lane` (or Opus `xhigh`) pass before it ships. Sol confirms the structure held; the voice is judged by the Claude side.
 
 **4. Review + integrate (orchestrator).** Read every lane's report and the actual diffs (`git diff --stat` then the files that matter). Rejected work goes back as a *revised work order* — say what was wrong and what correct looks like, don't re-explain the whole task. You run the final typecheck/push/build gates yourself; lanes lie less than summaries but gates don't lie at all.
 
@@ -210,7 +221,7 @@ Every conductor run produces a refined HTML review file on top of the in-session
 ## Review gates (non-negotiable)
 
 - No lane's work is "done" until you've read its diff or its screenshots — reports are claims, not evidence.
-- Anything user-facing (copy, layout, empty states) gets a taste-lane (Opus 5 at `xhigh`, or Fable) or orchestrator eye before it ships, regardless of which lane built it.
+- Anything user-facing (copy, layout, empty states) gets a taste-lane (Opus 5 at `xhigh`, or Fable 5.1) or orchestrator eye before it ships, regardless of which lane built it. Prose that leaves the building gets a `write-lane` or Opus edit pass regardless of which lane drafted it.
 - Verification lives in *your* gates, not in the work orders. A lane that was told to self-verify has told you nothing you can audit — read the diff or the pixels yourself.
 - If a codex lane's diff smells like it fought the codebase (new helpers duplicating existing ones, style drift), stop dispatching that class of work to it and either tighten the work order or move the work to a taste lane. Note what happened for the session summary.
 - Same end-gates as any build: project typecheck, push, and browser verification before telling the user it's done.
@@ -248,6 +259,6 @@ Skip this section unless you route Claude Code's main loop through a local proxy
 Write your report to <scratchpad>/claude-N-report.md when done." \
       --output-format text < /dev/null
   ```
-  `--model opus` for taste/design lanes; `--model claude-fable-5` when the lane needs top-shelf judgment. Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
+  `--model opus` for taste/design lanes; `--model claude-fable-5-1` when the lane needs top-shelf judgment or is a high-stakes writing lane. Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
 - **Codex lanes are unchanged** but become *same-family* with the orchestrator. Cross-family verification therefore routes the other way: send diff-taste review and anything user-facing to a Claude shell-out lane, and treat `codex-review` as a mechanics-only second pass, not the independent perspective.
 - Everything else holds: the orchestrator still never delegates the plan, work orders, or final review; still Reads screenshots itself; still runs the end gates and closes with `run-report`.
