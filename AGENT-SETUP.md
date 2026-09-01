@@ -269,49 +269,150 @@ from it — this is the most common "it's broken" report and it is almost always
 Orca is a client on the laptop and phone, and a headless server on the VM. The desktop
 app is a **client only** — it never becomes the runtime.
 
-Direct them to install Orca desktop on the laptop and Orca mobile on the phone. Then on
-the VM, install the AppImage to `/opt/orca`, and run it as a **systemd user service** with
-linger enabled so it survives logout and reboot:
+Direct them to install Orca desktop on the laptop and Orca mobile on the phone. Both are
+**clients**. The runtime is the VM.
+
+### 3a. Install the AppImage
+
+**Ask them for the Linux AppImage download URL** from Orca's releases page — do not guess
+it, and do not install from a URL you inferred. Then:
+
+```bash
+sudo mkdir -p /opt/orca
+sudo curl -fL -o /opt/orca/orca-linux.AppImage '<URL they gave you>'
+sudo chmod +x /opt/orca/orca-linux.AppImage
+mkdir -p ~/runs
+```
+
+`libfuse2t64`, `file` and `xvfb` came from Phase 2a — the AppImage needs all three.
+
+**Back up the Claude settings file before you ever start the server** (see the traps
+below — `orca serve` rewrites it):
+
+```bash
+cp ~/.claude/settings.json ~/.claude/settings.json.bak-$(date +%Y%m%d)
+```
+
+### 3b. The systemd user service
+
+`orca serve` must run as a **user** service with lingering enabled, so it survives logout
+and reboot. **The unit does not exist — you have to write it.** Do not run
+`systemctl --user enable orca-serve` before this step; it will simply fail.
+
+Derive the values, don't hardcode them — the tailnet IP is what Orca advertises to
+clients, and the PATH must contain the nvm node bin directory or the server starts without
+node on its PATH:
+
+```bash
+TSIP=$(tailscale ip -4 | head -1)
+NODEBIN=$(dirname "$(readlink -f "$(command -v node)")")
+mkdir -p ~/.config/systemd/user/orca-serve.service.d
+
+cat > ~/.config/systemd/user/orca-serve.service <<EOF
+[Unit]
+Description=Orca headless server (runtime for laptop + phone clients)
+After=network-online.target tailscaled.service
+
+[Service]
+Environment=LIBGL_ALWAYS_SOFTWARE=1
+Environment=PATH=${NODEBIN}:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=%h/dev
+ExecStart=/opt/orca/orca-linux.AppImage serve --port 6768 --pairing-address ${TSIP}
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:%h/runs/orca-serve.log
+StandardError=append:%h/runs/orca-serve.log
+
+[Install]
+WantedBy=default.target
+EOF
+```
+
+Add the secrets drop-in. Orca runs hooks and automations **without a login shell**, so
+they never see `~/.bashrc` — without this they run with no API keys:
+
+```bash
+cat > ~/.config/systemd/user/orca-serve.service.d/secrets.conf <<'EOF'
+[Service]
+EnvironmentFile=-%h/.secrets.env
+EOF
+```
+
+Note that a running server only picks up `~/.secrets.env` **at start** — after editing
+that file later, restart the service or the new keys are invisible to it.
+
+Start it:
 
 ```bash
 sudo loginctl enable-linger "$USER"
+systemctl --user daemon-reload
 systemctl --user enable --now orca-serve
-systemctl --user status orca-serve
+systemctl --user status orca-serve --no-pager
 ```
 
-Pairing links:
+**Check:** status shows `active (running)`, and `ss -ltnp | grep 6768` shows it listening.
+Because `ufw` was restricted to `tailscale0` in Phase 2e, that port is private by
+construction — but verify rather than assume, and tell them you verified it.
+
+### 3c. Fix the CLI — required, not optional
+
+Every registered `orca` / `orca-ide` command fails on Linux with
+`bad option: --no-sandbox`. The AppImage's `AppRun` probes `unshare -Ur`, which fails
+under the same userns restriction from Phase 2d, so it appends `--no-sandbox` to *every*
+launch including the `ELECTRON_RUN_AS_NODE` path the CLI uses — and Node rejects the flag.
+Upstream `stablyai/orca#11609`.
 
 ```bash
-grep 'Pairing URL' ~/runs/orca-serve.log   # desktop
+curl -fL -o /tmp/orca-cli-fix.sh \
+  https://raw.githubusercontent.com/IvanOboth/conductor-plugin/main/scripts/orca-cli-fix.sh
+bash /tmp/orca-cli-fix.sh
+```
+
+It extracts the AppImage once to `/opt/orca/squashfs-root` (the supported headless path)
+and patches both wrappers to run the CLI bundle from there, keeping the AppImage as a
+fallback. `orca serve` itself is untouched.
+
+**Tell them, explicitly, that this must be re-run after every Orca update** and after
+Orca's "register CLI" rewrites the wrappers. It is the single most likely thing to break
+later and look inexplicable.
+
+**Check:** `orca status --json` returns ready.
+
+### 3d. Pairing
+
+```bash
+grep 'Pairing URL' ~/runs/orca-serve.log   # desktop client
 orca serve --mobile-pairing                # phone — a separate, mobile-scoped link
 ```
 
+The mobile flag prints a mobile-scoped link *instead of* the desktop one, so capture the
+desktop URL first.
+
 On the desktop client: **Settings → Remote Orca Servers → Add**, then under Advanced set
-**Active Server** to their VM. Tell them explicitly that if they skip that last step,
-everything silently routes through the laptop and they have rebuilt the problem this
-setup exists to escape.
+**Active Server** to their VM. Say this to them in as many words: **if they skip the
+Active Server step, everything silently routes through the laptop** and they have rebuilt
+the exact problem this setup exists to escape.
 
-### Four Orca traps — handle these proactively
+### Tell them these five things before you finish the phase
 
-**The CLI is broken on Linux out of the box.** Every `orca` command fails with
-`bad option: --no-sandbox`. The AppImage's `AppRun` probes `unshare -Ur`, which fails
-under the same userns restriction from 2d, so it appends `--no-sandbox` to *every* launch
-including the Node CLI path, and Node rejects the flag. Upstream `stablyai/orca#11609`.
-Fix by extracting the AppImage once to `/opt/orca/squashfs-root` and patching both
-wrappers to run the CLI bundle from there. **Re-run that fix after every Orca update** and
-after Orca's "register CLI" rewrites the wrappers.
+These are not steps — they are things that will bite weeks from now and be baffling
+without the context. Say them out loud, don't just do them.
 
-**It rewrites hooks.** `orca serve` injects its hook into every Claude Code event in
-`~/.claude/settings.json` and into `~/.codex/hooks.json`, and grants itself Codex trust.
-**Back up `~/.claude/settings.json` before the first `orca serve`** and diff it after
-every upgrade.
-
-**Secrets are unencrypted.** Covered above — never enter a key through the UI.
-
-**"Add Account" is disabled for remote servers**, by design: interactive login needs a
-desktop browser and would authenticate against the wrong device. A second Claude or Codex
-account on the VM is a manual filesystem procedure. If they ask for one, say so rather
-than letting them hunt for a button that isn't there.
+1. **The CLI fix (3c) must be re-run after every Orca update**, and after Orca's
+   "register CLI" rewrites the wrappers. This is the most likely future breakage.
+2. **`orca serve` rewrites hook config.** It injects its hook into every Claude Code
+   event in `~/.claude/settings.json` and into `~/.codex/hooks.json`, and grants itself
+   Codex trust. You backed the file up in 3a — tell them to diff it after every upgrade.
+3. **Secrets are stored unencrypted** — no OS keyring on Linux. Never enter an API key
+   through Orca's UI; it goes in `~/.secrets.env` at `0600`.
+4. **"Add Account" is disabled for remote servers**, by design: interactive login needs a
+   desktop browser and would authenticate against the wrong device. Adding a second
+   Claude or Codex account to the VM is a manual filesystem procedure, not a UI action.
+   If they ask, say so rather than letting them hunt for a button that isn't there.
+5. **Orca cuts a git worktree per workspace, and there is no setting to stop it.** The
+   rule that keeps this sane: *a worktree is a PR in flight; when the PR merges, the
+   worktree goes.* Without stating it, boxes accumulate stale worktrees with orphaned
+   branches and occasionally unpushed work.
 
 **Check:** `orca status --json` returns ready, and the desktop client lists the VM as
 Active Server.
