@@ -170,7 +170,7 @@ If a lane hangs, that's a lane to stop and re-dispatch, not a lane to poll harde
 
 **4. Review + integrate (orchestrator).** Read every lane's report and the actual diffs (`git diff --stat` then the files that matter). Rejected work goes back as a *revised work order* — say what was wrong and what correct looks like, don't re-explain the whole task. You run the final typecheck/push/build gates yourself; lanes lie less than summaries but gates don't lie at all.
 
-**5. Publish the review HTML (orchestrator).** Create or update the run's HTML review file (see *Run review HTML* below) with what happened / what's proposed, decision diagrams, and the verification screenshots + recordings, then `open` it for the user.
+**5. Publish the review HTML (orchestrator).** Create or update the run's HTML review file (see *Run review HTML* below) with what happened / what's proposed, decision diagrams, and the verification screenshots + recordings, then hand it to the user: on a desktop host `open` it; on a **headless host** (no display) never `open`/`xdg-open` — publish it to whatever review surface you have (a served reports directory, the `Artifact` tool, or a committed path on a pushed branch) and give the user a **URL, not a disk path**.
 
 ## Codex CLI facts
 
@@ -178,7 +178,7 @@ If a lane hangs, that's a lane to stop and re-dispatch, not a lane to poll harde
 - Two transports, same engine: `ask-codex` (bundled at `${CLAUDE_PLUGIN_ROOT}/bin/ask-codex`, on PATH once the plugin is installed) shells out to `codex exec`. The direct equivalents are `codex exec -s <sandbox> "<prompt>"` (execution/verification) and `codex exec review` / `codex review` (diff review — `--uncommitted`, `--base <branch>`, `--commit <sha>` scope it).
 - `ask-codex` flags: `--context FILE` (attach work order), `--readonly` (read-only sandbox — always use for pure investigation/review), `--clean` (strip session logs), `--output FILE` (codex writes its answer to a file — prefer this over parsing stdout), `-m MODEL` (override). Sandbox modes on `codex exec`: `read-only`, `workspace-write` (default), `danger-full-access` (only when it must act outside the working tree).
 - Wrapper quirk: with `--clean`, the answer can print *after* the `--- End Codex Response ---` marker — read the tail of output, or better, use `--output`/report-files and skip stdout parsing entirely.
-- Codex CAN run shell commands (tests, `agent-browser`, `open`, `screencapture`, simulators) inside its sandbox in write mode — the cheap path for **computer-use verification headlessly** (see the `codex-computer-use` skill). It also carries the Playwright MCP headlessly.
+- Codex CAN run shell commands (tests, `agent-browser` incl. `record start/stop`, `open`, `screencapture`, simulators) inside its sandbox in write mode — the cheap path for **computer-use verification headlessly** (see the `codex-computer-use` skill). It also carries the Playwright MCP headlessly.
 - **GUI computer use is reachable headlessly too.** `codex exec` loads the `node_repl` MCP server from the bundled `computer-use` plugin, giving it `@oai/sky` — accessibility tree, clicks, typing, per-app screenshots on any macOS app. `codex exec -s danger-full-access` is the working invocation (full access because the artifacts dir is usually outside the repo, and the CU service hands back `file://` screenshot paths the lane must copy). The Codex **desktop app** (`@Computer` / `@AppName`) is now only the *interactive* front door to the same engine — reserve it for flows a human should watch. Caution: `sky` drives the user's real desktop, so prefer `agent-browser`/Playwright for ordinary web QA and name the off-limits windows in the work order.
 - Long runs: launch with `run_in_background: true` and a generous timeout; you get notified on completion. Multiple codex lanes run fine in parallel.
 - Parallel *write* lanes need isolation: codex has no worktree isolation of its own, so two codex write-lanes touching the same file collide. Serialize them, or run each via an `Agent`/`Workflow` wrapper with `isolation: 'worktree'`.
@@ -191,7 +191,12 @@ Every conductor run produces a refined HTML review file on top of the in-session
 - **Content:** what was asked; what happened *or what's being proposed*; decisions made and why (including options rejected); per-lane outcomes; evidence; residual risk and next steps. If the run is a proposal rather than a build, the HTML is the proposal document.
 - **Diagrams:** use them wherever they beat prose — decision trees for choices made, before/after architecture, lane/data flow. Inline SVG or styled HTML/CSS preferred; mermaid via CDN script is acceptable (the file is local, no CSP).
 - **Screenshots:** embed every verification screenshot that mattered. Base64 data URIs keep the file self-contained; drop large originals in `.conductor/reports/assets/<run-id>/` and reference them. Caption each with viewport + what it proves.
-- **Video/GIF where possible:** when a runtime-verification lane drives a flow, record it — chrome MCP `gif_creator`, Playwright context video, or macOS `screencapture -v` — save to the assets dir and embed (`<img>` for GIF, `<video controls>` for mp4). When recording isn't feasible, fall back to a captioned screenshot sequence of the flow.
+- **Video, not GIF:** every runtime-verification lane that drives a flow records it as video — scrubbable, full length, no GIF frame-dropping. Say so explicitly in the verify work order; the lane records with the tool for its surface and writes the file into the run's assets dir:
+  - **Web (default, desktop or headless server):** `agent-browser --session <lane> record start <assets>/<flow>.webm [url]` *before* the flow (it opens a fresh context — start it first, not mid-page), drive, `record stop`. Needs a system `ffmpeg`. Then `ffmpeg -i <flow>.webm -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart <flow>.mp4` for sharing.
+  - **iOS Simulator (macOS):** `xcrun simctl io booted recordVideo --codec h264 <assets>/<flow>.mp4` in the background, drive, then SIGINT it.
+  - **Android emulator:** `adb shell screenrecord /sdcard/<flow>.mp4` (3-min cap; chain files) then `adb pull`; or Maestro `--record`.
+  - **Native macOS app:** `screencapture -v <assets>/<flow>.mp4` (Ctrl-C to stop).
+  - Embed with `<video controls preload="metadata" src="assets/<run-id>/<flow>.mp4">` and keep the WebM beside it. When recording is genuinely infeasible, a captioned screenshot sequence is the fallback — say so in the report; never present stills as if a recording existed.
 - **Styling:** dark, refined, data-dense — match the executive register (headings distinct from body, monospace for paths/metrics). One self-contained file; it must render offline except for an optional mermaid CDN tag.
 
 ## Review gates (non-negotiable)
@@ -216,7 +221,7 @@ If the run has no GitHub issue and no ledger configured, `run-report` degrades t
 2. Dispatch in one turn: **codex (write)** — implement the CSV serialization + download button per work order with exact anchor lines; **taste lane** — n/a this time (no design surface beyond a button — the work order specifies the exact button grammar to reuse).
 3. On completion: **codex (readonly)** — verify: typecheck, load the page via agent-browser, export a CSV, assert row count matches the on-screen count, screenshot the button placement to `verify/`.
 4. You: Read the screenshot (button grammar right?), read the diff, run the final gates, summarize.
-5. You: write/update `.conductor/reports/issue-<n>.html` — decision diagram (client-side vs query-arg export, and why), the diff summary, the button screenshot, and the export-flow GIF from the verify lane — then `open` it: "here's the HTML review."
+5. You: write/update `.conductor/reports/issue-<n>.html` — decision diagram (client-side vs query-arg export, and why), the diff summary, the button screenshot, and the export-flow video (WebM + mp4) from the verify lane — then hand it over: `open` it on a desktop, or serve the URL on a headless host. "Here's the HTML review."
 
 ## Appendix — running under a proxied orchestrator (optional)
 

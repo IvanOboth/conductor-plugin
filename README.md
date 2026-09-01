@@ -13,7 +13,7 @@ The main loop stays the orchestrator at `high` effort and never delegates three 
 
 Then `/conductor:conductor` (or just say "conduct this" / "orchestrate at high").
 
-> The marketplace clones over **SSH**, so for a private repo you need an SSH key on your GitHub account in addition to repo access. If you'd rather not use SSH: `gh repo clone IvanOboth/conductor-plugin`, then `/plugin marketplace add ./conductor-plugin`.
+> If the marketplace clone fails (it goes over SSH, which needs a key on your GitHub account): `gh repo clone IvanOboth/conductor-plugin`, then `/plugin marketplace add ./conductor-plugin`.
 
 ### Without the plugin system
 
