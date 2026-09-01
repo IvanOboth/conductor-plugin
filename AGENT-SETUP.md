@@ -58,7 +58,7 @@ Ask for, and record:
 
 - VM provider (DigitalOcean, Netcup, Hetzner, other), hostname or IP, SSH user
 - Whether they already have Claude and ChatGPT subscriptions, and which tier
-- Whether they are joining an existing shared tailnet or creating their own
+- Nothing about tailnets — they get their own (see 2e). Do not ask.
 
 Then check the VM clears these. **If RAM is under 8 GB, stop and say so** — agents will
 die mid-run and it will look like broken tooling, not an undersized box.
@@ -224,6 +224,10 @@ matches its own command line and kills the calling shell too.
 Tailscale is a private network, and a network with one member does nothing. It goes on
 all three. After this the VM is reachable by a stable name from anywhere, with no public
 port open.
+
+Each person runs their **own** tailnet — their VM, their laptop, their phone, nobody
+else's. There is no shared account and no org to join, so do not ask them which tailnet
+to use. They sign in with their own Tailscale account and approve their own machines.
 
 On the VM:
 
