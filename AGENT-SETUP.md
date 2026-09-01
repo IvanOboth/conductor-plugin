@@ -229,12 +229,18 @@ Each person runs their **own** tailnet — their VM, their laptop, their phone, 
 else's. There is no shared account and no org to join, so do not ask them which tailnet
 to use. They sign in with their own Tailscale account and approve their own machines.
 
-On the VM:
+**On the VM:**
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
-sudo tailscale up      # prints a URL — the human approves it in a browser
+sudo tailscale up --qr     # prints a login URL *and* a scannable QR
 ```
+
+`--qr` renders the login URL as a QR in the terminal so they can approve from their phone
+instead of copying a long URL out of an SSH session. It authenticates **this VM** — it has
+nothing to do with getting their phone onto the tailnet. Say that plainly, because the two
+get confused constantly. (`--qr-format ascii|large|small` if the default renders badly in
+their terminal.)
 
 **Stop.** Wait for them to approve. Then:
 
@@ -256,11 +262,33 @@ Tell them to keep their provider's web console open in a tab while you do this �
 DigitalOcean has a Recovery Console and Netcup a VNC console, so a lockout is
 recoverable, but it is a twenty-minute detour.
 
-Then remind them to install the Tailscale app on their **laptop** and **phone**, signed
-into the same tailnet. Without the phone's VPN toggle on, no tailnet URL will resolve
-from it — this is the most common "it's broken" report and it is almost always this.
+**On their laptop and phone — no QR, no key, no command.**
 
-**Check:** from the laptop, `ssh <user>@<tailnet-hostname>` connects.
+This is the part people over-think. A phone joins a tailnet the same way any device does:
+install the app and sign in. There is nothing to generate on the VM and nothing to scan.
+
+1. **Laptop:** install Tailscale (`brew install --cask tailscale` on macOS, or the
+   installer), open it, sign in.
+2. **Phone:** install Tailscale from the App Store or Play Store, open it, sign in, and
+   **turn the VPN toggle on**. iOS will ask to add a VPN configuration — that is expected.
+3. Both must sign in with the **same identity** they used for the VM. Same Google/GitHub/
+   Microsoft account, or same email. A different identity creates a *different tailnet*
+   and nothing will see anything.
+
+Tell them to leave the phone's toggle **on**. A tailnet URL that "doesn't work" on a phone
+is that toggle roughly every time.
+
+**Check — all three devices, from the VM:**
+
+```bash
+tailscale status
+```
+
+Their VM, laptop and phone should all be listed. If the phone is missing, it is either
+signed into a different account or the toggle is off. Do not proceed to Phase 3 until all
+three appear — Orca's mobile pairing depends on it and will fail confusingly otherwise.
+
+Also from the laptop: `ssh <user>@<tailnet-hostname>` connects.
 
 ---
 
@@ -380,13 +408,33 @@ later and look inexplicable.
 
 ### 3d. Pairing
 
+**Desktop first** — `--mobile-pairing` prints a mobile-scoped link *instead of* the
+desktop one, so capture this before you run it:
+
 ```bash
-grep 'Pairing URL' ~/runs/orca-serve.log   # desktop client
-orca serve --mobile-pairing                # phone — a separate, mobile-scoped link
+grep 'Pairing URL' ~/runs/orca-serve.log
 ```
 
-The mobile flag prints a mobile-scoped link *instead of* the desktop one, so capture the
-desktop URL first.
+**Then the phone.** *This* is the QR — the only one in the whole setup that actually
+pairs a phone to anything:
+
+```bash
+orca serve --mobile-pairing
+```
+
+On a headless VM that prints a link with no way to scan it. Render it in the terminal:
+
+```bash
+sudo apt install -y qrencode
+qrencode -t ANSIUTF8 '<the mobile pairing link>'
+```
+
+They point their phone camera at the terminal. If the terminal mangles it, write a PNG
+instead (`qrencode -o /tmp/pair.png '<link>'`) and put it somewhere they can open it — or
+just have them open the link directly on the phone, which works and needs no QR at all.
+The QR is a convenience, not a requirement.
+
+Pairing grants persist across restarts, so this is a one-time step per device.
 
 On the desktop client: **Settings → Remote Orca Servers → Add**, then under Advanced set
 **Active Server** to their VM. Say this to them in as many words: **if they skip the
