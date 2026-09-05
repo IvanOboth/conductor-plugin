@@ -13,7 +13,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Options:"
   echo "  --context, -c FILE   Include file contents as context"
   echo "  --model, -m MODEL    Specify model (default: codex default)"
-  echo "  --effort, -e LEVEL   Reasoning effort for this run: low|medium|high|xhigh|max|ultra (ultra = the lane fans out to its own subagents)"
+  echo "  --effort, -e LEVEL   Reasoning effort for this run: low|medium|high|xhigh|max|ultra (ultra = Codex-only; the lane fans out to its own subagents)"
   echo "                       (maps to codex exec -c model_reasoning_effort=LEVEL; the config default is not the lane's)"
   echo "  --readonly, -r       Use read-only sandbox (no file writes)"
   echo "  --clean              Extract only final response (strip session logs)"
@@ -110,8 +110,14 @@ if [[ -n "$OUTPUT_FILE" ]]; then
 IMPORTANT OUTPUT INSTRUCTION: Your FINAL message IS the deliverable and will be saved verbatim to a file. Return the COMPLETE, polished document as your final message — every section, table and citation. Do not try to write files yourself; do not include investigation notes, tool logs, or reasoning steps in it."
 fi
 
-# Build context prefix if provided
-if [[ -n "$CONTEXT_FILE" ]] && [[ -f "$CONTEXT_FILE" ]]; then
+# Build context prefix if provided. A missing context file is an error, not a
+# silent skip: the work order IS the lane's scope, and launching without it sends
+# a generic prompt with no constraints or acceptance check.
+if [[ -n "$CONTEXT_FILE" ]] && [[ ! -f "$CONTEXT_FILE" ]]; then
+  echo "ask-codex: --context file not found: $CONTEXT_FILE" >&2
+  exit 2
+fi
+if [[ -n "$CONTEXT_FILE" ]]; then
   CONTEXT_CONTENT=$(cat "$CONTEXT_FILE")
   PROMPT="Context from $CONTEXT_FILE:
 
@@ -122,34 +128,36 @@ $CONTEXT_CONTENT
 $PROMPT"
 fi
 
-# Build command
-CMD="codex exec"
+# Build command as an ARGUMENT ARRAY, never a string: a string expanded unquoted
+# word-splits paths with spaces and lets a crafted --output/--model value inject
+# extra arguments (e.g. a second -c override) after the validated ones.
+CMD=(codex exec)
 
 if [[ -n "$MODEL" ]]; then
-  CMD="$CMD --model $MODEL"
+  CMD+=(--model "$MODEL")
 fi
 
 if [[ -n "$EFFORT" ]]; then
-  CMD="$CMD -c model_reasoning_effort=$EFFORT"
+  CMD+=(-c "model_reasoning_effort=$EFFORT")
 fi
 
 # codex-cli 0.153+ removed --full-auto (it was "workspace-write + approve on failure"), and
 # `codex exec` has no --ask-for-approval flag of its own — approval policy is a config key.
 # A headless lane cannot answer approval prompts, so it is overridden to "never" here and
 # the sandbox flag carries the write policy (--readonly still maps to the read-only sandbox).
-CMD="$CMD --sandbox $SANDBOX -c approval_policy=never --enable multi_agent"
+CMD+=(--sandbox "$SANDBOX" -c approval_policy=never --enable multi_agent)
 
 # For --clean mode, use Codex's native -o flag to extract just the final response
 # This replaces the old awk parser which broke when Codex changed its output format
 CLEAN_TMPFILE=""
 if [[ -n "$OUTPUT_FILE" ]]; then
   # Native last-message capture — written by the CLI, not the sandboxed model.
-  CMD="$CMD -o $OUTPUT_FILE"
+  CMD+=(-o "$OUTPUT_FILE")
 elif [[ "$CLEAN" == true ]]; then
   # BSD mktemp only substitutes TRAILING Xs — a .txt suffix after them leaves
   # the template literal and invites collisions.
   CLEAN_TMPFILE=$(mktemp "${TMPDIR:-/tmp}/codex-clean-XXXXXX")
-  CMD="$CMD -o $CLEAN_TMPFILE"
+  CMD+=(-o "$CLEAN_TMPFILE")
 fi
 
 # Execute — keep stderr separate from stdout, but do NOT discard it.
@@ -163,10 +171,13 @@ CODEX_STDERR=$(mktemp "${TMPDIR:-/tmp}/codex-stderr-XXXXXX")
 # `set -e` is on: assign in a form that survives a non-zero exit so the handler
 # below actually runs instead of the script dying silently.
 CODEX_STATUS=0
-RAW_OUTPUT=$($CMD "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
+RAW_OUTPUT=$("${CMD[@]}" "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
 echo "--- End Codex Response ---" >&2
 
-if [[ $CODEX_STATUS -ne 0 ]] || { [[ -z "$RAW_OUTPUT" ]] && [[ -s "$CODEX_STDERR" ]]; }; then
+# "No usable output" must look at the -o file too: a run that streams progress to
+# stderr and hands its answer to the CLI's last-message file has succeeded.
+LAST_MSG_FILE="${OUTPUT_FILE:-$CLEAN_TMPFILE}"
+if [[ $CODEX_STATUS -ne 0 ]] || { [[ -z "$RAW_OUTPUT" ]] && [[ -s "$CODEX_STDERR" ]] && [[ ! -s "$LAST_MSG_FILE" ]]; }; then
   echo "ask-codex: codex exited ${CODEX_STATUS} with no usable output." >&2
   sed 's/^/  codex: /' "$CODEX_STDERR" >&2
   rm -f "$CODEX_STDERR" "$CLEAN_TMPFILE"

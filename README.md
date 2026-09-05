@@ -49,7 +49,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 | `skills/agent-browser` | Local browser automation CLI |
 | `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
 | `agents/design-lane` | Opus 5 @ `xhigh` — taste-critical surfaces |
-| `agents/bulk-lane` | Opus 5 @ `low` — mechanical work that still needs repo idiom |
+| `agents/bulk-lane` | Opus 5 @ `low` — Claude-family idiom (skills, agent definitions) or Codex-quota overflow; ordinary bulk goes to Astra at `low`/`medium` |
 | `agents/verify-lane` | Opus 5 @ `max` — adversarial verification |
 | `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of a codex-written draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents) |

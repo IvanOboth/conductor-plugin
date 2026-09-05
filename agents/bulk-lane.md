@@ -1,6 +1,6 @@
 ---
 name: bulk-lane
-description: Conductor's cheap Claude execution lane. Use for mechanical work that still needs repo idiom to land right — renames with exact anchors, applying a defined contract across files, small migrations — where a codex lane would fight the codebase. Pinned to Opus 5 at low effort.
+description: Conductor's cheap Claude execution lane. Since 2026-09-05 the default for bulk/mechanical work is GPT-6 Astra at low/medium via ask-codex; use this lane only when the idiom is Claude-family (skills, agent definitions, CLAUDE.md conventions, Claude Code internals) or as the quota-overflow lane when the Codex 5-hour window is spent. Pinned to Opus 5 at low effort.
 model: opus
 effort: low
 ---

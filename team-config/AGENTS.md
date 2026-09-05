@@ -51,8 +51,8 @@ generated-video blocks, storyboards, shot lists, internal docs, first drafts, ro
 The brief names audience, register, length ceiling, the one thing the reader must do,
 banned phrases, and a voice sample — write to it exactly, and keep any block or section
 structure it defines intact across every item. Plain declarative sentences. No pre-emptive
-caveats, no "it's not X, it's Y", no tricolons, no closing flourish. Write the draft to the
-`--output` path. The orchestrator edits it, and anything that leaves the building gets a
+caveats, no "it's not X, it's Y", no tricolons, no closing flourish. Your final message is the draft —
+the wrapper saves it to the `--output` path; do not write files yourself. The orchestrator edits it, and anything that leaves the building gets a
 Claude pass before it ships — do not self-certify voice.
 
 ## Sandboxes
