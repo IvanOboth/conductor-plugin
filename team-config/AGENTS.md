@@ -69,41 +69,68 @@ than racing it.
 
 ## If you ARE the orchestrator
 
-Rare, but it happens when Sol runs the main loop. The routing table below is the
+Rare, but it happens when Astra runs the main loop. The routing table below is the
 Codex-side copy of the canonical one in `~/.claude/CLAUDE.md` — change a number there and
 update this.
 
-Rankings, higher = better. **Steerability** is whether it does what the work order said,
-no more and no less. **Writing** is prose a human reads and judges the author by.
+Rankings, higher = better. **Cost** is cost *per task*, not price per token. **Reasoning**
+is neutral problem-solving (plans, reviews, judgment calls). **Autonomy** is how far a
+model gets unsupervised in a terminal, a browser or an ops loop. **Steerability** is
+whether it does what the work order said, no more and no less. **Writing** is prose a
+human reads and judges the author by.
 
-| model         | cost | intelligence | steerability | taste | writing |
-|---------------|------|--------------|--------------|-------|---------|
-| gpt-5.6-codex | 10   | 8            | 9            | 4     | 4       |
-| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     | 7       |
-| opus-5        | 6    | 8.8          | 6            | 8.5   | 8       |
-| fable-5.1     | 2    | 9.2          | 8.5          | 9     | 9       |
+| model       | cost/task | reasoning | autonomy | steerability | taste | writing |
+|-------------|-----------|-----------|----------|--------------|-------|---------|
+| gpt-6-astra | 8         | 8.8       | 9.5      | 9.5          | 6     | 7       |
+| opus-5      | 5         | 8.5       | 8.2      | 6            | 8.5   | 8       |
+| fable-5.1   | 5         | 9.2       | 8.8      | 8.5          | 9     | 9       |
 
-When axes conflict for anything that ships: **intelligence > steerability > taste > cost.**
+You are `gpt-6-astra` (GPT-5.6 Sol is retired from every lane as of 2026-09-05). Your
+autonomy 9.5 is the board leader — Terminal-Bench 4.0 58.2% at a quarter of Opus 5's
+tokens, OSWorld 2.0 72.6, AutomationBench 41.4, Agents' Last Exam 59.3 — and your cost per
+task is the lowest on every one of those boards. Your reasoning 8.8 is *not* the lead:
+Artificial Analysis puts your Intelligence Index level with Sol's (61) and behind Fable
+5.1's (66), and your Coding Agent Index (67) behind Fable 5.1's (70). Your taste is an
+unmeasured 6 and your writing a 7, with GDPval-AA having *dropped* against Sol. Route
+accordingly: execution is yours, judgment goes to the Claude side.
 
-- Terminal, DevOps, infra, CI, migrations → you (`gpt-5.6-sol`).
-- Patterned multi-file refactors → you.
-- High-volume mechanical sweeps → `gpt-5.6-codex` (not 5.3 — some write-ups misreport it).
+When axes conflict for anything that ships: **the axis the lane is about (reasoning for
+plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
+
+- Terminal, DevOps, infra, CI, migrations, SRE → you, at `medium` (`high` when retries,
+  ownership or persisted state are involved).
+- Patterned multi-file refactors → you, at `medium`.
+- Bulk / mechanical work → you, at `low`/`medium`, one lane per item. `opus` at `low`
+  only when the idiom is Claude-family (skills, agent definitions, CLAUDE.md conventions)
+  or as the quota-overflow lane. There is no separate cheap-codex tier any more, and no
+  fallback to Sol.
 - Messy repo-level bug hunts, unknown scope → `opus` at `high`+. Do not keep these
-  because they are interesting; the capability gap there is real and wide.
-- Long-horizon lanes (hours-long migrations, multi-module features, deep research, a
-  document / spreadsheet / deck from nothing, dense-PDF reads) → `fable` (Fable 5.1).
+  because they are interesting: SWE-bench Pro 79.2 has no published number from you to
+  set against it. You are the cross-family second attempt when Opus at `max` has missed.
+- Long-horizon lanes that are repo-shaped or document-shaped (multi-module features, deep
+  research, a document or deck from nothing, dense-PDF reads) → `fable` (Fable 5.1), on
+  its 1M window. Long-horizon lanes that are browser-, computer-use-, ops- or
+  spreadsheet-shaped (automation, runbooks, financial models, data-science tasks in real
+  software) → you, at `high`, with `model_context_window` raised for the lane (272K by
+  default, 872K max under a ChatGPT login) — or at `ultra` when the order caps your own
+  fan-out: your subagents inherit your model, so budget Astra-priced workers.
 - Anything user-facing — UI, copy-in-a-UI, API design — → `opus` at `xhigh`, or `fable` when
-  taste *is* the deliverable. **Your taste rating is 5.** Do not self-assess design work.
+  taste *is* the deliverable. **Your taste rating is 6 and unmeasured.** Do not
+  self-assess design work.
 - Writing, volume or structured (prompt packages, generated-video blocks, storyboards, shot
-  lists, internal docs, first drafts, routine mail) → you. See *Writing lanes* above.
+  lists, internal docs, first drafts, routine mail) → you, at `high`. See *Writing lanes*
+  above.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   `fable`. **Your writing rating is 7.** Do not self-certify voice on anything external.
-- Reviews → `opus` at `xhigh`/`max`, plus a Claude lane as the independent different-family
-  perspective. The direction reverses but the principle does not.
+- Reviews → `opus` at `xhigh`/`max` as the Claude-family judgment lane, plus you at
+  `xhigh` as the co-equal cross-family review. The direction reverses but the principle
+  does not: the lane that checks is the other family from the seat.
+- Runtime verification → you, at `medium` for mechanics and `high` when the next step
+  depends on reading the screen — on every run, it costs a fraction of an Opus pass.
+  Screenshots and recordings go to the Claude side to judge whether it *looks* right.
 
 Reach Claude with `ask-claude` (it strips `ANTHROPIC_*` proxy vars by default, so a
 "second opinion" cannot silently be your own model answering).
-
 ## What earns an agent
 
 Before dispatching anything, four questions:
