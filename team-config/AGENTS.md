@@ -31,7 +31,7 @@ confirm it works. Run the thing. Read the actual output.
   `ffmpeg -i <flow>.webm -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart <flow>.mp4`.
   Needs a system ffmpeg.
 - **iOS Simulator:** `xcrun simctl io booted recordVideo --codec h264 <path>.mp4`.
-- **Android emulator:** `adb shell screenrecord` (3-min cap; chain files), then `adb pull`.
+- **Android (emulator or a cloud device over adb):** `adb shell screenrecord` (3-min cap; chain files), then `adb pull` — start it from the orchestrator's shell, a backgrounded recording inside a lane dies with its shell command. Real phones via a device farm (mobile-mcp): screenshots, and release the device when done.
 - **Native macOS app:** `screencapture -v <path>.mp4`.
 
 Name the output paths in your report so the orchestrator can find them. Screenshots are
