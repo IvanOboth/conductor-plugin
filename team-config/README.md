@@ -36,7 +36,8 @@ usually the work order is underspecified rather than the gate being wrong.
 ## Why steerability is its own column
 
 Opus 5 has not regressed on capability — it still leads where work is messy and
-repo-shaped (SWE-bench Pro 79.2% vs Sol's 64.6%, ARC-AGI-3 30.2 vs 7.8). What degraded is
+repo-shaped (SWE-bench Pro 79.2%, with no GPT-6 Astra figure published; BenchLM's agentic
+aggregate 77.4 vs Astra's 70.3). What degraded is
 obedience: scope expansion, declaring fixes done while leaving pieces unimplemented, and
 delegating to subagents more readily than prior models. Encoding that as a lower
 intelligence score would send hard problems to a model that is genuinely worse at them.

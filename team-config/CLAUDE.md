@@ -17,24 +17,54 @@ from decomposition, parallel fan-out, or independent verification.
 
 ### Model routing
 
-Rankings, higher = better. **Intelligence** is how hard a problem the model can be handed
-unsupervised. **Steerability** is whether it does what the work order said, no more and no
-less — it is what most often decides whether a dispatched lane comes back usable.
-**Taste** covers UI/UX, code quality, API design, and copy-in-a-UI. **Writing** is prose a
-human reads and judges the author by — emails, proposals, long documents, scripts, prompt
-packages — a separate axis because a model can have taste in code and still write slop.
-**Cost** is directional.
+Rankings, higher = better. **Cost** is cost *per task*, not price per token — a model
+that finishes in a quarter of the tokens is cheaper at twice the price. **Reasoning** is
+neutral problem-solving: plans, reviews, judgment calls. **Autonomy** is how far a model
+gets unsupervised in a terminal, a browser or an ops loop. **Steerability** is whether it
+does what the work order said, no more and no less — it is what most often decides
+whether a dispatched lane comes back usable. **Taste** covers UI/UX, code quality, API
+design, and copy-in-a-UI. **Writing** is prose a human reads and judges the author by —
+emails, proposals, long documents, scripts, prompt packages — a separate axis because a
+model can have taste in code and still write slop.
 
-| model         | cost | intelligence | steerability | taste | writing |
-|---------------|------|--------------|--------------|-------|---------|
-| gpt-5.6-codex | 10   | 8            | 9            | 4     | 4       |
-| gpt-5.6-sol   | 9    | 8.3          | 9            | 5     | 7       |
-| opus-5        | 6    | 8.8          | 6            | 8.5   | 8       |
-| fable-5.1     | 2    | 9.2          | 8.5          | 9     | 9       |
+| model       | cost/task | reasoning | autonomy | steerability | taste | writing |
+|-------------|-----------|-----------|----------|--------------|-------|---------|
+| gpt-6-astra | 8         | 8.8       | 9.5      | 9.5          | 6     | 7       |
+| opus-5      | 5         | 8.5       | 8.2      | 6            | 8.5   | 8       |
+| fable-5.1   | 5         | 9.2       | 8.8      | 8.5          | 9     | 9       |
 
-List prices per Mtok as of Sep 2026: `gpt-5.6-codex` $1.75/$14 · `gpt-5.6-sol` $4/$20 ·
-`opus-5` $5/$25 (batch $2.50/$12.50, Fast mode $10/$50, cache reads $0.50) · `fable-5.1`
-$10/$50 (batch $5/$25, cache reads $0.25 — half of Opus 5's).
+List prices per Mtok as of Sep 2026: `gpt-6-astra` $10/$50 (cache reads $1, Fast mode
+2× on the API and 2.5× in Codex, long-context premium above 272K input) · `opus-5` $5/$25
+(batch $2.50/$12.50, Fast mode $10/$50, cache reads $0.50) · `fable-5.1` $10/$50 (batch
+$5/$25, cache reads $0.25). Per task the order inverts: on Terminal-Bench 4.0's own
+leaderboard Astra resolves 58.2% for $3.3k and 1.5B tokens, Fable 5.1 57.9% for $6.2k and
+2.7B, Opus 5 51.8% for $6.0k and 6.5B. On a ChatGPT subscription a codex lane costs
+5-hour-window quota rather than dollars, which only widens the gap.
+
+**GPT-6 Astra replaced GPT-5.6 Sol on 2026-09-05** (released 2026-09-03; set
+`model = "gpt-6-astra"` in `~/.codex/config.toml`). One GPT row — effort is the dial — and
+the separate cheap-codex sweep tier is gone; sweeps are Astra at `low`. What moved:
+autonomy — Astra leads every agentic board and does it cheapest (OSWorld 2.0 72.6 vs Opus 5
+70.2 at under half the cost per task; Terminal-Bench 4.0 58.2 vs Fable 5.1 57.9 vs Opus 5
+51.8; SRE-Bench 88 vs 12.5; AutomationBench 41.4 vs 31.4; Agents' Last Exam 59.3 vs 55.5
+at 65% fewer output tokens than Opus 5; ARC-AGI-3 99.9 on OpenAI's stateful harness, 62.7
+on the neutral one, vs Opus 5 30.2). What did not: neutral reasoning — Artificial
+Analysis's Intelligence Index is 61, identical to Sol, vs Fable 5.1 at 66; the Coding
+Agent Index 67 is level with Opus 5 and behind Fable 5.1 (70); no SWE-bench Pro figure was
+published; GDPval-AA (professional work products) dropped ~80 Elo. Steerability went up —
+mid-task steering keeps the original job, misaligned outcomes 3.4% vs 18.8%, hallucination
+51% vs 92%. Two things to counter in a work order: its reasoning is terser and harder to
+audit, so demand evidence rather than claims; and its Codex window is 272K by default
+(`~/.codex/models_cache.json`; 872K max under a ChatGPT login via `model_context_window`;
+1.05M is the API figure), so raise it for the lane or split orders at ~200K.
+
+**Astra effort is the dial** (`ask-codex --effort LEVEL`): `low` for sweeps with exact
+anchors; `medium` the implementation default; `high` when retries, ownership, persisted
+state or recovery paths are involved, and for volume writing; `xhigh` for the cross-family
+review; `max` for adversarial verification; `ultra` — Astra delegating to its own parallel
+subagents — only for a self-contained long-horizon lane whose order caps the fan-out
+(Codex subagents inherit the parent's model, so budget Astra-priced workers), never for a
+lane the orchestrator is already fanning out.
 
 **Fable 5.1 replaced Fable 5 on 2026-09-01** (`model: "fable"` resolves to it). Same list
 price, cache reads at a quarter, and the gains are where lanes run long: hours-long agentic
@@ -47,77 +77,81 @@ independent reads in one turn"); answers from memory at `low` effort (never disp
 `low` for research or verification); whole-file rewrites for small edits (say "targeted
 edits only"); denser prose with less formatting (writing orders ask for paragraph breaks).
 
-**Writing is its own routing problem.** Published head-to-heads (Jul–Sep 2026) still put
-Fable ahead of Sol on prose, and 5.1's prose is level with Fable 5's. Sol's writing is
-competent, plain, and cheap, and carries none of Claude's house tics — the "it's not X,
-it's Y" reflex, tricolons, the pre-emptive caveat, the closing flourish. Sol is the better
-*volume* writer even though Fable is the better *writer*; the split below follows.
+**Writing is its own routing problem.** Published head-to-heads (Jul–Sep 2026) put Fable
+ahead of the GPT family on prose, and 5.1's prose is level with Fable 5's. Nothing yet puts
+Astra ahead of Sol on prose. GPT prose is competent, plain, and carries none of Claude's
+house tics — the "it's not X, it's Y" reflex, tricolons, the pre-emptive caveat, the closing
+flourish. Astra is the better *volume* writer even though Fable is the better *writer*.
 
 **Opus 5's numbers are effort-dependent — effort is the dial, not the model choice.** Read
-the intelligence column as ~8.8 at `xhigh`/`max` and ~8 at `medium`.
+the reasoning column as ~8.5 at `xhigh`/`max` and ~8 at `medium`.
 
-**Why steerability is a separate axis.** Reviewed Sep 2026: Opus 5 has *not* regressed on
-capability. It leads by wide margins where work is messy and repo-shaped — SWE-bench Pro
-79.2% vs Sol's 64.6%, OSWorld 2.0 70.6 vs 62.6, ARC-AGI-3 30.2 vs 7.8. Sol leads exactly
-two: Terminal-Bench 2.1 (88.8 vs ~83.1) and DeepSWE v1.1 (72.7 vs 68.8). What degraded is
-obedience, consistently reported: ignores explicit `CLAUDE.md` constraints; **"done but
-not done"** — declares fixes complete while leaving pieces unimplemented; expands scope
-beyond the ask; delegates to subagents more readily than prior models. So route away from
-Opus when a task is *steerability-sensitive*, not when it is merely hard.
+**Why steerability is a separate axis.** Opus 5 has *not* regressed on capability. It leads
+where work is messy and repo-shaped — SWE-bench Pro 79.2% with no Astra figure published,
+BenchLM's agentic aggregate 77.4 vs Astra's 70.3 — and is level with Astra on DeepSWE and
+FrontierCode. What degraded is obedience, consistently reported: ignores explicit
+`CLAUDE.md` constraints; **"done but not done"** — declares fixes complete while leaving
+pieces unimplemented; expands scope beyond the ask; delegates to subagents more readily
+than prior models. So route away from Opus when a task is *steerability-sensitive*, not
+when it is merely hard.
 
 ### How to apply
 
 - These are defaults, not limits. If a cheaper lane's output doesn't meet the bar, rerun
   with a smarter one without asking. Judge the output, not the price tag.
-- When axes conflict for anything that ships:
-  **intelligence > steerability > taste > cost.**
+- When axes conflict for anything that ships: **the axis the lane is about (reasoning for
+  plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 - **Effort, not tier, is the first knob.** Before escalating opus → fable, re-run the same
   lane at higher effort. Before dropping opus → codex for cost, drop effort first. Never
   run `fable` at `low` for anything that must look something up.
-- **Terminal, DevOps, infra, CI, migrations** → `gpt-5.6-sol` via codex, first choice.
-  Terminal-Bench 88.8 vs ~83.1 — its home turf, not merely the cheap option.
+- **Terminal, DevOps, infra, CI, migrations, SRE** → `gpt-6-astra` at `medium` via codex, first choice.
+  Terminal-Bench 4.0 58.2 vs 57.9/51.8 at half the cost per task, SRE-Bench 88 vs 12.5.
 - **Patterned multi-file refactors** (rename everywhere, apply a contract across modules)
-  → `gpt-5.6-sol`. Its patch format survives multi-file edits better than raw diffs, at
-  roughly a quarter of the tokens.
-- **High-volume mechanical sweeps** → `gpt-5.6-codex`. At $1.75/$14 a wide fan-out stops
-  being a cost decision.
-- **Mechanical work that still needs repo idiom to land right** → `opus` at
-  `effort: 'low'`/`'medium'`. Don't reach for `fable` for bulk.
-- **Messy repo-level bug hunts, unknown scope** → `opus` at `high`+. Do NOT route these to
-  codex for cost; 79.2 vs 64.6 is not a gap to spend for convenience.
-- **Long-horizon lanes** (one lane that runs for hours or spans sessions: a large migration,
-  a multi-module feature, a deep research brief, a document / spreadsheet / deck from
-  nothing, a dense-PDF read) → `fable` at `high`+. The one place Fable 5.1 is the default
-  rather than the escalation.
+  → `gpt-6-astra` at `medium`. Its patch format survives multi-file edits better than raw
+  diffs, at about a third of Sol's tokens.
+- **Bulk / mechanical work** → `gpt-6-astra` at `low`/`medium`, one lane per item —
+  steerability 9.5 and the cheapest cost per task on every agentic board. `opus` at `low`
+  (`bulk-lane`) only when the idiom is Claude-family (skills, agent definitions, CLAUDE.md
+  conventions) or as the quota-overflow lane. Don't reach for `fable` for bulk.
+- **Messy repo-level bug hunts, unknown scope** → `opus` at `high`+ stays the default. When
+  Opus at `max` has missed, `gpt-6-astra` at `high` is a legitimate cross-family second
+  attempt, not a downgrade.
+- **Long-horizon lanes** (one lane that runs for hours or spans sessions) → `fable` at
+  `high`+ when the lane is repo-shaped or document-shaped (a multi-module feature, a deep
+  research brief, a document or deck from nothing, a dense-PDF read), on its 1M window.
+  `gpt-6-astra` at `high` when the long lane is browser-, computer-use-, ops- or
+  spreadsheet-shaped (automation, runbooks, financial models, data-science tasks in real
+  software), with `model_context_window` raised for the lane — or `ultra` when the order
+  can cap its own fan-out.
 - **User-facing surfaces** (UI, copy-in-a-UI, API design) need taste ≥ 7 → `opus` (default)
-  or `fable` when taste *is* the deliverable.
+  or `fable` when taste *is* the deliverable. Astra has no published taste data.
 - **Writing, high stakes** (a counterparty email, a proposal, an investor or board document,
   anything with your name on it) → `fable` at `high`, the bundled `write-lane` agent. Opus 5
   at `xhigh` when the document is long and structured rather than voice-critical.
 - **Writing, volume or structured** (prompt packages and generated-video blocks, storyboards,
-  shot lists, internal docs, first drafts, routine mail) → `gpt-5.6-sol` via
-  `ask-codex --context brief.md --output draft.md`; you hold the brief and edit the draft.
-  A slop-and-cost bet, not a quality bet — anything that leaves the building still gets a
-  Fable or Opus edit pass. Every writing order states audience, register, length ceiling,
-  the reader's one action, banned phrases, and a voice sample.
-- **Reviews** → `opus` at `xhigh`/`max` is the default judgment lane. Escalate to `fable`
-  when Opus at `max` has already missed. Add `gpt-5.6-sol` as an extra *independent*
-  different-family perspective — a cross-family review catches what same-family review
-  misses, and that is the entire value of the codex verify lane.
-- **Runtime verification** → `gpt-5.6-sol`, on any surface you can hand steps and an
-  assertion. Cheapest lane *and* the different family, so an independent pass/fail costs
-  almost nothing. Its ceiling is taste, not intelligence: it confirms the thing
-  *functioned*; the screenshots come back for Claude to judge whether it *looks* right.
+  shot lists, internal docs, first drafts, routine mail) → `gpt-6-astra` at `high` via
+  `ask-codex --effort high --context brief.md --output draft.md`; you hold the brief and
+  edit the draft. A slop-and-cost bet, not a quality bet — anything that leaves the building
+  still gets a Fable or Opus edit pass. Every writing order states audience, register,
+  length ceiling, the reader's one action, banned phrases, and a voice sample.
+- **Reviews** → `opus` at `xhigh`/`max` is the Claude-family judgment lane. `gpt-6-astra` at
+  `xhigh` via `codex-review` is a co-equal cross-family review — run both on anything that
+  ships. Escalate to `fable` when both have missed.
+- **Runtime verification** → `gpt-6-astra` at `medium` for mechanics, `high` when the next
+  step depends on reading the screen — on every run; it costs a fraction of an Opus pass.
+  Its ceiling is taste: it confirms the thing *functioned*; the screenshots come back for
+  Claude to judge whether it *looks* right.
 - **The plan, the work orders and the final review stay with the orchestrator, and the
-  orchestrator stays Claude.** Sol loses the global picture over long horizons and needs
-  more manual context management. Opus's weakness is obedience, which the orchestrator
-  seat is the *least* sensitive to, because that is the seat you are reading. Give the
-  codex lane more of the dispatched surface, never the baton. Fable 5.1 is the best Claude
-  in that seat (steerability 8.5); running it as the main loop changes no lane routing.
+  orchestrator stays Claude.** Astra's steerability would suit the seat, but the seat needs
+  the 1M window, the Claude Code harness, and the reasoning lead, which is where a plan and
+  a final review live. Cross-family verification only exists if the lanes are the other
+  family from the seat. Give the codex lane more of the dispatched surface, never the
+  baton. Fable 5.1 is the best Claude in that seat (steerability 8.5); running it as the
+  main loop changes no lane routing.
 - **Cross-family routing is also availability insurance.** A setup with every lane on one
   provider has a single point of failure, and provider incidents do happen.
-- **Never pay for Fast mode on a dispatched lane** — 2× the price for the same
-  intelligence, just faster tokens. That is for interactive work where you are watching.
+- **Never pay for Fast mode on a dispatched lane** — 2× the price (2.5× for Astra in Codex) for the
+  same intelligence, just faster tokens. That is for interactive work where you are watching.
 - **Never use Haiku** for judgment work.
 
 ### Counter these two Opus 5 behaviours when it orchestrates
@@ -158,11 +192,11 @@ down — that drops coverage silently. Spend width where agents are cheap; keep
 
 ## Reaching the other family
 
-`gpt-5.6-sol` is reachable only through the Codex CLI. Prefer the dedicated skills —
+`gpt-6-astra` is reachable only through the Codex CLI. Prefer the dedicated skills —
 `codex-review` for an independent diff review, `codex-computer-use` for driving the
-running app. For anything else, shell out to `ask-codex` (`--readonly` for pure
-investigation, `--context FILE` for spec-driven work, `--output FILE` to skip stdout
-parsing).
+running app. For anything else, shell out to `ask-codex` (`--effort LEVEL` per lane,
+`--readonly` for pure investigation, `--context FILE` for spec-driven work, `--output FILE`
+to skip stdout parsing).
 
 **Read `~/.codex/config.toml` rather than assuming its contents** — `model` and
 `model_reasoning_effort` there are independent of the Claude session's effort, and they

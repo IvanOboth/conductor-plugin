@@ -1,11 +1,11 @@
 ---
 name: codex-computer-use
-description: Ask Codex (gpt-5.6 Sol) to run local app verification that needs computer use — launching apps, driving a browser or simulator, capturing screenshots, or any independent runtime inspection outside Claude's current context. This is how gpt-5.6 Sol is invoked for computer-use verification. Use when the user asks Claude to have Codex or gpt-5.6 Sol test a flow, verify UI behavior, inspect a running app, capture screenshots, or report confirmation and feedback about implemented behavior. Do NOT use for ordinary code reading, typechecking, linting, or tests Claude can run directly.
+description: Ask Codex (GPT-6 Astra) to run local app verification that needs computer use — launching apps, driving a browser or simulator, capturing screenshots, or any independent runtime inspection outside Claude's current context. This is how GPT-6 Astra is invoked for computer-use verification. Use when the user asks Claude to have Codex or GPT-6 Astra test a flow, verify UI behavior, inspect a running app, capture screenshots, or report confirmation and feedback about implemented behavior. Do NOT use for ordinary code reading, typechecking, linting, or tests Claude can run directly.
 ---
 
 # Codex Computer Use
 
-Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (gpt-5.6 Sol) drives your machine; Claude reads back the screenshots and report and decides whether the behavior is right.
+Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (GPT-6 Astra — computer use is its strongest suit: OSWorld 2.0 72.6, ScreenSpot-Pro 92.7) drives your machine at `--effort medium` for a stated flow, `high` when the next step depends on reading the screen; Claude reads back the screenshots and report and decides whether the behavior is right.
 
 Do **not** reach for this for ordinary code reading, typechecking, linting, or tests Claude can run itself — those are cheaper inline. This is for when *seeing the running thing* is the acceptance test.
 
@@ -68,7 +68,7 @@ A computer-use prompt Codex can execute unsupervised includes:
 - **Where to put artifacts** — screenshot directory (`NN-label.png`) and report path.
 - **What not to touch** — don't submit real forms, don't act on production data, don't close the user's other apps.
 
-Keep it lean otherwise — hand over the target, the steps, and the assertion, then trust gpt-5.6 Sol to drive. Over-specifying every click wastes its run.
+Keep it lean otherwise — hand over the target, the steps, and the assertion, then trust GPT-6 Astra to drive. Over-specifying every click wastes its run.
 
 ## Reporting back
 

@@ -13,6 +13,8 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Options:"
   echo "  --context, -c FILE   Include file contents as context"
   echo "  --model, -m MODEL    Specify model (default: codex default)"
+  echo "  --effort, -e LEVEL   Reasoning effort for this run: low|medium|high|xhigh|max|ultra (ultra = the lane fans out to its own subagents)"
+  echo "                       (maps to codex exec -c model_reasoning_effort=LEVEL; the config default is not the lane's)"
   echo "  --readonly, -r       Use read-only sandbox (no file writes)"
   echo "  --clean              Extract only final response (strip session logs)"
   echo "  --output, -o FILE    Write Codex plan to this file (Codex writes it directly)"
@@ -24,6 +26,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  ask-codex --readonly \"What files handle auth?\""
   echo "  ask-codex --context spec.md \"Implement this feature\""
   echo "  ask-codex --clean --output plan.md \"Create an implementation plan\""
+  echo "  ask-codex --effort xhigh --readonly \"Review the uncommitted diff adversarially\""
   exit 0
 fi
 
@@ -31,6 +34,7 @@ fi
 CONTEXT_FILE=""
 PROMPT=""
 MODEL=""
+EFFORT=""
 SANDBOX="workspace-write"
 CLEAN=false
 OUTPUT_FILE=""
@@ -46,11 +50,18 @@ while [[ $# -gt 0 ]]; do
       MODEL="$2"
       shift 2
       ;;
+    --effort|-e)
+      EFFORT="$2"
+      case "$EFFORT" in low|medium|high|xhigh|max|ultra) ;; *)
+        echo "ask-codex: --effort must be one of low|medium|high|xhigh|max|ultra (got '$EFFORT')" >&2; exit 2;; esac
+      shift 2
+      ;;
     --readonly|-r)
       SANDBOX="read-only"
       shift
       ;;
     --full-auto)
+      # kept for older call sites; workspace-write is already the default
       SANDBOX="workspace-write"
       shift
       ;;
@@ -79,7 +90,7 @@ if [[ -z "$PROMPT" ]] && [[ ! -t 0 ]]; then
 fi
 
 if [[ -z "$PROMPT" ]]; then
-  echo "Usage: ask-codex [--context file.md] [--model model] [--readonly] \"prompt\"" >&2
+  echo "Usage: ask-codex [--context file.md] [--model model] [--effort level] [--readonly] \"prompt\"" >&2
   echo "Run 'ask-codex --help' for more information." >&2
   exit 1
 fi
@@ -116,7 +127,15 @@ if [[ -n "$MODEL" ]]; then
   CMD="$CMD --model $MODEL"
 fi
 
-CMD="$CMD --sandbox $SANDBOX --full-auto --enable multi_agent"
+if [[ -n "$EFFORT" ]]; then
+  CMD="$CMD -c model_reasoning_effort=$EFFORT"
+fi
+
+# codex-cli 0.153+ removed --full-auto (it was "workspace-write + approve on failure"), and
+# `codex exec` has no --ask-for-approval flag of its own — approval policy is a config key.
+# A headless lane cannot answer approval prompts, so it is overridden to "never" here and
+# the sandbox flag carries the write policy (--readonly still maps to the read-only sandbox).
+CMD="$CMD --sandbox $SANDBOX -c approval_policy=never --enable multi_agent"
 
 # For --clean mode, use Codex's native -o flag to extract just the final response
 # This replaces the old awk parser which broke when Codex changed its output format
