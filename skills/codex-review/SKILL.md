@@ -137,7 +137,7 @@ Optionally supplement with:
 Codex needs to investigate files, run tests, post issue comments, and apply fixes — so use the default `workspace-write` sandbox (don't pass `--readonly`). The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
 ```bash
-ask-codex --clean "
+ask-codex --effort xhigh --clean "
 ## Context from Claude session
 
 ### Original request
@@ -380,7 +380,7 @@ git diff --name-only         # Uncommitted changes
 
 ### Codex Invocation Pattern
 
-Always use `workspace-write` (the default) — Codex needs to read code, run tests, and verify claims, even in review-only mode. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
+Use `workspace-write` (the default) when the review must run tests or apply fixes; pass `--readonly` when it only reads the diff (the conductor's cross-family review of documentation, for example). Either way pass `--effort xhigh` — this is the judgment lane. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
 
 ```bash
 # Review only — Codex investigates but won't apply fixes unless told to

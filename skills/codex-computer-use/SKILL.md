@@ -27,22 +27,22 @@ Take the cheapest rung that can prove the assertion: shell first, `sky` when not
 
 **2. Write a self-contained prompt.** Codex does not share Claude's context — spell out how to launch/reach the thing, the exact steps, the assertion, and where to leave artifacts. See *Prompt requirements* below.
 
-**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk:
+**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the effort every time: `medium` for a stated flow, `high` when the next step depends on reading the screen:
 
 ```bash
-ask-codex --clean "
+ask-codex --effort medium --clean "
 <self-contained computer-use prompt — see below>
 Save screenshots to <scratchpad>/verify/ as NN-label.png.
 Write your findings to <scratchpad>/verify/report.md when done.
 "
 ```
 
-Equivalent direct form (the reference invocation): `codex exec -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
+Equivalent direct form (the reference invocation): `codex exec -c model_reasoning_effort=medium -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
 
 For a GUI target, drop to `codex exec` directly — `ask-codex` has no flag for full access (it offers only `--readonly` and workspace-write), and the lane needs to write screenshots outside the repo. This is the verified form:
 
 ```bash
-codex exec -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
+codex exec -c model_reasoning_effort=high -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
   globalThis.sky = (await import('@oai/sky')).sky;
 <the steps, then the assertion>
 For each state that matters, call sky.get_app_state({ app: '<display name or bundle id>' }), copy the file:// path at state.screenshot.url into <scratchpad>/verify/NN-label.png, and write the verdict to <scratchpad>/verify/report.md.

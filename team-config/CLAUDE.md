@@ -44,9 +44,9 @@ leaderboard Astra resolves 58.2% for $3.3k and 1.5B tokens, Fable 5.1 57.9% for 
 **GPT-6 Astra replaced GPT-5.6 Sol on 2026-09-05** (released 2026-09-03; set
 `model = "gpt-6-astra"` in `~/.codex/config.toml`). One GPT row — effort is the dial — and
 the separate cheap-codex sweep tier is gone; sweeps are Astra at `low`. What moved:
-autonomy — Astra leads every agentic board and does it cheapest (OSWorld 2.0 72.6 vs Opus 5
+autonomy — Astra leads the computer-use, terminal and automation boards and does it cheapest (OSWorld 2.0 72.6 vs Opus 5
 70.2 at under half the cost per task; Terminal-Bench 4.0 58.2 vs Fable 5.1 57.9 vs Opus 5
-51.8; SRE-Bench 88 vs 12.5; AutomationBench 41.4 vs 31.4; Agents' Last Exam 59.3 vs 55.5
+51.8 on tbench.ai's leaderboard (OpenAI's own table: 57.7 / 55.8 / 52.3); SRE-Bench 88 vs 12.5; AutomationBench 41.4 vs 31.4; Agents' Last Exam 59.3 vs 55.5
 at 65% fewer output tokens than Opus 5; ARC-AGI-3 99.9 on OpenAI's stateful harness, 62.7
 on the neutral one, vs Opus 5 30.2). What did not: neutral reasoning — Artificial
 Analysis's Intelligence Index is 61, identical to Sol, vs Fable 5.1 at 66; the Coding
@@ -61,7 +61,7 @@ audit, so demand evidence rather than claims; and its Codex window is 272K by de
 **Astra effort is the dial** (`ask-codex --effort LEVEL`): `low` for sweeps with exact
 anchors; `medium` the implementation default; `high` when retries, ownership, persisted
 state or recovery paths are involved, and for volume writing; `xhigh` for the cross-family
-review; `max` for adversarial verification; `ultra` — Astra delegating to its own parallel
+review; `max` for adversarial verification; `ultra` (Codex only) — Astra delegating to its own parallel
 subagents — only for a self-contained long-horizon lane whose order caps the fan-out
 (Codex subagents inherit the parent's model, so budget Astra-priced workers), never for a
 lane the orchestrator is already fanning out.
@@ -110,7 +110,7 @@ when it is merely hard.
   → `gpt-6-astra` at `medium`. Its patch format survives multi-file edits better than raw
   diffs, at about a third of Sol's tokens.
 - **Bulk / mechanical work** → `gpt-6-astra` at `low`/`medium`, one lane per item —
-  steerability 9.5 and the cheapest cost per task on every agentic board. `opus` at `low`
+  steerability 9.5 and the cheapest cost per task on those boards. `opus` at `low`
   (`bulk-lane`) only when the idiom is Claude-family (skills, agent definitions, CLAUDE.md
   conventions) or as the quota-overflow lane. Don't reach for `fable` for bulk.
 - **Messy repo-level bug hunts, unknown scope** → `opus` at `high`+ stays the default. When
