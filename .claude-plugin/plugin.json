@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin.json",
   "name": "conductor",
   "displayName": "Conductor",
-  "description": "Mixed-model orchestration at `high` effort — Ultracode-grade output without the Ultracode premium. Routes design/taste lanes to Claude, repo- and document-shaped long-horizon lanes and high-stakes writing to Fable 5.1, and mechanical, browser/ops long-horizon, volume-writing, verification and cross-family review lanes to GPT-6 Astra via the Codex CLI at per-lane effort, with cross-family review gates.",
-  "version": "1.9.2",
+  "description": "Mixed-model orchestration at `high` effort \u2014 Ultracode-grade output without the Ultracode premium. Routes design/taste lanes to Claude, repo- and document-shaped long-horizon lanes and high-stakes writing to Fable 5.1, and mechanical, browser/ops long-horizon, volume-writing, verification and cross-family review lanes to GPT-6 Astra via the Codex CLI at per-lane effort, with cross-family review gates.",
+  "version": "1.10.0",
   "author": {
     "name": "Ivan Oboth"
   },

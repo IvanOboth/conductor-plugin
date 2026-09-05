@@ -88,12 +88,17 @@ the reasoning column as ~8.5 at `xhigh`/`max` and ~8 at `medium`.
 
 **Why steerability is a separate axis.** Opus 5 has *not* regressed on capability. It leads
 where work is messy and repo-shaped — SWE-bench Pro 79.2% with no Astra figure published,
-BenchLM's agentic aggregate 77.4 vs Astra's 70.3 — and is level with Astra on DeepSWE and
+BenchLM's agentic aggregate 77.4 vs Astra's 70.3 (Fable 5.1 tops it at 78.7) — and is level with Astra on DeepSWE and
 FrontierCode. What degraded is obedience, consistently reported: ignores explicit
 `CLAUDE.md` constraints; **"done but not done"** — declares fixes complete while leaving
 pieces unimplemented; expands scope beyond the ask; delegates to subagents more readily
 than prior models. So route away from Opus when a task is *steerability-sensitive*, not
 when it is merely hard.
+
+**Cost per task depends on the lane's shape.** Opus 5 and Fable 5.1 both rate 5; read-heavy
+lanes (reviews, verification, cached-corpus research) favour Fable (cache reads at a quarter of
+Opus's price, about half the tokens per task); output-heavy lanes (long HTML, long documents,
+bulk generation) favour Opus (half the output price). Fable reviews, Opus designs.
 
 ### How to apply
 
@@ -134,9 +139,12 @@ when it is merely hard.
   edit the draft. A slop-and-cost bet, not a quality bet — anything that leaves the building
   still gets a Fable or Opus edit pass. Every writing order states audience, register,
   length ceiling, the reader's one action, banned phrases, and a voice sample.
-- **Reviews** → `opus` at `xhigh`/`max` is the Claude-family judgment lane. `gpt-6-astra` at
-  `xhigh` via `codex-review` is a co-equal cross-family review — run both on anything that
-  ships. Escalate to `fable` when both have missed.
+- **Reviews** → `fable` at `high`/`max` is the Claude-family judgment lane (the bundled
+  `verify-lane` agent, Fable 5.1 at `max`): a review is read-heavy, where Fable's cache price and
+  token economy beat Opus at the same cost per task, and Fable leads on reasoning and
+  steerability. `opus` at `max` is the second Claude opinion on a close call. `gpt-6-astra` at
+  `xhigh` via `codex-review` is the co-equal cross-family review — run both on anything that
+  ships. Never review at `low`.
 - **Runtime verification** → `gpt-6-astra` at `medium` for mechanics, `high` when the next
   step depends on reading the screen — on every run; it costs a fraction of an Opus pass.
   Its ceiling is taste: it confirms the thing *functioned*; the screenshots come back for

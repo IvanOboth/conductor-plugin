@@ -122,9 +122,10 @@ plans and reviews, autonomy for execution) > steerability > taste > cost per tas
   above.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   `fable`. **Your writing rating is 7.** Do not self-certify voice on anything external.
-- Reviews → `opus` at `xhigh`/`max` as the Claude-family judgment lane, plus you at
-  `xhigh` as the co-equal cross-family review. The direction reverses but the principle
-  does not: the lane that checks is the other family from the seat.
+- Reviews → `fable` at `high`/`max` as the Claude-family judgment lane (read-heavy work is
+  where Fable's cache price and token economy win; Opus at `max` only as a second opinion),
+  plus you at `xhigh` as the co-equal cross-family review. The direction reverses but the
+  principle does not: the lane that checks is the other family from the seat.
 - Runtime verification → you, at `medium` for mechanics and `high` when the next step
   depends on reading the screen — on every run, it costs a fraction of an Opus pass.
   Screenshots and recordings go to the Claude side to judge whether it *looks* right.
