@@ -17,7 +17,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "                       (maps to codex exec -c model_reasoning_effort=LEVEL; the config default is not the lane's)"
   echo "  --readonly, -r       Use read-only sandbox (no file writes)"
   echo "  --clean              Extract only final response (strip session logs)"
-  echo "  --output, -o FILE    Write Codex plan to this file (Codex writes it directly)"
+  echo "  --output, -o FILE    Save the final response to FILE (written by the CLI, works with --readonly)"
   echo "  --debug-log FILE     Save raw session transcript to this file"
   echo "  --help, -h           Show this help"
   echo ""
@@ -95,7 +95,11 @@ if [[ -z "$PROMPT" ]]; then
   exit 1
 fi
 
-# If --output is set, inject file-writing instructions into the prompt
+# If --output is set, the file is written by the codex CLI itself (-o /
+# --output-last-message), OUTSIDE the sandbox — so it works under --readonly too.
+# Do NOT ask the model to write the file: in a read-only sandbox that patch is
+# rejected and the deliverable is silently lost, which is exactly the combination
+# the review and verification lanes use.
 if [[ -n "$OUTPUT_FILE" ]]; then
   # Make path absolute if relative
   if [[ "$OUTPUT_FILE" != /* ]]; then
@@ -103,9 +107,7 @@ if [[ -n "$OUTPUT_FILE" ]]; then
   fi
   PROMPT="$PROMPT
 
-IMPORTANT OUTPUT INSTRUCTION: After completing your research and analysis, write your COMPLETE final response as a clean markdown file to: $OUTPUT_FILE
-Do NOT include investigation notes, tool call logs, or reasoning steps in the file — only the polished final document.
-The file must be self-contained and ready to read."
+IMPORTANT OUTPUT INSTRUCTION: Your FINAL message IS the deliverable and will be saved verbatim to a file. Return the COMPLETE, polished document as your final message — every section, table and citation. Do not try to write files yourself; do not include investigation notes, tool logs, or reasoning steps in it."
 fi
 
 # Build context prefix if provided
@@ -140,7 +142,10 @@ CMD="$CMD --sandbox $SANDBOX -c approval_policy=never --enable multi_agent"
 # For --clean mode, use Codex's native -o flag to extract just the final response
 # This replaces the old awk parser which broke when Codex changed its output format
 CLEAN_TMPFILE=""
-if [[ "$CLEAN" == true ]]; then
+if [[ -n "$OUTPUT_FILE" ]]; then
+  # Native last-message capture — written by the CLI, not the sandboxed model.
+  CMD="$CMD -o $OUTPUT_FILE"
+elif [[ "$CLEAN" == true ]]; then
   # BSD mktemp only substitutes TRAILING Xs — a .txt suffix after them leaves
   # the template literal and invites collisions.
   CLEAN_TMPFILE=$(mktemp "${TMPDIR:-/tmp}/codex-clean-XXXXXX")
@@ -174,8 +179,16 @@ if [[ -n "$DEBUG_LOG" ]]; then
   echo "$RAW_OUTPUT" > "$DEBUG_LOG"
 fi
 
-# Output: --clean uses the -o extracted last message, otherwise raw output
-if [[ "$CLEAN" == true ]] && [[ -n "$CLEAN_TMPFILE" ]]; then
+# Output: --output and --clean both use the -o extracted last message, otherwise raw output
+if [[ -n "$OUTPUT_FILE" ]]; then
+  if [[ -s "$OUTPUT_FILE" ]]; then
+    echo "ask-codex: report written to $OUTPUT_FILE ($(wc -c < "$OUTPUT_FILE" | tr -d ' ') bytes)" >&2
+    [[ "$CLEAN" == true ]] && cat "$OUTPUT_FILE" || echo "$RAW_OUTPUT"
+  else
+    echo "ask-codex: WARNING -o produced an empty file; falling back to raw output" >&2
+    echo "$RAW_OUTPUT" | tee "$OUTPUT_FILE"
+  fi
+elif [[ "$CLEAN" == true ]] && [[ -n "$CLEAN_TMPFILE" ]]; then
   if [[ -s "$CLEAN_TMPFILE" ]]; then
     cat "$CLEAN_TMPFILE"
   else
