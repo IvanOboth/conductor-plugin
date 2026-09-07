@@ -23,7 +23,7 @@ DRY_RUN=false
 UNINSTALL=false
 
 SKILLS=(conductor codex-review codex-computer-use agent-browser run-report)
-AGENTS=(design-lane bulk-lane verify-lane)
+AGENTS=(design-lane bulk-lane verify-lane write-lane)
 BINS=(ask-codex ask-claude)
 
 while [[ $# -gt 0 ]]; do

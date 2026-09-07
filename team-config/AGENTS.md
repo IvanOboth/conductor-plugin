@@ -31,7 +31,7 @@ confirm it works. Run the thing. Read the actual output.
   `ffmpeg -i <flow>.webm -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart <flow>.mp4`.
   Needs a system ffmpeg.
 - **iOS Simulator:** `xcrun simctl io booted recordVideo --codec h264 <path>.mp4`.
-- **Android emulator:** `adb shell screenrecord` (3-min cap; chain files), then `adb pull`.
+- **Android (emulator or a cloud device over adb):** `adb shell screenrecord` (3-min cap; chain files), then `adb pull` — start it from the orchestrator's shell, a backgrounded recording inside a lane dies with its shell command. Real phones via a device farm (mobile-mcp): screenshots, and release the device when done.
 - **Native macOS app:** `screencapture -v <path>.mp4`.
 
 Name the output paths in your report so the orchestrator can find them. Screenshots are
@@ -122,9 +122,10 @@ plans and reviews, autonomy for execution) > steerability > taste > cost per tas
   above.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   `fable`. **Your writing rating is 7.** Do not self-certify voice on anything external.
-- Reviews → `opus` at `xhigh`/`max` as the Claude-family judgment lane, plus you at
-  `xhigh` as the co-equal cross-family review. The direction reverses but the principle
-  does not: the lane that checks is the other family from the seat.
+- Reviews → `fable` at `high`/`max` as the Claude-family judgment lane (read-heavy work is
+  where Fable's cache price and token economy win; Opus at `max` only as a second opinion),
+  plus you at `xhigh` as the co-equal cross-family review. The direction reverses but the
+  principle does not: the lane that checks is the other family from the seat.
 - Runtime verification → you, at `medium` for mechanics and `high` when the next step
   depends on reading the screen — on every run, it costs a fraction of an Opus pass.
   Screenshots and recordings go to the Claude side to judge whether it *looks* right.

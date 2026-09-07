@@ -547,7 +547,9 @@ command -v codex && command -v agent-browser && command -v gh && command -v pyth
 
 This check matters more than it looks. Conductor degrades **silently**: no Codex CLI and
 cross-family verification quietly becomes Claude reviewing Claude; no Opus access and the
-design lane falls back to the session model. Nothing errors — they just stop getting the
+design lane falls back to the session model. Fable access is also required for the judgment
+review and high-stakes writing lanes; confirm both `model: opus` and `model: fable` are
+available. Nothing errors — they just stop getting the
 thing they installed. Say this to them in as many words.
 
 ---
