@@ -1,3 +1,24 @@
+## Model selection contract — 13 September 2026
+
+This contract supersedes historical routing recommendations below. Select a role before launching, and record the model, effort, task-specific reason and acceptance criteria in the work order's `routing.json`.
+
+| Work | Model | Effort |
+|---|---|---|
+| Bounded routine intake candidate packets | gpt-5.6-luna | medium |
+| Well-specified implementation and runtime mechanics | gpt-6-astra | medium |
+| Stateful execution, recovery, long execution of an established plan | gpt-6-astra | high |
+| Ordinary investigation, design and review | claude-opus-5 | high |
+| Ambiguous architecture, sustained reasoning and synthesis | claude-fable-5-1 | high |
+| Adversarial review | claude-fable-5-1 | high |
+| Cross-family review of Claude work | gpt-6-astra | high |
+
+Long horizon means hours of work or continuity across sessions; duration and file count alone do not select a model. Route by the work's bottleneck. Higher review effort requires observed failure evidence and a separately recorded reason. Match the reviewer family against the author family; Astra reviewing Astra is not independent cross-family review.
+
+Luna intake is advisory: use the constrained packet runner through the Codex ChatGPT login. It cannot dispatch workers, change labels, advance intake state or hold merge authority. Scripts handle empty rounds; ambiguity goes to the capable orchestrator. The runner and live collector/poller integration are tracked in IvanOboth/ivan-oboth#85; a skill edit alone does not change scheduled jobs.
+
+The launcher selects the orchestrator model. Conductor guides that orchestrator's worker selection. Orca supplies worktrees and terminals; the command passed to the terminal determines the worker model. Pass model and effort explicitly, never rely on parent defaults. Use configured agent frontmatter or a CLI when the available Agent tool cannot set effort. Workers receive bounded orders and no recursive fan-out unless explicitly budgeted. Existing lanes retain their launch settings.
+
+
 # Working agreements — Codex side
 
 You are usually invoked as a **lane** inside a larger orchestration run, not as the
@@ -107,13 +128,7 @@ plans and reviews, autonomy for execution) > steerability > taste > cost per tas
 - Messy repo-level bug hunts, unknown scope → `opus` at `high`+. Do not keep these
   because they are interesting: SWE-bench Pro 79.2 has no published number from you to
   set against it. You are the cross-family second attempt when Opus at `max` has missed.
-- Long-horizon lanes that are repo-shaped or document-shaped (multi-module features, deep
-  research, a document or deck from nothing, dense-PDF reads) → `fable` (Fable 5.1), on
-  its 1M window. Long-horizon lanes that are browser-, computer-use-, ops- or
-  spreadsheet-shaped (automation, runbooks, financial models, data-science tasks in real
-  software) → you, at `high`, with `model_context_window` raised for the lane (272K by
-  default, 872K max under a ChatGPT login) — or at `ultra` when the order caps your own
-  fan-out: your subagents inherit your model, so budget Astra-priced workers.
+- **Long-horizon lanes**: use Astra at `high` for execution of an established plan; Fable 5.1 at `high` for ambiguous architecture, sustained reasoning and synthesis. Hours of runtime, a large repository or a long document do not alone choose the model.
 - Anything user-facing — UI, copy-in-a-UI, API design — → `opus` at `xhigh`, or `fable` when
   taste *is* the deliverable. **Your taste rating is 6 and unmeasured.** Do not
   self-assess design work.
@@ -122,9 +137,9 @@ plans and reviews, autonomy for execution) > steerability > taste > cost per tas
   above.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   `fable`. **Your writing rating is 7.** Do not self-certify voice on anything external.
-- Reviews → `opus` at `xhigh`/`max` as the Claude-family judgment lane, plus you at
-  `xhigh` as the co-equal cross-family review. The direction reverses but the principle
-  does not: the lane that checks is the other family from the seat.
+- Reviews → Fable 5.1 at `high` for adversarial judgment, plus Astra at
+  `high` for independent review of Claude work. Check author family first.
+  Higher effort requires observed failure evidence and a recorded reason.
 - Runtime verification → you, at `medium` for mechanics and `high` when the next step
   depends on reading the screen — on every run, it costs a fraction of an Opus pass.
   Screenshots and recordings go to the Claude side to judge whether it *looks* right.

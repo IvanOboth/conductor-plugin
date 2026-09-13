@@ -1,3 +1,24 @@
+## Model selection contract — 13 September 2026
+
+This contract supersedes historical routing recommendations below. Select a role before launching, and record the model, effort, task-specific reason and acceptance criteria in the work order's `routing.json`.
+
+| Work | Model | Effort |
+|---|---|---|
+| Bounded routine intake candidate packets | gpt-5.6-luna | medium |
+| Well-specified implementation and runtime mechanics | gpt-6-astra | medium |
+| Stateful execution, recovery, long execution of an established plan | gpt-6-astra | high |
+| Ordinary investigation, design and review | claude-opus-5 | high |
+| Ambiguous architecture, sustained reasoning and synthesis | claude-fable-5-1 | high |
+| Adversarial review | claude-fable-5-1 | high |
+| Cross-family review of Claude work | gpt-6-astra | high |
+
+Long horizon means hours of work or continuity across sessions; duration and file count alone do not select a model. Route by the work's bottleneck. Higher review effort requires observed failure evidence and a separately recorded reason. Match the reviewer family against the author family; Astra reviewing Astra is not independent cross-family review.
+
+Luna intake is advisory: use the constrained packet runner through the Codex ChatGPT login. It cannot dispatch workers, change labels, advance intake state or hold merge authority. Scripts handle empty rounds; ambiguity goes to the capable orchestrator. The runner and live collector/poller integration are tracked in IvanOboth/ivan-oboth#85; a skill edit alone does not change scheduled jobs.
+
+The launcher selects the orchestrator model. Conductor guides that orchestrator's worker selection. Orca supplies worktrees and terminals; the command passed to the terminal determines the worker model. Pass model and effort explicitly, never rely on parent defaults. Use configured agent frontmatter or a CLI when the available Agent tool cannot set effort. Workers receive bounded orders and no recursive fan-out unless explicitly budgeted. Existing lanes retain their launch settings.
+
+
 # Working agreements
 
 Global agent config. Install to `~/.claude/CLAUDE.md` — it applies to every project.
@@ -60,8 +81,8 @@ audit, so demand evidence rather than claims; and its Codex window is 272K by de
 
 **Astra effort is the dial** (`ask-codex --effort LEVEL`): `low` for sweeps with exact
 anchors; `medium` the implementation default; `high` when retries, ownership, persisted
-state or recovery paths are involved, and for volume writing; `xhigh` for the cross-family
-review; `max` for adversarial verification; `ultra` (Codex only) — Astra delegating to its own parallel
+state or recovery paths are involved, and for volume writing; `high` for cross-family
+review and adversarial verification; `ultra` (Codex only) — Astra delegating to its own parallel
 subagents — only for a self-contained long-horizon lane whose order caps the fan-out
 (Codex subagents inherit the parent's model, so budget Astra-priced workers), never for a
 lane the orchestrator is already fanning out.
@@ -116,13 +137,7 @@ when it is merely hard.
 - **Messy repo-level bug hunts, unknown scope** → `opus` at `high`+ stays the default. When
   Opus at `max` has missed, `gpt-6-astra` at `high` is a legitimate cross-family second
   attempt, not a downgrade.
-- **Long-horizon lanes** (one lane that runs for hours or spans sessions) → `fable` at
-  `high`+ when the lane is repo-shaped or document-shaped (a multi-module feature, a deep
-  research brief, a document or deck from nothing, a dense-PDF read), on its 1M window.
-  `gpt-6-astra` at `high` when the long lane is browser-, computer-use-, ops- or
-  spreadsheet-shaped (automation, runbooks, financial models, data-science tasks in real
-  software), with `model_context_window` raised for the lane — or `ultra` when the order
-  can cap its own fan-out.
+- **Long-horizon lanes**: use Astra at `high` for execution of an established plan; Fable 5.1 at `high` for ambiguous architecture, sustained reasoning and synthesis. Hours of runtime, a large repository or a long document do not alone choose the model.
 - **User-facing surfaces** (UI, copy-in-a-UI, API design) need taste ≥ 7 → `opus` (default)
   or `fable` when taste *is* the deliverable. Astra has no published taste data.
 - **Writing, high stakes** (a counterparty email, a proposal, an investor or board document,
@@ -134,9 +149,9 @@ when it is merely hard.
   edit the draft. A slop-and-cost bet, not a quality bet — anything that leaves the building
   still gets a Fable or Opus edit pass. Every writing order states audience, register,
   length ceiling, the reader's one action, banned phrases, and a voice sample.
-- **Reviews** → `opus` at `xhigh`/`max` is the Claude-family judgment lane. `gpt-6-astra` at
-  `xhigh` via `codex-review` is a co-equal cross-family review — run both on anything that
-  ships. Escalate to `fable` when both have missed.
+- Reviews → Fable 5.1 at `high` for adversarial judgment, plus Astra at
+  `high` for independent review of Claude work. Check author family first.
+  Higher effort requires observed failure evidence and a recorded reason.
 - **Runtime verification** → `gpt-6-astra` at `medium` for mechanics, `high` when the next
   step depends on reading the screen — on every run; it costs a fraction of an Opus pass.
   Its ceiling is taste: it confirms the thing *functioned*; the screenshots come back for

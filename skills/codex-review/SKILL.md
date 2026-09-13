@@ -57,7 +57,7 @@ That handoff is what Codex receives. The user just types `/codex-review` and you
 │    └─────────────────────────────────────────────┘      │
 │                                                          │
 │ 2. Build rich context and send to Codex:                │
-│    ask-codex --clean "                                  │
+│    ask-codex -m gpt-6-astra --effort high --clean "                                  │
 │      ## Context from Claude Session                     │
 │      Goal: ...                                          │
 │      Approach: ...                                      │
@@ -137,7 +137,7 @@ Optionally supplement with:
 Codex needs to investigate files, run tests, post issue comments, and apply fixes — so use the default `workspace-write` sandbox (don't pass `--readonly`). The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
 ```bash
-ask-codex --effort xhigh --clean "
+ask-codex -m gpt-6-astra --effort high --clean "
 ## Context from Claude session
 
 ### Original request
@@ -237,7 +237,7 @@ Severity lives in the reasoning, not in a label. If Codex didn't flag any blocki
 If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass:
 
 ```bash
-ask-codex --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
+ask-codex -m gpt-6-astra --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
 ```
 
 Codex still runs in `workspace-write` mode here — it may want to read the updated files or run tests to confirm.
@@ -380,14 +380,14 @@ git diff --name-only         # Uncommitted changes
 
 ### Codex Invocation Pattern
 
-Use `workspace-write` (the default) when the review must run tests or apply fixes; pass `--readonly` when it only reads the diff (the conductor's cross-family review of documentation, for example). Either way pass `--effort xhigh` — this is the judgment lane. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
+Use `workspace-write` (the default) when the review must run tests or apply fixes; pass `--readonly` when it only reads the diff (the conductor's cross-family review of documentation, for example). Either way pass `-m gpt-6-astra --effort high` — this is the judgment lane. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
 
 ```bash
 # Review only — Codex investigates but won't apply fixes unless told to
-ask-codex --clean "Review prompt (without 'apply blocking fixes')..."
+ask-codex -m gpt-6-astra --effort high --clean "Review prompt (without 'apply blocking fixes')..."
 
 # Review + fix — Codex applies blocking fixes itself
-ask-codex --clean "Review prompt (with 'apply blocking fixes')..."
+ask-codex -m gpt-6-astra --effort high --clean "Review prompt (with 'apply blocking fixes')..."
 ```
 
 ### Error Handling
