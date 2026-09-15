@@ -16,6 +16,8 @@ When OTA compatibility unexpectedly changes, use official `eas fingerprint:compa
 
 Hosted iOS Maestro needs a simulator build; a signed store IPA intended for TestFlight cannot run there. When TestFlight delivery is in scope, build the simulator and store artifacts from the same accepted app source with the intended backend and update channel. Use existing EAS-managed signing/submission credentials when available; a reachable Mac or another Apple login is not required for hosted builds and tests. Check the installed CLI and [iOS submission contract](https://docs.expo.dev/submit/ios/) before acting.
 
+For a simulator linker failure, inspect the actual vendor binary and the app’s platform capability: an ARM64 device library is not an ARM64 simulator library. If the app already excludes that feature on iOS, a supported [platform-specific autolinking exclusion](https://docs.expo.dev/modules/autolinking/#exclude) can remove an unused dependency. Verify the complete iOS and Android dependency graphs and runtime fingerprints; do not introduce a fake working hardware module to obtain a test pass.
+
 Keep simulator acceptance, store upload, Apple processing and tester availability as separate results. Reconcile the exact submitted store build in App Store Connect; a finished EAS submission alone does not establish TestFlight availability. A passing simulator flow does not prove a physical iPhone installation. Resolve actual signing, processing or export-declaration requirements from the app and existing account evidence; never invent answers just to clear a release gate.
 
 ## Official cloud simulator gate
