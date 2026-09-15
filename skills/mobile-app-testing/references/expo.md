@@ -18,6 +18,8 @@ Hosted iOS Maestro needs a simulator build; a signed store IPA intended for Test
 
 For a simulator linker failure, inspect the actual vendor binary and the app’s platform capability: an ARM64 device library is not an ARM64 simulator library. If the app already excludes that feature on iOS, a supported [platform-specific autolinking exclusion](https://docs.expo.dev/modules/autolinking/#exclude) can remove an unused dependency. Verify the complete iOS and Android dependency graphs and runtime fingerprints; do not introduce a fake working hardware module to obtain a test pass.
 
+Read native version and embedded update identity from the downloaded artifact before writing UI assertions. An EAS registry counter can differ from an unsigned simulator app’s `CFBundleVersion` when its build path skips version stamping. Keep the exact provider build lookup and actual installed identity as separate required checks; assert the embedded update UUID too. Diagnose the artifact and build logs before rebuilding or weakening an assertion.
+
 Keep simulator acceptance, store upload, Apple processing and tester availability as separate results. Reconcile the exact submitted store build in App Store Connect; a finished EAS submission alone does not establish TestFlight availability. A passing simulator flow does not prove a physical iPhone installation. Resolve actual signing, processing or export-declaration requirements from the app and existing account evidence; never invent answers just to clear a release gate.
 
 ## Official cloud simulator gate
