@@ -10,6 +10,14 @@ Read the [EAS CLI reference](https://docs.expo.dev/eas/cli/) and [official EAS s
 - **Native change or missing compatible client:** check existing matching build jobs/artifacts before building. Changes to native dependencies, SDK, plugins or native configuration need a compatible new binary. Use the project's explicit development-client profile and official build tooling. Rebuild for those changes or the required final candidate, not ordinary JS edits or a tunnel failure.
 - **OTA/release behavior:** use an update-enabled internal QA binary to test installed update loading, offline operation and rollback. A Metro result is development evidence; it does not establish production-like update behavior. Reuse a compatible QA binary for JS/assets updates and retain its identity alongside the running update identity.
 
+When OTA compatibility unexpectedly changes, use official `eas fingerprint:compare` with the actual build and intended environment to identify the changed inputs. Build configuration such as `eas.json` can affect the fingerprint even when the UI change is JavaScript-only. Do not force a runtime value or promise reuse from the UI diff alone; resolve the configuration or deliver a matching binary, then verify its identity.
+
+## iOS artifact and delivery checks
+
+Hosted iOS Maestro needs a simulator build; a signed store IPA intended for TestFlight cannot run there. When TestFlight delivery is in scope, build the simulator and store artifacts from the same accepted app source with the intended backend and update channel. Use existing EAS-managed signing/submission credentials when available; a reachable Mac or another Apple login is not required for hosted builds and tests. Check the installed CLI and [iOS submission contract](https://docs.expo.dev/submit/ios/) before acting.
+
+Keep simulator acceptance, store upload, Apple processing and tester availability as separate results. Reconcile the exact submitted store build in App Store Connect; a finished EAS submission alone does not establish TestFlight availability. A passing simulator flow does not prove a physical iPhone installation. Resolve actual signing, processing or export-declaration requirements from the app and existing account evidence; never invent answers just to clear a release gate.
+
 ## Official cloud simulator gate
 
 Before any session creation, verify the intended Expo account/project and run the current CLI's read-only `simulator:availability --json`. Record timestamp, account, CLI version and sanitized response in the project/run evidence. Availability is an account/provider fact that must be checked afresh; never hardcode a project's last result into this skill.
