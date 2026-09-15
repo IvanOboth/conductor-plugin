@@ -20,6 +20,8 @@ For a simulator linker failure, inspect the actual vendor binary and the app’s
 
 Read native version and embedded update identity from the downloaded artifact before writing UI assertions. An EAS registry counter can differ from an unsigned simulator app’s `CFBundleVersion` when its build path skips version stamping. Keep the exact provider build lookup and actual installed identity as separate required checks; assert the embedded update UUID too. Diagnose the artifact and build logs before rebuilding or weakening an assertion.
 
+Optional submission automation can have separate plan requirements from a standard upload. If notes or group automation is rejected, reconcile whether a submission was created before retrying the authorized base upload. Check existing App Store Connect group settings before creating anything; an existing group with access to all builds may already cover delivery. Do not upgrade a subscription to clear an optional convenience flag.
+
 Keep simulator acceptance, store upload, Apple processing and tester availability as separate results. Reconcile the exact submitted store build in App Store Connect; a finished EAS submission alone does not establish TestFlight availability. A passing simulator flow does not prove a physical iPhone installation. Resolve actual signing, processing or export-declaration requirements from the app and existing account evidence; never invent answers just to clear a release gate.
 
 ## Official cloud simulator gate
