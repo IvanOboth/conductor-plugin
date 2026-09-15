@@ -22,7 +22,7 @@ DATADIR=""   # derived from PREFIX after arg parsing
 DRY_RUN=false
 UNINSTALL=false
 
-SKILLS=(conductor codex-review codex-computer-use agent-browser run-report)
+SKILLS=(conductor mobile-app-testing codex-review codex-computer-use agent-browser run-report)
 AGENTS=(design-lane bulk-lane verify-lane)
 BINS=(ask-codex ask-claude)
 
