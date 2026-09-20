@@ -10,6 +10,8 @@ effort: high
 
 This entry point selects the default mixed-model profile. For Codex-first orchestration with optional Opus and no Fable dependency, use [Conductor Core](../conductor-core/SKILL.md). For a run with no Codex lane at all — every ChatGPT account in cooldown, Codex unreachable, or the work must stay in one vendor — use [Conductor Claude](../conductor-claude/SKILL.md), which carries every role on Opus 5 and Fable 5.1 and replaces the cross-family gate with context-independent, cross-model review under honest coverage labels. Each profile owns model selection, fan-out and review acceptance while it is active. When `profile: conductor-core` is active, that profile owns model selection, fan-out and review acceptance throughout the run, including supporting skills and bundled-agent defaults. The mixed-model mandates below do not override it. Core shares this file's installation, report design, explanation, delivery and evidence-selection contracts; its own policy replaces Claude-specific reviewer requirements within those sections. Ordinary `$conductor` behavior is unchanged.
 
+**What this is for.** Conductor exists to accomplish work that is too large, too long-running or too multi-stranded for one agent in one pass — a migration across a repository, a feature with design and data and copy strands, an epic that spans sessions, a research or document build that runs for hours. The unit of ambition is the *run*, not the turn. Everything below — the work orders, the lanes, the review gates, the report — is machinery for holding a large piece of work together well enough that it finishes and can be trusted. **Verification is a part of that machinery, not its purpose.** The restraint sections exist so the capacity goes where it produces work, and are not a reason to attempt less.
+
 **The premise.** Ultracode is not a model — it's `xhigh` reasoning plus a standing "workflow everything, cost be damned" instruction. You don't need either to fan out: the `Workflow` and `Agent` tools work at any effort. Conductor gets Ultracode-grade output for a fraction of the cost by keeping the main loop at `high`, invoking fan-out **on-demand**, and spending the expensive/high-judgment tokens only where judgment lives — decomposition, work orders, review, integration.
 
 **The orchestrator never delegates three things: the plan, the work orders, the final review.** Everything else is dispatched. This holds whichever model runs the main loop.
@@ -128,6 +130,20 @@ Match the count to the shape of the work:
 Claude Code flags runs above 25 agents (or ~1.5M projected tokens) as `Large workflow` in the task panel. That warning is advisory — it doesn't pause anything. If the work-list justifies the count, proceed; if you bound coverage for cost (top-N, sampling, no-retry), **`log()` what you dropped** so a partial sweep never reads as a complete one.
 
 The restraint elsewhere in this skill — "don't force a task to split", "don't dispatch what a few tool calls would finish" — is about *unnecessary* splits and orchestrator laziness. It is not a reason to under-serve genuinely parallel work. But it applies with full force to discovery: width is for executing and verifying a known work-list, never for assembling one.
+
+## Long-horizon runs
+
+A run that spans hours or sessions fails for different reasons than a run that fits in one turn. It does not usually fail on reasoning; it fails because state was held only in a context that ended. Three things make a large run survive.
+
+**The work-list is an artifact, not a memory.** Write it to a file — the items, their owners, their status (queued / running / done / blocked), and the deliverable path for each. A run that keeps its plan only in the orchestrator's context loses the plan at compaction, at a usage limit, or when a session ends. When the work-list is on disk, any later session — or you after compaction — resumes by reading it.
+
+**Phase the ambition, don't flatten it.** An epic is waves, not one enormous fan-out. Wave 1 establishes the contract (the schema, the shared component, the interface everything else depends on) and is usually one or two lanes. Wave 2 fans wide over the items that now have a stable contract to write against. Wave 3 integrates and verifies. Dependencies between waves are the reason phases exist; `Workflow`'s `phase()` names them, and `pipeline()` lets an item's later stage start as soon as its earlier stage lands rather than waiting for the slowest sibling.
+
+**Checkpoint at boundaries.** At the end of each wave, persist what exists: commit the lanes that landed, update the work-list, and write what remains. Interrupted work that was committed is recoverable; interrupted work held in a lane's context is gone. This is why long write lanes commit incrementally rather than saving everything for a final message, and why many small lanes beat a few long ones — on resume, cached results stop at the first unfinished lane and everything after it re-runs.
+
+**Resuming.** A `Workflow` resumes with `resumeFromRunId`: completed `agent()` calls with unchanged prompts return cached results instantly and only edited or new calls re-run. Stop the prior run before resuming it. For a run that outlived its session entirely, the work-list file plus the committed branches are the resume point — read them, re-scout what changed, and dispatch only what remains.
+
+**Scope honestly as it grows.** A long run discovers work. New items go on the work-list with a status, not silently into a lane. If the run will not finish within the budget or the window, say so while there is still time to choose what gets dropped, and `log()` what was dropped so a partial result never reads as a complete one.
 
 ## Model routing
 

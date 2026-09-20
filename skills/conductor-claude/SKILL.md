@@ -6,13 +6,17 @@ effort: high
 
 # Conductor Claude
 
-Run the full Conductor workflow with no Codex lane. Opus 5 and Fable 5.1 carry every role; effort is the dial. This is a routing profile in the Conductor plugin, not a degraded mode — but it does lose one real thing (family independence), and this file is mostly about replacing it honestly rather than pretending it is still there.
+Run the full Conductor workflow with no Codex lane. Opus 5 and Fable 5.1 carry every role; effort is the dial.
+
+**The purpose is unchanged from the mixed profile: finish ambitious work.** A migration across a repository, a feature with design and data and copy strands, an epic that spans sessions, a long document or research build. Losing the Codex lane changes who does the work and how it is checked; it does not change how much work a run should attempt. Do not read this profile as a reason to scale the ambition down — read it as the routing and review policy that lets the same ambition proceed on one family.
+
+This is a routing profile in the Conductor plugin, not a degraded mode. It does lose one real thing — a reviewer from a different training run — and the sections below replace that honestly rather than pretending it is still there.
 
 ## Profile and shared authority
 
 Set `profile: conductor-claude` in the run and in every work order. This file owns model routing, fan-out, quota budgeting and review acceptance for the run.
 
-Read the current [shared Conductor source](../conductor/SKILL.md) for **Installation paths**, **Report design contract** (including **Help Ivan understand**), **Run review HTML**, **Choose evidence before recording**, the **Browser video evidence** contract and **Closing step: run-report**. Those remain the single source for report structure, explanation, delivery and evidence selection. Where they call for a Codex lane, a cross-family reviewer or `ask-codex`, apply the substitutions in this file instead. Resolve relative references from the canonical source directory. Reread the shared report and evidence sections before authoring or revising a report.
+Read the current [shared Conductor source](../conductor/SKILL.md) for **What earns an agent**, **Sizing the fan-out**, **Orchestrator calibration**, **Installation paths**, **Report design contract** (including **Help Ivan understand**), **Run review HTML**, **Choose evidence before recording**, the **Browser video evidence** contract and **Closing step: run-report**. The dispatch-gate and sizing rules there are unchanged by this profile: scouting is still yours, every lane still needs a deliverable contract, one agent per independent item, and the size guideline is a ceiling rather than a target. Those remain the single source for report structure, explanation, delivery and evidence selection. Where they call for a Codex lane, a cross-family reviewer or `ask-codex`, apply the substitutions in this file instead. Resolve relative references from the canonical source directory. Reread the shared report and evidence sections before authoring or revising a report.
 
 The mixed-model routing tables, the `gpt-6-astra` lanes and the mandatory other-family gate in the sibling [Conductor](../conductor/SKILL.md) skill do not apply here. The [Conductor Core](../conductor-core/SKILL.md) profile is the mirror image of this one — Astra-first with optional Opus — and its policy does not apply here either. A continued run keeps its profile across compaction, checkpoints and handoffs unless Ivan changes it.
 
@@ -107,6 +111,63 @@ The `Agent` tool takes `model:` but has **no effort parameter** — a subagent d
 
 **Writing is where a single family costs you most.** Astra was the volume writer precisely because it is not Claude and does not reproduce Claude's tics. With it gone, every writing order in this profile — not just the high-stakes one — carries the `write-lane` constraints explicitly: short paragraphs, break every three sentences; no "it's not X, it's Y"; no tricolons; no pre-emptive caveats; no closing flourish or summary line; no em-dash cadence. State audience, register, length ceiling, the one thing the reader must do, the banned phrases and a sample of the voice. Then the orchestrator reads the draft against the voice sample and de-slops it by hand. Assume the tics are there; a same-family reviewer will not see them.
 
+## The loop
+
+The full run, end to end. Steps 1, 4 and 5 are yours and are never delegated. Step 2 is the team. Step 3 is where this profile differs from the mixed one.
+
+**1. Plan — orchestrator.** Scout the code yourself: `Grep`, `Glob`, `Read`, `git log`. Do not dispatch agents to find out what the work is. Then decompose into work orders. A work order that a cheap lane can execute is *precise*: exact file paths and line anchors, the data contracts involved, the acceptance check stated as an observable ("the roster renders 4 rows at 390px with no horizontal scroll"), what NOT to touch, and the deliverable path. Vague orders waste the lane's run and your review time, and in this profile they waste the same quota pool twice.
+
+Every order also carries its routing — `profile: conductor-claude`, `model`, `effort`, the reason, and the review coverage it will get — so the report can be assembled from the orders rather than reconstructed afterwards.
+
+**2. Dispatch — parallel.** Note the run's start time. If the run has a tracking issue, flip its label (`gh issue edit <n> -R <owner>/<repo> --add-label status:running`). Then launch every independent lane **in the same turn** — independent `Agent` calls in one message run concurrently.
+
+- **Two or three lanes, no pipelining:** the `Agent` tool, one call per lane, all in one message. Use a bundled lane agent when you need the effort pinned.
+- **A work-list to fan out over, or review stacked on top of build:** a `Workflow` script, where `agent(prompt, {model, effort})` sets both per lane and `parallel()` / `pipeline()` express the shape. Pipeline by default so each item's review starts the moment its build finishes instead of waiting for the slowest sibling:
+
+  ```js
+  const results = await pipeline(
+    ITEMS,
+    it => agent(orderFor(it), {label: `build:${it.key}`, phase: 'Build',
+                               model: 'opus', effort: 'medium', schema: BUILD}),
+    build => agent(reviewOrder(build), {label: `review:${build.key}`, phase: 'Review',
+                                        model: 'fable', effort: 'high', schema: VERDICT}),
+  )
+  ```
+
+  Note the model flip between the two stages — that is substitute 2 wired into the shape of the run, not bolted on at the end.
+
+- **Writers get isolation.** `isolation: "worktree"` on any lane that edits files, auto-cleaned when unchanged. **No two write lanes share a file.** If two orders must touch the same file, serialize them or give the file to one lane and a follow-up order to the other.
+- **Do not poll.** Background agents are harness-tracked: you are re-invoked automatically when one finishes. A wait loop, a sleep, or a repeated file-existence check costs tokens and buys nothing. Dispatch, then do something independent or end the turn. A lane that has gone quiet past its expected span is dead, not slow — read its transcript rather than waiting longer.
+
+**3. Cross-verify — the substitutes, applied.** Every lane's output is checked by something that did not write it. In this profile that means, in order: a reviewer on the *other* Claude model, in fresh context, given the requirements and the diff and nothing else; one failure-mode lens per reviewer where a finding can fail in more than one way; and at least one objective gate — typecheck, tests, a runtime assertion on real state, or a screenshot.
+
+You read the screenshots yourself. No lane certifies its own design quality, and in a single-family run no lane certifies another's either — a clean review here is weaker evidence than it would be from the other family, so spend the objective gate as well.
+
+**4. Review and integrate — orchestrator.** Read every lane's report *and* the actual diffs: `git diff --stat`, then the files that matter. Reports are claims. Rejected work goes back as a **revised work order** — what was wrong and what correct looks like — not a re-explanation of the task. Merge the lanes' branches or worktrees yourself, resolve the conflicts yourself, and run the final gates appropriate to what changed. The integration is the orchestrator's job precisely because no lane saw the whole.
+
+**5. Publish — orchestrator.** Write or update the run's review HTML per the shared Report design contract, with the coverage labels from this profile's table visible per lane. On the bench, publish with `~/bin/report-link.py <report-path>`, check the served URL, and hand over the hub link labelled **private — Tailscale access required**. Then close through `run-report` where available and authorized.
+
+## Running the team
+
+A few rules that keep a Claude-only team from thrashing, beyond the shared sizing gate:
+
+- **One owner per mutable thing.** One lane per file, per fixture, per browser session (`--session <lane>`, never the shared one), per device. Overlapping writers get serialized, not merged optimistically.
+- **State the lane's boundaries in the order, not in your head.** Opus expands scope it judges under-specified and reaches for subagents readily. Every order says what not to touch, says "do this yourself, do not spawn subagents" unless you budgeted recursion, and asks for a closing "what I did not do" line.
+- **No self-verification scaffolding in orders.** "Double-check your work", "add a verification step", "spawn a verifier" produces over-verification and burned quota, not rigour — these models already self-verify. Verification lives in step 3, which is yours.
+- **Lanes checkpoint.** A lane that dies on the session limit leaves no report and no commit. Long write lanes commit incrementally or write their artifact as they go, so an interrupted lane leaves recoverable work rather than nothing.
+- **Track the work-list.** Queued, running, done, blocked. When you bound coverage for quota, `log()` what you dropped so a partial sweep never reads as a complete one.
+
+
+## Long-horizon runs
+
+The shared **Long-horizon runs** section governs: the work-list is a file rather than a memory, ambition is phased into waves rather than flattened into one fan-out, lanes checkpoint at wave boundaries, and a `Workflow` resumes with `resumeFromRunId`. Read it there.
+
+Two things are sharper in this profile, and both argue for *more* structure on a long run, not less ambition:
+
+- **The interruption you should plan for is the usage limit**, and it arrives without an error — a lane simply stops, with no report and no commit. On a multi-hour run this is the single most likely failure. Wave boundaries, committed lanes and an on-disk work-list are what turn that from a lost run into a resumed one.
+- **The whole run draws on one pool**, so the phase plan is also the budget plan. Decide before wave 1 roughly what each wave costs in lanes × effort, and put the expensive judgment (`xhigh`/`max`) in the narrow waves — contract design, integration review — while the wide waves stay at `low`/`medium`. A run that spends its window on wave 1 has not been ambitious; it has been unplanned.
+
+
 ## Fan-out and the quota budget
 
 The shared **What earns an agent** and **Sizing the fan-out** sections still govern *whether* and *how many*. Scouting is still yours — a grep, not a lane. One agent per independent item. The size guideline is a ceiling, not a target.
@@ -148,6 +209,18 @@ When a Codex account comes back (`codex-account pick` exits 0), decide deliberat
 - Work already shipped stays shipped. Do not re-review it for the label.
 - Work not yet shipped, that is user-facing or carries Ivan's name, gets one cross-family review pass before it goes — and the report label is upgraded to `cross-family` only for what that pass actually covered.
 - The run's report says which parts were single-family reviewed and which were not. That sentence is the deliverable of this whole profile.
+
+## Worked example (shape, not script)
+
+> Task: "Six API routes need the new tenant-scoping middleware, and the settings page needs a tenant switcher. Ship it."
+
+1. **Scout, yourself.** `grep -rl "withAuth(" src/routes` returns the six files. `Read` the middleware and one route. That is the work-list — no agent produced it, and it cost two commands.
+2. **Plan.** Six mechanical route edits (identical contract, exact anchors) plus one design surface (the switcher). Seven orders. Each names its files, the contract, the acceptance check and what not to touch.
+3. **Dispatch, one turn.** Six `bulk-lane` agents (opus/low), one per route, `isolation: "worktree"` — not two agents with three files each, which would silently drop coverage. Plus one `design-lane` (opus/xhigh) for the switcher. Seven lanes, not three; they are cheap and genuinely independent.
+4. **Verify.** The six routes are mechanical, so the gate is objective: typecheck plus the existing route tests, run by you. The switcher is user-facing, so it gets a Fable review in fresh context — the requirements and the diff, not the design lane's rationale — with the lens set to "find what the order asked for that is missing", plus a screenshot at 390px that **you** read. Coverage: `objective-gate` for the routes, `cross-model, fresh context` + `objective-gate` for the switcher.
+5. **Integrate.** You merge the seven worktrees, resolve the one real conflict in the shared middleware import, run the full gates, and read the combined diff. No lane saw all seven changes; you do.
+6. **Publish.** Update `.conductor/reports/issue-<n>.html`: what was asked, the seven lanes and their outcomes, the per-lane coverage labels, the switcher screenshot, and one line of residual risk — the routes were reviewed by gates rather than by a second model, which is a deliberate trade and is stated as one. Hub URL, labelled private.
+
 
 ## Closing
 
