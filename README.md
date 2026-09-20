@@ -1,8 +1,22 @@
 # Conductor
 
-Mixed-model orchestration for Claude Code — Ultracode-grade output without the Ultracode premium.
+Orchestration for Claude Code and Codex, with mixed-model and Codex-first profiles.
 
-The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** Everything else is dispatched to the lane that fits it — Claude for design and judgment, the Codex CLI for mechanical execution and cross-family verification. Every lane's work is then checked by the *other* model family, because same-family review misses what a different family catches.
+The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** The default Conductor profile dispatches Claude design/judgment and Codex execution lanes with cross-family review. Conductor Core runs on Astra with optional Opus contributions and explicit same-family review coverage. Conductor Claude is the mirror image — every role on Opus 5 and Fable 5.1, for runs with no Codex quota at all.
+
+## Conductor Claude
+
+Use `/conductor-claude` in Claude Code when there is no Codex lane to dispatch to: every ChatGPT account is in cooldown, Codex is unreachable on the host, or the work must stay inside one vendor. Check first — `codex-account pick` exiting 3 means every account is cooling down, while a silent `ask-codex` is usually a wrapper or sandbox failure, not a quota failure.
+
+[Claude's policy](skills/conductor-claude/SKILL.md) keeps the shared plan / work-order / final-review contract and routes mechanical work to Opus Low, implementation to Medium, terminal and infra work to High, taste to Opus xHigh, and ambiguity, synthesis and high-stakes writing to Fable High. It replaces the cross-family gate with ranked substitutes — fresh-context artifact-only review first, cross-model Fable/Opus second, one lens per reviewer third, objective gates fourth, effort asymmetry last — and forbids the `cross-family` label, reporting `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only` instead. It adds a quota budget for the single shared pool and the failure modes a single family creates.
+
+## Conductor Core
+
+Use `$conductor-core` in Codex or `/conductor:conductor-core` in Claude Code. With personal skill installation, `/conductor-core` is the Claude entry point. Launch the parent in Codex on Astra High for a workflow with no Claude dependency; invoking the skill in a Claude parent does not change that parent's model.
+
+[Core's policy](skills/conductor-core/SKILL.md) routes exact mechanical work to Astra Low, implementation and routine runtime checks to Medium, and planning, ambiguity, recovery, substantial writing and adversarial review to High. Opus High is optional for useful design or review contributions. Fable is never selected. Work can complete without Claude, with honest review coverage and the same task evidence requirements.
+
+Fan-out follows the enumerated work: no artificial worker cap, token ceiling or fixed Opus-call allowance. Real harness and machine limits still apply, and excess work queues without dropping coverage. The two profiles share the [report and evidence contracts](skills/conductor/SKILL.md#report-design-contract); the Core policy replaces mixed-model routing and mandatory Claude review gates within a Core run. Selecting Core does not migrate scheduled jobs or change the default `$conductor` profile.
 
 ## Install
 
@@ -16,6 +30,20 @@ Then `/conductor:conductor` (or just say "conduct this" / "orchestrate at high")
 **Setting up a new machine?** [`AGENT-SETUP.md`](AGENT-SETUP.md) is a runbook written for an agent rather than a human — hand it to your coding agent and it will drive the whole setup: laptop CLIs, a remote Linux VM, Tailscale, Orca, this plugin, and an acceptance run. It has hard gates around the steps that can lock you out of your own box.
 
 > If the marketplace clone fails (it goes over SSH, which needs a key on your GitHub account): `gh repo clone IvanOboth/conductor-plugin`, then `/plugin marketplace add ./conductor-plugin`.
+
+### One source for personal Claude and Codex skills
+
+For a maintained local checkout, use the link-only installer:
+
+```bash
+./install.sh --link-skill
+```
+
+It installs shared Conductor, Conductor Core, Conductor Claude and mobile-app-testing entry points: Claude links to the canonical skill directories in this checkout. To install only one, run `python3 scripts/link-personal-skills.py --skill conductor-core` (or `--skill conductor-claude`, `--skill mobile-app-testing`). Conductor Claude installs to the Claude root only — a Claude-family-only profile has no meaning from a Codex parent. For Codex it writes a small discoverable `SKILL.md` that instructs the agent to read that same canonical file; the entry contains no separate policy. On the tested Codex 0.154.0 build, `skills/list` omitted symlinked skills, so a symlink alone was not a working installation. The installer honors `CLAUDE_CONFIG_DIR` and `CODEX_HOME` when configured, otherwise their normal home locations.
+
+Prior skill directories or links are backed up privately, and failures roll back changed entries. The plugin includes the Codex UI metadata. Unknown supporting files remain preserved in the backup rather than silently merged into plugin source. CLI binaries are untouched. The checkout must remain available. Run the installer separately on each host; synchronization transports content, not this installation topology. This mode installs only the shared skill entry points, not the full plugin or its dependencies. The legacy copy installer below is a separate mode; do not use its uninstall operation to remove link-only installations.
+
+The plugin skill is the canonical source for light editorial reports, plain-language explanations, useful diagrams/flowcharts and selective video evidence. It contains small harness-specific tool sections rather than separate Claude and Codex variants. Before revising a report, reread the source: updating a file cannot replace old skill text already injected into a running conversation. Released plugin versions remain snapshots until an updated release is installed.
 
 ### Without the plugin system
 
@@ -44,7 +72,10 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 | Component | What it is |
 |---|---|
 | `skills/conductor` | The orchestration loop: model routing, lane table, dispatch, cross-verify, review HTML |
+| `skills/conductor-core` | Codex-first profile: Astra Low/Medium/High, work-sized fan-out, optional Opus, no Fable dependency |
+| `skills/conductor-claude` | Claude-only profile: Opus 5 + Fable 5.1 lanes, substitutes for the cross-family gate, quota budget, honest coverage labels |
 | `skills/codex-review` | Co-equal cross-family review of a diff, via the Codex CLI (GPT-6 Astra at `xhigh`) |
+| `skills/mobile-app-testing` | Native Android/iOS QA: Astra device execution, sign-in diagnosis, scoped fixes, evidence and cleanup; project profiles keep it reusable |
 | `skills/codex-computer-use` | Codex (GPT-6 Astra) drives the running app and captures screenshots and video you then read |
 | `skills/agent-browser` | Local browser automation CLI |
 | `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
@@ -58,7 +89,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 
 ## Prerequisites
 
-Conductor degrades gracefully — a missing piece disables that lane, it doesn't break the skill. But you get the full value only with all of these:
+Core needs an authenticated Codex runtime for its required lanes; Claude is optional. The following Claude requirements apply to the default mixed-model profile and to optional Claude lanes, not to Core completion:
 
 **Required for the Claude lanes**
 - Claude Code with access to Opus-class models. `model: "opus"` and `model: "fable"` (Fable 5.1 as of 2026-09-01) must be available on your plan, or the design/judgment/writing lanes silently fall back to your session model — which defeats the routing.

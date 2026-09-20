@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin.json",
   "name": "conductor",
   "displayName": "Conductor",
-  "description": "Mixed-model orchestration at `high` effort — Ultracode-grade output without the Ultracode premium. Routes design/taste lanes to Claude, repo- and document-shaped long-horizon lanes and high-stakes writing to Fable 5.1, and mechanical, browser/ops long-horizon, volume-writing, verification and cross-family review lanes to GPT-6 Astra via the Codex CLI at per-lane effort, with cross-family review gates.",
-  "version": "1.9.3",
+  "description": "Orchestration for Claude Code and Codex. Conductor provides mixed-model lanes and cross-family review; Conductor Core uses Astra at task-appropriate effort with work-sized fan-out, optional Opus design/review, and no Fable dependency; Conductor Claude runs the same workflow entirely on Opus 5 and Fable 5.1 when no Codex quota is available, substituting context-independent cross-model review for the cross-family gate. Both share explanatory reports and task-selected evidence.",
+  "version": "1.10.0",
   "author": {
     "name": "Ivan Oboth"
   },
