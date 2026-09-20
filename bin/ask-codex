@@ -6,6 +6,9 @@
 
 set -e
 
+# Headless child agents must not publish identity into their parent Orca pane.
+unset ORCA_PANE_KEY ORCA_TAB_ID ORCA_AGENT_LAUNCH_TOKEN
+
 # Show help
 if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: ask-codex [OPTIONS] \"prompt\""
@@ -126,6 +129,44 @@ $CONTEXT_CONTENT
 ---
 
 $PROMPT"
+fi
+
+# A Claude parent usually has no CODEX_HOME. Resolve Orca's selected host
+# account at launch time; never copy tokens or overwrite an explicit lane home.
+if [[ -z "${CODEX_HOME:-}" ]]; then
+  ORCA_CODEX_HOME=$(python3 - <<'PY_ACCOUNT'
+import json
+import os
+from pathlib import Path
+import sys
+
+root = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "orca"
+index = root / "orca-profile-index.json"
+if not index.exists():
+    sys.exit(0)
+try:
+    profile = json.loads(index.read_text())["activeProfileId"]
+    if not isinstance(profile, str) or not profile or Path(profile).name != profile or profile in (".", ".."):
+        raise ValueError("invalid active profile")
+    settings = json.loads((root / "profiles" / profile / "orca-data.json").read_text())["settings"]
+    runtime = settings.get("activeCodexManagedAccountIdsByRuntime")
+    account = runtime.get("host") if isinstance(runtime, dict) else settings.get("activeCodexManagedAccountId")
+    if account is not None:
+        if not isinstance(account, str) or not account or Path(account).name != account or account in (".", ".."):
+            raise ValueError("invalid selected account")
+        selected = root / "codex-accounts" / account / "home"
+        if not (selected / "auth.json").is_file():
+            raise ValueError("selected Orca account has no auth.json; reconnect that account in Orca")
+        print(selected)
+except (OSError, ValueError, KeyError, TypeError) as error:
+    print(f"ask-codex: cannot resolve Orca account: {error}", file=sys.stderr)
+    sys.exit(2)
+PY_ACCOUNT
+  ) || exit $?
+  if [[ -n "$ORCA_CODEX_HOME" ]]; then
+    export CODEX_HOME="$ORCA_CODEX_HOME"
+    echo "ask-codex: using Orca selected Codex home: $CODEX_HOME" >&2
+  fi
 fi
 
 # Build command as an ARGUMENT ARRAY, never a string: a string expanded unquoted

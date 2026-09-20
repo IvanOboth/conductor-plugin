@@ -14,6 +14,10 @@ allowed-tools: Bash(agent-browser:*)
 
 # Browser Automation with agent-browser
 
+## Choose evidence before capture
+
+For Conductor work, read the current evidence gate in the sibling `conductor/SKILL.md`. Record video only for testing an application change. Static report opening, scrolling, resizing, publication checks, research and skill edits use screenshots or command evidence. The recording commands below are capabilities, not a requirement to record every browser visit.
+
 ## When to Use This Tool
 
 **Use agent-browser when** the task requires a rendered web page — filling forms, clicking buttons, reading DOM content, taking screenshots, testing UI flows, scraping rendered content, or verifying that a page works.

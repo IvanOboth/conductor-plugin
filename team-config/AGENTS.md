@@ -1,5 +1,11 @@
 # Working agreements — Codex side
 
+<!-- conductor-core-profile -->
+## Conductor Core opt-in
+
+When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Astra owns the workflow at task-appropriate effort; Opus is optional, and Fable is never selected. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
+<!-- /conductor-core-profile -->
+
 You are usually invoked as a **lane** inside a larger orchestration run, not as the
 orchestrator. The work order you received is the contract. Honour its scope exactly: do
 not expand it, do not fix adjacent things you noticed, do not refactor beyond the anchors
@@ -24,14 +30,11 @@ thing you can return.
 When asked to verify, you are adversarial. Your job is to find the way it breaks, not to
 confirm it works. Run the thing. Read the actual output.
 
-- **Web:** drive it with `agent-browser` (or the Playwright MCP) and **record the flow as
-  video, not GIF** — `agent-browser --session <lane> record start <dir>/<flow>.webm [url]`
-  *before* the flow (it opens a fresh context, so starting mid-page loses it), drive, then
-  `record stop`. Convert for sharing:
-  `ffmpeg -i <flow>.webm -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart <flow>.mp4`.
-  Needs a system ffmpeg.
-- **iOS Simulator:** `xcrun simctl io booted recordVideo --codec h264 <path>.mp4`.
-- **Android (emulator or a cloud device over adb):** `adb shell screenrecord` (3-min cap; chain files), then `adb pull` — start it from the orchestrator's shell, a backgrounded recording inside a lane dies with its shell command. Real phones via a device farm (mobile-mcp): screenshots, and release the device when done.
+Read the current report design, explanation and evidence-selection sections of the installed Conductor skill before report work (plugin source: `skills/conductor/SKILL.md`; personal entry points may be symlinks). Video is only for testing changed application behavior. Do not record static report checks, research, proposals or skill edits. Use screenshots or command evidence for those tasks. The capture procedures below apply only when that gate selects video.
+
+- **Web (when video is selected):** use an owned agent-browser session and the installed Conductor recording procedure. Check the installed version and `record --help`; do not assume recording opens a fresh context. Prefer direct MP4 where supported and verify the recording plus independent assertions.
+- **iOS Simulator:** `xcrun simctl io <device-udid> recordVideo --codec h264 <path>.mp4`.
+- **Native Android/iOS:** use the installed `mobile-app-testing` skill and route device execution to GPT-6 Astra. Mobile Next can drive supported virtual or physical devices. Use a managed recorder API or a durable owned recorder session; the lane may own it if its lifetime survives the command. Save and verify capture, stop only owned recorders/devices, and have the orchestrator verify cleanup after completion or failure.
 - **Native macOS app:** `screencapture -v <path>.mp4`.
 
 Name the output paths in your report so the orchestrator can find them. Screenshots are
