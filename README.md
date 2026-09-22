@@ -2,13 +2,13 @@
 
 Orchestration for Claude Code and Codex, with mixed-model and Codex-first profiles.
 
-The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** The default Conductor profile dispatches Claude design/judgment and Codex execution lanes with cross-family review. Conductor Core runs on Astra with optional Opus contributions and explicit same-family review coverage. Conductor Claude is the mirror image — every role on Opus 5 and Fable 5.1, for runs with no Codex quota at all.
+The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** Since 22 Sep 2026 the default Conductor profile routes most lanes to Opus 5.5 (effort ceiling `high`), keeps Fable 5.1 for adjudicating review, high-stakes writing and escalation, and uses Codex (GPT-6 Astra) for cross-family review, runtime mechanics verification, ops and business-automation lanes, and quota overflow. Conductor Core runs on Astra with optional Opus 5.5 contributions and explicit same-family review coverage. Conductor Claude runs every role on Opus 5.5 and Fable 5.1, for runs with no Codex quota at all.
 
 ## Conductor Claude
 
 Use `/conductor-claude` in Claude Code when there is no Codex lane to dispatch to: every ChatGPT account is in cooldown, Codex is unreachable on the host, or the work must stay inside one vendor. Check first — `codex-account pick` exiting 3 means every account is cooling down, while a silent `ask-codex` is usually a wrapper or sandbox failure, not a quota failure.
 
-[Claude's policy](skills/conductor-claude/SKILL.md) keeps the shared plan / work-order / final-review contract and routes mechanical work to Opus Low, implementation to Medium, terminal and infra work to High, taste to Opus xHigh, and ambiguity, synthesis and high-stakes writing to Fable High. It replaces the cross-family gate with ranked substitutes — fresh-context artifact-only review first, cross-model Fable/Opus second, one lens per reviewer third, objective gates fourth, effort asymmetry last — and forbids the `cross-family` label, reporting `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only` instead. It adds a quota budget for the single shared pool and the failure modes a single family creates.
+[Claude's policy](skills/conductor-claude/SKILL.md) keeps the shared plan / work-order / final-review contract and routes mechanical work to Opus 5.5 Low, implementation to Medium, terminal and infra work to Medium (High when hard), design work to High, and ambiguity, synthesis, high-stakes writing and review of Opus-authored work to Fable 5.1 High. It replaces the cross-family gate with ranked substitutes — fresh-context artifact-only review first, cross-model Fable/Opus second, one lens per reviewer third, objective gates fourth, effort asymmetry last — and forbids the `cross-family` label, reporting `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only` instead. It adds a quota budget for the single shared pool and the failure modes a single family creates.
 
 ## Conductor Core
 
@@ -73,16 +73,17 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 |---|---|
 | `skills/conductor` | The orchestration loop: model routing, lane table, dispatch, cross-verify, review HTML |
 | `skills/conductor-core` | Codex-first profile: Astra Low/Medium/High, work-sized fan-out, optional Opus, no Fable dependency |
-| `skills/conductor-claude` | Claude-only profile: Opus 5 + Fable 5.1 lanes, substitutes for the cross-family gate, quota budget, honest coverage labels |
-| `skills/codex-review` | Co-equal cross-family review of a diff, via the Codex CLI (GPT-6 Astra at `xhigh`) |
+| `skills/conductor-claude` | Claude-only profile: Opus 5.5 + Fable 5.1 lanes, substitutes for the cross-family gate, quota budget, honest coverage labels |
+| `skills/codex-review` | Co-equal cross-family review of a diff, via the Codex CLI (GPT-6 Astra at `medium`) |
 | `skills/mobile-app-testing` | Native Android/iOS QA: Astra device execution, sign-in diagnosis, scoped fixes, evidence and cleanup; project profiles keep it reusable |
 | `skills/codex-computer-use` | Codex (GPT-6 Astra) drives the running app and captures screenshots and video you then read |
 | `skills/agent-browser` | Local browser automation CLI |
 | `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
-| `agents/design-lane` | Opus 5 @ `xhigh` — taste-critical surfaces |
-| `agents/bulk-lane` | Opus 5 @ `low` — Claude-family idiom (skills, agent definitions) or Codex-quota overflow; ordinary bulk goes to Astra at `low`/`medium` |
-| `agents/verify-lane` | Opus 5 @ `max` — adversarial verification |
-| `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of a codex-written draft |
+| `agents/design-lane` | Opus 5.5 @ `high` — taste-critical surfaces |
+| `agents/bulk-lane` | Opus 5.5 @ `low` — mechanical sweeps, one lane per item; Astra at `medium` is the overflow |
+| `agents/exec-lane` | Opus 5.5 @ `medium` — implementation, refactors, migrations, terminal and CI work, volume writing |
+| `agents/verify-lane` | Fable 5.1 @ `high` — adversarial verification of Opus-authored work |
+| `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents) |
 | `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
 | `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
@@ -92,10 +93,10 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 Core needs an authenticated Codex runtime for its required lanes; Claude is optional. The following Claude requirements apply to the default mixed-model profile and to optional Claude lanes, not to Core completion:
 
 **Required for the Claude lanes**
-- Claude Code with access to Opus-class models. `model: "opus"` and `model: "fable"` (Fable 5.1 as of 2026-09-01) must be available on your plan, or the design/judgment/writing lanes silently fall back to your session model — which defeats the routing.
+- Claude Code with access to Opus-class models. `model: "opus"` (Opus 5.5 as of 2026-09-22) and `model: "fable"` (Fable 5.1 as of 2026-09-01) must be available on your plan, or the design/judgment/writing lanes silently fall back to your session model — which defeats the routing.
 
 **Required for the Codex lanes** (execution, `codex-review`, `codex-computer-use`)
-- Codex CLI installed and authenticated: `npm install -g @openai/codex`, then `codex login`. Set `model = "gpt-6-astra"` in `~/.codex/config.toml` (the routing assumes it; GPT-5.6 Sol is retired from every lane as of 2026-09-05).
+- Codex CLI installed and authenticated: `npm install -g @openai/codex`, then `codex login`. Set `model = "gpt-6-astra"` in `~/.codex/config.toml` (the routing assumes it).
 - Without it, cross-family verification degrades to Claude reviewing Claude — precisely the failure mode this plugin exists to avoid. Conductor will still run; the independence guarantee will not.
 - Check your own effort setting: `~/.codex/config.toml` → `model` and `model_reasoning_effort`. These are independent of the Claude session's effort.
 

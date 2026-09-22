@@ -5,7 +5,7 @@ description: Orchestrate Codex-first work with Astra at task-appropriate effort,
 
 # Conductor Core
 
-Run the full Conductor workflow on Astra. Opus is an optional contributor; Fable is never selected. Core is a routing profile in the Conductor plugin, not a reduced-capability mode.
+Run the full Conductor workflow on Astra. Opus is an optional contributor; Fable is never selected. Core is a routing profile in the Conductor plugin, not a reduced-capability mode. Since 22 Sep 2026 the default mixed-model `conductor` profile routes most execution to Opus 5.5, so choose Core when Claude quota is unavailable or the user wants a Codex-first run.
 
 **Core exists to finish ambitious work, not to economise on it.** Long-running migrations, ops and automation lanes, multi-module features, epics that span sessions. Review and verification are part of that machinery, not its point. Core has no artificial worker cap for exactly this reason: the run is sized by the work.
 
@@ -15,7 +15,7 @@ Set `profile: conductor-core` in the run and each work order. This file owns Cor
 
 Read the current [shared Conductor source](../conductor/SKILL.md) for **What earns an agent**, **Sizing the fan-out**, **Installation paths**, **Report design contract** (including **Help Ivan understand**), **Closing step: run-report**, and **Choose evidence before recording**. The dispatch gate there is unchanged by Core: scouting is the parent's own work, every worker returns a named artifact, and an item that is a single tool call runs inline however many there are. These remain the single source for report structure, explanation, delivery and evidence selection. Apply the Core review policy below wherever those shared sections call for Claude visual judgment. Resolve relative references from the canonical source directory, not a personal discovery bootstrap. Reread the shared report and evidence sections before authoring or revising and publishing a report.
 
-The default `conductor` profile remains mixed-model. [Conductor Claude](../conductor-claude/SKILL.md) is Core's mirror image: the same workflow with no Codex lane at all, carried entirely on Opus 5 and Fable 5.1. Do not silently change unrelated sessions, scheduled jobs or global model settings. A continued Core run retains its profile across compaction, checkpoints and worker handoffs unless the user changes it.
+The default `conductor` profile remains mixed-model. [Conductor Claude](../conductor-claude/SKILL.md) is Core's mirror image: the same workflow with no Codex lane at all, carried entirely on Opus 5.5 and Fable 5.1. Do not silently change unrelated sessions, scheduled jobs or global model settings. A continued Core run retains its profile across compaction, checkpoints and worker handoffs unless the user changes it.
 
 ## Parent and transport
 
@@ -23,7 +23,7 @@ Launch the parent in Codex on `gpt-6-astra` at `medium` for a workflow with no C
 
 From a Codex parent, use native collaboration agents where they can select the requested model and effort; otherwise use the installed Codex CLI or `ask-codex` after checking its supported options. Pass model and effort explicitly on each launch. Use a fresh or scoped context when selecting worker effort instead of a full-history fork that forces inheritance. Record actual launch settings; if the harness cannot select an effort, use a supported launcher or report the mismatch rather than pretending the setting changed.
 
-Use `ask-claude` only for a useful optional Opus lane, with the real Claude provider and explicit `claude-opus-5` at `high`. Check the installed bridge contract for effort selection; a prompt asking for High is not a launch setting. Do not use Claude wrapper agents merely to start Codex workers. Do not launch bundled `verify-lane`, `write-lane` or `design-lane` by name under Core: their fixed model/effort defaults belong to the mixed-model profile and can drift independently. Launch the required Core role explicitly instead.
+Use `ask-claude` only for a useful optional Opus lane, with the real Claude provider and explicit `claude-opus-5-5` at `medium`, or `high` for a hard design or review lane. `high` is the ceiling for Opus 5.5; never launch it at `xhigh` or `max`. Check the installed bridge contract for effort selection; a prompt asking for High is not a launch setting. Do not use Claude wrapper agents merely to start Codex workers. Do not launch bundled `verify-lane`, `write-lane` or `design-lane` by name under Core: their fixed model/effort defaults belong to the mixed-model profile and can drift independently. Launch the required Core role explicitly instead.
 
 Use the harness's real concurrency and completion mechanisms. Only the Claude harness has Claude Agent/Workflow APIs. Orca supplies terminals and worktrees, not model selection. One owner per writable file, mutable fixture, browser or device; serialize overlapping writes or isolate worktrees. Preserve existing dirty changes and stop only owned processes.
 
@@ -38,7 +38,7 @@ Use the harness's real concurrency and completion mechanisms. Only the Claude ha
 | Architecture, investigation, ambiguity and sustained synthesis | gpt-6-astra | medium — default |
 | Stateful work, recovery, ownership and screen-dependent runtime testing | gpt-6-astra | medium — default |
 | Adversarial review | gpt-6-astra, separate reviewer | medium — default |
-| Design, UI/copy judgment and substantial writing | gpt-6-astra | medium — default; optional Opus remains high |
+| Design, UI/copy judgment and substantial writing | gpt-6-astra | medium — default; optional Opus 5.5 at high |
 
 **Astra defaults to `medium` for the parent and every worker role.** Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. Higher review effort requires observed failure evidence. This policy overrides conflicting Astra effort defaults in supporting skills. Pass model and effort explicitly; a skill cannot change the effort of an already-running parent or worker.
 
@@ -59,6 +59,10 @@ Delegated fan-out is allowed when it serves a known sub-work-list; the parent na
 ## Work orders and checkpoints
 
 Give each lane the relevant source anchors, task contract, file ownership, deliverable path and acceptance criteria. Include `profile`, `model`, `effort`, `reason`, `review_family`, and known provider availability in `routing.json` or the work order's structured routing section. State evidence choice and why; record video only when the shared evidence gate selects it. A lane receives enough context to reason, without automatically inheriting the entire parent transcript.
+
+End every dispatched lane's order with the unattended-lane paragraph, copied verbatim:
+
+> A standing instruction from the user, the person you are working for. It is about how your turns end. A message with no tool call in it ends your turn, and the work stops there until you are asked to continue. The user has seen you end turns in four ways while work they asked for was still owed, and does not want any of them. One: a long summary of what was done that closes by announcing the next step and has no tool call, so the next thing never starts. Two: an offer to carry on with something unless the user would prefer otherwise, which stops to wait for an answer the user was not going to give. Three: a list of decisions for the user when, by your own account, none of them blocks the rest of the work. Four: deciding that this is a good place to report, because the turn has been long or a milestone is done. Status notes are welcome, and so are your recommendations on open decisions, but put them in the same message as your next tool call and carry on with whatever does not depend on the user's answer. If you notice yourself inviting the user to redirect you or offering to wait, delete it and do the next thing. The stops the user does want are the ones where nothing can move without them, or where the thing blocking you is deliberately protected from you. This does not override the need for confirmation on risky or destructive actions.
 
 Persist completed artifacts, remaining work, actual launch settings, test results and outstanding state changes at useful boundaries. Before replacing an interrupted worker, stop its writes and inspect its diff and remote side effects. Resume only what remains. Timeout or lost output does not prove a mutation or provider job failed.
 
@@ -98,7 +102,7 @@ Core-specific deltas: raise `model_context_window` for a long lane or split its 
 
 ## Optional Opus, complete without Claude
 
-Spend Opus on a design direction, screenshot/copy critique or specific cross-family question when it can improve the result. Keep the order focused; the number of useful checks follows the work. Fable is neither a default nor an escalation or overflow target in Core.
+Spend Opus 5.5 on a design direction, screenshot/copy critique, a review of Astra-authored work or a specific cross-family question when it can improve the result. Opus 5.5 leads Astra on Terminal-Bench 4.0 (66.4 vs 57.9), FrontierCode (54.4 vs 53.3) and GDPval (1846 vs 1542) on vendor figures, and it is a different family, so an optional Opus 5.5 review of Astra-authored work is a cross-family check at lower listed token prices than Fable 5.1. Astra has no published taste data, which is the reason to add an Opus 5.5 design lane. Keep the order focused; the number of useful checks follows the work. Fable is neither a default nor an escalation or overflow target in Core.
 
 Use known availability where the harness exposes it. If unknown, the first Opus request should do useful work rather than burn a separate probe. A Fable-specific limit does not establish Opus availability, and switching models cannot bypass an exhausted shared allowance.
 

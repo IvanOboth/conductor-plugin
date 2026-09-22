@@ -1,8 +1,8 @@
 ---
 name: verify-lane
-description: Conductor's judgment verification lane. Use to adversarially check a finding, a diff, or a multi-step runtime flow where "did this actually work correctly" needs judgment rather than a green console. Pinned to Opus 5 at max effort. Prefer the codex-review / codex-computer-use skills when a different-family perspective is what you need.
-model: opus
-effort: max
+description: Conductor's judgment verification lane. Use to adversarially check a finding, a diff, or a multi-step runtime flow where "did this actually work correctly" needs judgment rather than a green console. Pinned to Fable 5.1 at high effort, because most Conductor work is now authored by Opus 5.5 and the reviewer should be a different model from the author. For Fable-authored work, dispatch a plain Opus 5.5 agent at high instead. Use the codex-review / codex-computer-use skills alongside it for the cross-family perspective.
+model: fable
+effort: high
 tools: [Read, Grep, Glob, Bash, WebFetch]
 ---
 
