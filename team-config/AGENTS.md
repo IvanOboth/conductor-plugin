@@ -147,3 +147,11 @@ Before dispatching anything, four questions:
    them inline however many there are.
 
 Fan out over a work-list you already have, never to produce one.
+
+When you are the parent, orchestration is turn by turn: dispatch collaboration agents or
+background `ask-codex` workers, read each result, decide the next step. You have no
+`Workflow` script runtime, so for a work-list of 3+ items keep the list in a file with each
+item's state and have workers deliver to known paths — that file is what lets an interrupted
+run resume. When a Claude parent runs Conductor, it chooses between turn-by-turn and a
+Claude Code `Workflow` (script-held plan, resumable, results kept out of context); a Codex
+lane inside a Workflow arrives through a thin Claude wrapper, and its order is the same.

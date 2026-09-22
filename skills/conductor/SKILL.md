@@ -69,6 +69,26 @@ Decided 17 Sep 2026, measured on the live bench. Tokens are the same either way 
 
 Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs writing vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
 
+## Turn-by-turn or Workflow — pick the orchestration mode
+
+Once lanes are earned, choose who holds the plan. There are two modes, and both are legitimate:
+
+- **Turn-by-turn** — you are the orchestrator. Lanes go out as `Agent` calls (they show in the footer's agent switcher) or background `Bash` → `ask-codex` (they show as shell calls in the transcript). You decide the next step after each result, and each result lands in your context.
+- **`Workflow`** — a script is the orchestrator. The runtime runs `agent()`/`parallel()`/`pipeline()` in the background, intermediate results stay in script variables, and only the final return reaches your context. It shows as a phased progress line in the task panel and in `/workflows`.
+
+| Signal | Mode |
+|---|---|
+| 1–2 lanes, or 3 lanes of different kinds with no shared shape | Turn-by-turn |
+| The next lane's order depends on a judgment you make after reading the previous result (a spec check, a design choice, a failed lane) | Turn-by-turn — a Workflow takes no mid-run input |
+| A single Codex lane, or Codex lanes you want to adjust between | Turn-by-turn (`Bash` → `ask-codex`) |
+| An enumerated work-list of 3+ independent items (files, issues, endpoints, sources) | **Workflow** — `pipeline()` one agent per item |
+| Findings that must be adversarially verified before they are reported | **Workflow** — review → verify pipeline, so a finding verifies as soon as its review lands |
+| Competing drafts or approaches to be judged against each other | **Workflow** — `parallel()` attempts + judge agents |
+| A fix-until-green or find-until-dry loop | **Workflow** — the loop lives in the script |
+| A run long enough that an interruption would hurt | **Workflow** — completed agents resume from cache in the same session |
+
+Codex lanes inside a Workflow go through a thin wrapper agent (`model: 'opus'`, `effort: 'low'`) that runs `ask-codex` via Bash and returns the report — the wrapper adds a small Claude cost, which a work-list of 3+ items repays in resume and visibility. Mixed runs are normal: scout and hold the judgment calls turn by turn, then hand the enumerated wave to a Workflow, then review its result turn by turn. Never dispatch a pinned taste or judgment lane (`design-lane` at `xhigh`, `verify-lane`) to scout — reading config files and finding consumers is your grep, whichever mode you are in.
+
 ## What earns an agent (gate this before sizing anything)
 
 Sizing answers *how many*. This answers *whether* — and it runs first. Getting this wrong is more expensive than getting the count wrong, because a wasted agent costs its full run and returns nothing.
@@ -121,13 +141,13 @@ Match the count to the shape of the work:
 
 | Limit | Value |
 |---|---|
-| Session size guideline | `small` <5 · `medium` <15 (default) · `large` <50 · `unrestricted`. **Advice, not a cap** — a task that calls for more overrides it. Set via `workflowSizeGuideline` in settings or `/config`. |
+| Session size guideline | `small` <5 · `medium` <10 (default; `small` on Pro) · `large` <50 · `unrestricted` — per the Claude Code workflows docs. **Advice, not a cap** — a task that calls for more overrides it. Set via `workflowSizeGuideline` in settings or `/config workflowSizeGuideline=large`; the Workflow tool's own description and the `Running in background` line name the value actually in force — read it there rather than trusting a config file's claim. |
 | Concurrent agents | up to 16 (fewer on limited cores). Excess **queues** — passing 100 items still completes all 100. |
 | Total agents per run | 1,000 |
 | Items per `parallel()`/`pipeline()` call | 4,096 (hard error above, never silent truncation) |
 | Token budget | A "+500k"-style directive is a hard ceiling; `agent()` throws once spent |
 
-Claude Code flags runs above 25 agents (or ~1.5M projected tokens) as `Large workflow` in the task panel. That warning is advisory — it doesn't pause anything. If the work-list justifies the count, proceed; if you bound coverage for cost (top-N, sampling, no-retry), **`log()` what you dropped** so a partial sweep never reads as a complete one.
+Claude Code flags runs above 25 agents (or your chosen guideline's count) or ~1.5M projected tokens as `Large workflow` in the task panel. That warning is advisory — it doesn't pause anything. If the work-list justifies the count, proceed; if you bound coverage for cost (top-N, sampling, no-retry), **`log()` what you dropped** so a partial sweep never reads as a complete one.
 
 The restraint elsewhere in this skill — "don't force a task to split", "don't dispatch what a few tool calls would finish" — is about *unnecessary* splits and orchestrator laziness. It is not a reason to under-serve genuinely parallel work. But it applies with full force to discovery: width is for executing and verifying a known work-list, never for assembling one.
 
@@ -255,7 +275,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/conductor-report.py" --start \
 
 Then launch independent lanes in the same turn:
 
-- Design, long-horizon and high-stakes writing lanes via the `Agent` tool (`model: "opus"` / `"fable"`, or the bundled `design-lane` / `write-lane` agents) or a `Workflow` script (`agent(prompt, {model: 'opus', effort: 'xhigh'})`). Workflow when there's fan-out/pipelining — it's also where you can set per-lane effort inline; plain `Agent` for 1-2 lanes.
+- Design, long-horizon and high-stakes writing lanes via the `Agent` tool (`model: "opus"` / `"fable"`, or the bundled `design-lane` / `write-lane` agents) or a `Workflow` script (`agent(prompt, {model: 'opus', effort: 'xhigh'})`). Pick the mode with **Turn-by-turn or Workflow** above; Workflow is also where you can set per-lane effort inline.
 - Codex lanes via `Bash` with `run_in_background: true`:
   ```bash
   ask-codex --effort medium --context work-order.md --output <scratchpad>/codex-N-report.md "Execute this work order. Your final message is the report: files changed, evidence, what you did not do."

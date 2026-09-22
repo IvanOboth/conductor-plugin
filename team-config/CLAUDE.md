@@ -193,6 +193,17 @@ Four questions before any dispatch:
 **Fan out over a work-list you already have, never to produce one.** Width belongs
 downstream of the cheap grep that enumerates the items.
 
+### Turn-by-turn or Workflow
+
+Two orchestration modes. **Turn-by-turn** — `Agent` calls or background `ask-codex`, you
+read each result and decide the next step — for 1–3 lanes of different kinds, when the next
+order depends on a judgment you make after a result, and for Codex lanes. **`Workflow`** —
+a script holds the plan and results stay out of your context — for an enumerated work-list
+of 3+ items, review → verify pipelines, competing drafts plus judges, fix-until-green loops,
+and runs long enough that resuming from cache matters. Codex lanes inside a Workflow need a
+thin `opus`/`low` wrapper agent. Scouting is yours in both modes: never send a pinned taste
+or judgment lane to read config files.
+
 ### Sizing the fan-out
 
 Count follows the work, not a habit. **One agent per independent item** — 20 files to
@@ -201,6 +212,8 @@ sweep is 20 agents, not 3; 5 items get 5 agents, not 20. The size guideline is a
 against the ceiling, never the reverse. Never batch items into one agent to keep the count
 down — that drops coverage silently. Spend width where agents are cheap; keep
 `xhigh`/`max` lanes narrow. If you bound coverage for cost, say what you dropped.
+Size guideline values (`workflowSizeGuideline`): `small` <5 · `medium` <10 (default) ·
+`large` <50 · `unrestricted` — advice, not a cap.
 
 ## Reaching the other family
 
