@@ -72,14 +72,19 @@ design and copy in a UI. **Writing** is prose a human reads and judges the autho
 | opus-5.5    | 9         | 9.3       | 9.3      | 7.5 †        | 9 †   | 8.5 †   |
 | fable-5.1   | 5         | 9.2       | 8.8      | 8.5          | 9     | 9       |
 | gpt-6-astra | 8         | 8.8       | 9.0      | 9.5          | 6     | 7       |
+| gpt-6-sol   | 9.5       | 8.3 ‡     | 8.4 ‡    | 9 ‡          | 5 ‡   | 6.5 ‡   |
+| gpt-6-luna  | 10        | 7.2 ‡     | 7.4 ‡    | 8.5 ‡        | 4 ‡   | 6 ‡     |
 
 † Provisional (22 Sep 2026): the only evidence so far is Anthropic's own and early-tester
 quotes. Re-rate after two weeks of lanes. Opus 5 is retired from routing; the `opus` alias
 resolves to Opus 5.5 (`claude-opus-5-5`) and `fable` resolves to Fable 5.1
 (`claude-fable-5-1`).
 
+‡ Provisional (23 Sep 2026): GPT-6 Sol and GPT-6 Luna were released on 22 Sep 2026. These ratings are provisional internal routing estimates, not vendor or Artificial Analysis scores; steerability, taste and writing are unmeasured for both. Re-rate by 7 Oct 2026.
+
 List prices per Mtok as of Sep 2026: `opus-5.5` $4/$20, cache reads $0.20 · `fable-5.1`
-$10/$50, cache reads $0.25 · `gpt-6-astra` $10/$50, cache reads $1. On a ChatGPT
+$10/$50, cache reads $0.25 · `gpt-6-astra` $10/$50, cache reads $1 · `gpt-6-sol` $2/$10 ·
+`gpt-6-luna` $0.10/$0.50. On a ChatGPT
 subscription a Codex lane spends 5-hour-window quota rather than dollars.
 
 **What changed on 22 Sep 2026: Opus 5.5 replaced Opus 5 and is the default model for
@@ -108,10 +113,31 @@ practitioner steerability data exists yet.
 - business-workflow automation, runbooks and ops (AutomationBench 41.4 vs 40.0;
   SRE-Bench 88 has no Opus 5.5 figure yet);
 - agentic scientific research (Terminal-Bench-Science 64.6 vs 58.7);
-- quota overflow and availability insurance.
+- hard overflow (work Sol is not strong enough for) and availability insurance.
 
-Codex lanes on a ChatGPT subscription spend quota, not dollars, which still makes Astra
-the right place for volume when Claude quota is tight.
+Codex lanes on a ChatGPT subscription spend quota, not dollars, which makes Codex the
+right place for volume when Claude quota is tight.
+
+**GPT-6 Sol and GPT-6 Luna (22 Sep 2026): the cheap Codex tiers.** Both are in the Codex
+model list under the ChatGPT login, with a 272K window.
+- **Sol** costs $2/$10 per Mtok, a fifth of Astra's price. On OpenAI's charts it trails
+  Astra everywhere: FrontierCode 49.3 vs 53.3, AutomationBench 33.2 vs 41.4, OSWorld 2.0
+  64.4 vs 73.5, DeepSWE 68.8. Artificial Analysis puts its intelligence level with GPT-5.6
+  Sol at half the cost, $1.06 per index task at `max`. On the vendor figures Opus 5.5 leads both on FrontierCode (54.4 vs Astra 53.3 and Sol 49.3); Astra leads Opus on AutomationBench and Terminal-Bench-Science. None of these results establish performance at our configured efforts.
+- **Luna** costs $0.10/$0.50 per Mtok. OpenAI's vendor figures report DeepSWE 66.6 at $0.22 per task and OSWorld 2.0 52.7 at $0.27 per task; Artificial Analysis reports $0.07 per index task.
+  OpenAI says it gains most from effort.
+
+Sol takes the Codex overflow: mechanical sweeps and well-specified implementation when
+Claude quota is tight, and a cheap parallel second attempt. Luna takes bounded,
+high-volume work: intake candidate packets, classifying or extracting over many items,
+and first-pass checks whose result a stronger model reads. Neither one reviews, verifies
+or makes judgment calls; those Codex roles stay with Astra. Sol runs at `medium`. Luna
+runs at `high`, because a Luna task costs cents and effort is where it gains.
+
+**Always pass the Codex model.** The Codex default model and effort are set per account
+home (`~/.codex` or a `CODEX_HOME`), and different homes can default to different models.
+A lane that leaves out `-m` gets whichever model its account home defaults to. Every lane
+passes `-m` and `--effort`.
 
 **Fable 5.1's place.** Anthropic's rule is to start with Opus 5.5 and move to Fable 5.1
 when Opus 5.5 still falls short on demanding reasoning or long-horizon work. Anthropic
@@ -143,10 +169,9 @@ something up.
   skills, and cross-family review only exists if the reviewing lanes are the other family.
 - **Implementation, refactors, migrations, terminal, CI and infra:** Opus 5.5 at
   `medium`, or `high` when the lane is hard. Use Astra at `medium` when the lane is ops-,
-  runbook- or business-automation-shaped, when Claude quota is tight, or as a parallel
-  second attempt.
-- **Mechanical sweeps:** Opus 5.5 at `low` via `bulk-lane`, one lane per item. Astra at
-  `low` is the overflow.
+  runbook- or business-automation-shaped. When Claude quota is tight, use Sol at `medium` for well-specified implementation and mechanical sweeps, or as a cheap parallel second attempt; route ambiguous or stateful execution to Astra at `medium`, and keep design judgment with Claude.
+- **Mechanical sweeps:** Opus 5.5 at `low` via `bulk-lane`, one lane per item. Sol at
+  `medium` is the overflow, and Luna at `high` takes sweeps that only classify or extract.
 - **Messy repo-level bug hunts:** Opus 5.5 at `high`. The second attempt is Fable 5.1 at
   `high` or Astra at `medium`.
 - **Long-horizon lanes** (hours, or across sessions): Opus 5.5 at `medium`/`high`. Early
@@ -180,6 +205,9 @@ something up.
 - **Runtime verification (judgment while driving):** Opus 5.5 driving `agent-browser`
   (vendor figure: OSWorld 2.0 81.8), or Astra at `medium` when the flow is mechanical and
   Codex quota is free.
+- **High-volume bounded work** (intake packets, classifying or extracting over many
+  items, first-pass checks): Luna at `high`. A stronger model reads its output before
+  anything acts on it.
 - **Cross-family routing is also availability insurance.** A setup with every lane on one
   provider has a single point of failure.
 - **Never pay for Fast mode on a dispatched lane.** It buys the same intelligence at a
@@ -258,11 +286,14 @@ Size guideline values (`workflowSizeGuideline`): `small` <5 · `medium` <10 (def
 
 ## Reaching the other family
 
-`gpt-6-astra` is reachable only through the Codex CLI. Prefer the dedicated skills —
-`codex-review` for an independent diff review, `codex-computer-use` for driving the
-running app. For anything else, shell out to `ask-codex` (`--effort LEVEL` per lane,
-`--readonly` for pure investigation, `--context FILE` for spec-driven work, `--output FILE`
-to skip stdout parsing).
+`gpt-6-astra`, `gpt-6-sol` and `gpt-6-luna` are reachable only through the Codex CLI.
+Prefer the dedicated skills — `codex-review` for an independent diff review (Astra),
+`codex-computer-use` for driving the running app (Astra). For anything else, shell out to
+`ask-codex` (`-m MODEL` and `--effort LEVEL` on every lane, `--readonly` for pure
+investigation, `--context FILE` for spec-driven work, `--output FILE` to skip stdout
+parsing): for example `ask-codex -m gpt-6-sol --effort medium --context order.md --output
+result.md "Execute the attached work order."`, or `codex exec -m gpt-6-luna -c model_reasoning_effort=high "<prompt>"`. Always pass `-m`;
+account homes can default to different models.
 
 **Read `~/.codex/config.toml` rather than assuming its contents** — `model` and
 `model_reasoning_effort` there are independent of the Claude session's effort, and they

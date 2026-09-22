@@ -2,7 +2,7 @@
 
 Orchestration for Claude Code and Codex, with mixed-model and Codex-first profiles.
 
-The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** Since 22 Sep 2026 the default Conductor profile routes most lanes to Opus 5.5 (effort ceiling `high`), keeps Fable 5.1 for adjudicating review, high-stakes writing and escalation, and uses Codex (GPT-6 Astra) for cross-family review, runtime mechanics verification, ops and business-automation lanes, and quota overflow. Conductor Core runs on Astra with optional Opus 5.5 contributions and explicit same-family review coverage. Conductor Claude runs every role on Opus 5.5 and Fable 5.1, for runs with no Codex quota at all.
+The main loop stays the orchestrator at `high` effort and never delegates three things: **the plan, the work orders, the final review.** Since 22 Sep 2026 the default Conductor profile routes most lanes to Opus 5.5 (effort ceiling `high`), keeps Fable 5.1 for adjudicating review, high-stakes writing and escalation, and uses Codex for the rest: GPT-6 Astra for cross-family review, runtime mechanics verification and ops or business-automation lanes, GPT-6 Sol as the cheap overflow for sweeps and well-specified implementation, and GPT-6 Luna for bounded high-volume items such as intake packets. Every Codex lane names its model with `-m`. Conductor Core runs on Astra with optional Opus 5.5 contributions and explicit same-family review coverage. Conductor Claude runs every role on Opus 5.5 and Fable 5.1, for runs with no Codex quota at all.
 
 ## Conductor Claude
 

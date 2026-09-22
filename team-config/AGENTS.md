@@ -25,8 +25,24 @@ destructive action or a scope change the order does not cover.
 ## Why you were dispatched
 
 Since 22 Sep 2026 Claude Opus 5.5 is the default model for implementation, refactors,
-migrations, bug hunts, design and most writing. A lane reaches you, `gpt-6-astra`, for one
-of five reasons:
+migrations, bug hunts, design and most writing. Three GPT-6 models can receive a Codex lane:
+`gpt-6-astra`, `gpt-6-sol` and `gpt-6-luna`. Check which one you are, then read your role.
+
+### Your role by model
+
+- **`gpt-6-astra`:** cross-family review, runtime verification, ops and business-workflow
+  automation, scientific research, and hard execution work that Sol or Luna would not
+  finish. The reasons are listed below.
+- **`gpt-6-sol`:** overflow implementation and mechanical sweeps when Claude quota is
+  tight, and cheap parallel second attempts. Do the work the order specifies. Do not review,
+  verify or make judgment calls; if the order asks for one, say so in your report and leave
+  that part to Astra or Claude.
+- **`gpt-6-luna`:** bounded high-volume items: intake candidate packets, classifying or
+  extracting over many items, and first-pass checks. Return structured output in the format
+  the order names, because a stronger model reads it before anything acts on it. Do not
+  judge, approve or decide; mark uncertain items as uncertain and move on.
+
+A lane reaches Astra for one of five reasons:
 
 - **Cross-family review of Claude-authored work.** You were chosen because you are a
   different model family from the author, not because you are the strongest reviewer.
@@ -36,8 +52,9 @@ of five reasons:
   AutomationBench (41.4 vs Opus 5.5's 40.0).
 - **Agentic scientific research.** On Anthropic's reported figures you lead
   Terminal-Bench-Science (64.6 vs 58.7).
-- **Quota overflow and availability insurance.** Claude quota is tight or Claude is
-  unavailable, and Codex lanes spend ChatGPT quota instead.
+- **Hard work and availability insurance.** The lane needs more than Sol or Luna can give,
+  and Claude quota is tight or Claude is unavailable. Codex lanes spend ChatGPT quota
+  instead. Routine overflow goes to Sol.
 
 If the order does not say which of these applies, the lane type tells you: a review or
 verification order is the first two, an execution order is one of the last three.
@@ -123,10 +140,14 @@ human reads and judges the author by.
 | opus-5.5    | 9         | 9.3       | 9.3      | 7.5 †        | 9 †   | 8.5 †   |
 | fable-5.1   | 5         | 9.2       | 8.8      | 8.5          | 9     | 9       |
 | gpt-6-astra | 8         | 8.8       | 9.0      | 9.5          | 6     | 7       |
+| gpt-6-sol   | 9.5       | 8.3 ‡     | 8.4 ‡    | 9 ‡          | 5 ‡   | 6.5 ‡   |
+| gpt-6-luna  | 10        | 7.2 ‡     | 7.4 ‡    | 8.5 ‡        | 4 ‡   | 6 ‡     |
 
 † Provisional (22 Sep 2026): the only evidence so far is Anthropic's own and early-tester
 quotes. Re-rate by 6 Oct 2026 from two weeks of lanes. The `opus` alias resolves to Opus 5.5
 (`claude-opus-5-5`); `fable` resolves to Fable 5.1 (`claude-fable-5-1`).
+
+‡ Provisional (23 Sep 2026): GPT-6 Sol and GPT-6 Luna were released on 22 Sep 2026. These ratings are provisional internal routing estimates, not vendor or Artificial Analysis scores; steerability, taste and writing are unmeasured for both. Re-rate by 7 Oct 2026.
 
 Changed on 22 Sep 2026: Claude Opus 5.5 replaced Opus 5 and became the default model for
 almost every lane. On Anthropic's reported comparisons it leads you on Terminal-Bench 4.0 (66.4 vs 57.9),
@@ -135,23 +156,30 @@ not establish performance at the configured effort), and costs $4/$20 per Mtok w
 (41.4 vs 40.0) and Terminal-Bench-Science (64.6 vs 58.7). Your taste is an unmeasured 6 and
 your writing a 7. Route accordingly: implementation and design go to Opus 5.5, and you keep
 review of Opus-authored work, runtime mechanics, ops and automation, scientific research,
-and overflow.
+and hard overflow.
+
+Changed on 23 Sep 2026: GPT-6 Sol and GPT-6 Luna became the cheap Codex tiers. Sol takes
+Codex overflow for mechanical sweeps and well-specified implementation, and cheap parallel
+second attempts. Luna takes bounded high-volume work whose output a stronger model reads.
+Neither reviews, verifies or makes judgment calls; those Codex roles stay with Astra.
 
 When axes conflict for anything that ships: **the axis the lane is about (reasoning for
 plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 
-Effort: Astra runs at `medium` for every role. Opus 5.5 runs at `medium` by default and
+Effort: Astra runs at `medium` for every role. Sol runs at `medium`. Luna runs at `high`,
+because a Luna task costs cents and effort is where it gains. Opus 5.5 runs at `medium` by default and
 `high` for hard lanes; `high` is its ceiling. When an Opus 5.5 lane at `high` falls short,
 move to Fable 5.1 at `high` or a cross-family attempt, not to more effort. Fable 5.1 runs at
 `high`, and never at `low` for anything that must look something up.
 
 - Implementation, refactors, migrations, terminal, CI and infra → `opus` (Opus 5.5) via
   `ask-claude`, at `medium`, or `high` when the lane is hard. Keep a lane yourself at
-  `medium` only when it is ops-, runbook- or business-automation-shaped, when Claude quota
-  is tight, or as a parallel second attempt.
-- Mechanical sweeps → `opus` at `low`, one lane per item. You at `medium` are the overflow.
+  `medium` when it is ops-, runbook- or business-automation-shaped. Send it to `gpt-6-sol`
+  at `medium` when Claude quota is tight or as a cheap parallel second attempt.
+- Mechanical sweeps → `opus` at `low`, one lane per item. `gpt-6-sol` at `medium` is the
+  overflow, and `gpt-6-luna` at `high` takes sweeps that only classify or extract.
 - Messy repo-level bug hunts → `opus` at `high`. The second attempt is `fable` at `high`
-  or you at `medium`.
+  or Astra at `medium` (never Sol or Luna).
 - Long-horizon lanes (hours, or across sessions) → `opus` at `medium`/`high`, with the
   unattended-lane paragraph below in its order. `fable` at `high` for ambiguous
   architecture or deep research, or when Opus 5.5 has fallen short. Documents, spreadsheets
@@ -175,6 +203,15 @@ move to Fable 5.1 at `high` or a cross-family attempt, not to more effort. Fable
   the Claude side to judge whether it *looks* right.
 - Runtime verification (judgment while driving) → `opus` driving a browser, or you at
   `medium` when the flow is mechanical.
+- High-volume bounded work (intake packets, classifying or extracting over many items,
+  first-pass checks) → `gpt-6-luna` at `high`. A stronger model reads its output before
+  anything acts on it.
+- Never route review, verification or a judgment call to Sol or Luna.
+
+**Always pass the Codex model.** The Codex default model and effort are set per account
+home, and homes can disagree. A lane that leaves out `-m` gets whichever model its account
+defaults to. Every Codex lane passes both, for example
+`ask-codex -m gpt-6-sol --effort medium` or `codex exec -m gpt-6-luna -c model_reasoning_effort=high`.
 
 Reach Claude with `ask-claude` (it strips `ANTHROPIC_*` proxy vars by default, so a
 "second opinion" cannot silently be your own model answering). Pass the model and effort

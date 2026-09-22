@@ -1,11 +1,11 @@
 ---
 name: conductor-core
-description: Orchestrate Codex-first work with Astra at task-appropriate effort, work-sized parallel lanes, and optional Opus design or review. Use for Conductor Core, Codex-first orchestration, or Conductor without a Fable dependency.
+description: Orchestrate Codex-first work with Astra owning the run, Sol and Luna as cheaper worker tiers, work-sized parallel lanes, and optional Opus design or review. Use for Conductor Core, Codex-first orchestration, or Conductor without a Fable dependency.
 ---
 
 # Conductor Core
 
-Run the full Conductor workflow on Astra. Opus is an optional contributor; Fable is never selected. Core is a routing profile in the Conductor plugin, not a reduced-capability mode. Since 22 Sep 2026 the default mixed-model `conductor` profile routes most execution to Opus 5.5, so choose Core when Claude quota is unavailable or the user wants a Codex-first run.
+Run the full Conductor workflow on Codex, with Astra as the owner. Sol and Luna take the cheaper lanes named in the routing table. Opus is an optional contributor; Fable is never selected. Core is a routing profile in the Conductor plugin, not a reduced-capability mode. Since 22 Sep 2026 the default mixed-model `conductor` profile routes most execution to Opus 5.5, so choose Core when Claude quota is unavailable or the user wants a Codex-first run.
 
 **Core exists to finish ambitious work, not to economise on it.** Long-running migrations, ops and automation lanes, multi-module features, epics that span sessions. Review and verification are part of that machinery, not its point. Core has no artificial worker cap for exactly this reason: the run is sized by the work.
 
@@ -21,7 +21,7 @@ The default `conductor` profile remains mixed-model. [Conductor Claude](../condu
 
 Launch the parent in Codex on `gpt-6-astra` at `medium` for a workflow with no Claude dependency. The parent owns grounding, the plan, work orders, integration and final acceptance. A skill cannot switch the already-running parent model. If invoked from Claude Code, explain that the current parent still consumes Claude capacity; use its available Codex bridge for workers, and preserve a resumable handoff for an Astra parent rather than promising Claude-free continuity from that session.
 
-From a Codex parent, use native collaboration agents where they can select the requested model and effort; otherwise use the installed Codex CLI or `ask-codex` after checking its supported options. Pass model and effort explicitly on each launch. Use a fresh or scoped context when selecting worker effort instead of a full-history fork that forces inheritance. Record actual launch settings; if the harness cannot select an effort, use a supported launcher or report the mismatch rather than pretending the setting changed.
+From a Codex parent, use native collaboration agents where they can select the requested model and effort; otherwise use the installed Codex CLI or `ask-codex` after checking its supported options. Pass model (`-m gpt-6-astra`, `-m gpt-6-sol` or `-m gpt-6-luna`) and effort explicitly on each launch. Use a fresh or scoped context when selecting worker effort instead of a full-history fork that forces inheritance. Record actual launch settings; if the harness cannot select an effort, use a supported launcher or report the mismatch rather than pretending the setting changed.
 
 Use `ask-claude` only for a useful optional Opus lane, with the real Claude provider and explicit `claude-opus-5-5` at `medium`, or `high` for a hard design or review lane. `high` is the ceiling for Opus 5.5; never launch it at `xhigh` or `max`. Check the installed bridge contract for effort selection; a prompt asking for High is not a launch setting. Do not use Claude wrapper agents merely to start Codex workers. Do not launch bundled `verify-lane`, `write-lane` or `design-lane` by name under Core: their fixed model/effort defaults belong to the mixed-model profile and can drift independently. Launch the required Core role explicitly instead.
 
@@ -31,16 +31,22 @@ Use the harness's real concurrency and completion mechanisms. Only the Claude ha
 
 | Work | Model | Effort and reason |
 |---|---|---|
-| Grounding, plan, work orders, integration, final acceptance | gpt-6-astra | medium — default |
-| Exact mechanical edits and repetitive transformations | gpt-6-astra | medium — default; low may be selected with a task-specific reason |
-| Well-specified implementation, refactors and ordinary fixes | gpt-6-astra | medium — default |
-| Runtime replay with known steps and assertions | gpt-6-astra | medium — default |
+| Grounding, plan, work orders, integration, final acceptance | gpt-6-astra | medium — default; the parent seat |
 | Architecture, investigation, ambiguity and sustained synthesis | gpt-6-astra | medium — default |
-| Stateful work, recovery, ownership and screen-dependent runtime testing | gpt-6-astra | medium — default |
+| Hard implementation: stateful work, recovery, ownership, unclear scope | gpt-6-astra | medium — default |
+| Runtime replay with known steps and assertions | gpt-6-astra | medium — default |
+| Screen-dependent runtime testing and computer use | gpt-6-astra | medium — default |
 | Adversarial review | gpt-6-astra, separate reviewer | medium — default |
 | Design, UI/copy judgment and substantial writing | gpt-6-astra | medium — default; optional Opus 5.5 at high |
+| Well-specified implementation, refactors, ordinary fixes and routine execution with no runtime check | gpt-6-sol | medium — about a fifth of Astra's token price |
+| Exact mechanical edits with anchors and repetitive transformations | gpt-6-luna | high — Luna gains most from effort and a task costs cents |
+| Intake packets, classification or extraction over many items | gpt-6-luna | high — a stronger model reads the output before anything acts on it |
 
-**Astra defaults to `medium` for the parent and every worker role.** Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. Higher review effort requires observed failure evidence. This policy overrides conflicting Astra effort defaults in supporting skills. Pass model and effort explicitly; a skill cannot change the effort of an already-running parent or worker.
+**Astra owns the run.** Sol and Luna are worker tiers only. Neither reviews, verifies, runs a runtime or computer-use check, or makes a judgment call; those roles stay with Astra. A Sol or Luna lane whose work turns out ambiguous or stateful goes back to the parent for re-routing to Astra. Sol and Luna figures are provisional (released 22 Sep 2026; re-rate by 7 Oct 2026).
+
+**Astra and Sol default to `medium`; Luna defaults to `high`.** Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. Higher review effort requires observed failure evidence. This policy overrides conflicting Astra effort defaults in supporting skills. A skill cannot change the effort of an already-running parent or worker.
+
+**Always pass the Codex model and effort.** Account configurations can differ, so the default model is not a routing decision. A lane launched without `-m` gets whichever model its rotated account defaults to. Every launch passes both, for example `ask-codex -m gpt-6-sol --effort medium …` or `codex exec -m gpt-6-luna -c model_reasoning_effort=high …`.
 
 Escalate when a concrete unresolved problem warrants it, using supported effort levels and recording why. Core has no fixed retry count or escalation budget: persist through meaningful progress, change the approach when evidence disproves it, and checkpoint genuine external blockers. Repeating unchanged failed calls is not progress.
 
@@ -72,13 +78,13 @@ The full run. Steps 1, 4 and 5 belong to the parent and are never delegated.
 
 **1. Plan — parent.** Scout the code yourself with reads, searches and commands; delegated discovery costs a full context per worker and answers worse than the command you could have run. Decompose into work orders carrying exact anchors, the task contract, file ownership, the deliverable path, the acceptance criteria, and the structured routing block (`profile`, `model`, `effort`, `reason`, `review_family`). Maintain a global work-list: queued, running, completed, blocked.
 
-**2. Dispatch — parallel.** Launch each independent item as its own lane, using the harness's real concurrency: native collaboration agents where they can select the requested model and effort, otherwise the Codex CLI or `ask-codex` with model and effort passed explicitly on every launch. Orca supplies worktrees and terminals; the command passed to the terminal determines the worker model. Use a fresh or scoped context per worker rather than a full-history fork that forces inheritance.
+**2. Dispatch — parallel.** Launch each independent item as its own lane, using the harness's real concurrency: native collaboration agents where they can select the requested model and effort, otherwise the Codex CLI or `ask-codex` with `-m` and effort passed explicitly on every launch, using the routing table's model for the item. Orca supplies worktrees and terminals; the command passed to the terminal determines the worker model. Use a fresh or scoped context per worker rather than a full-history fork that forces inheritance.
 
 Queue what exceeds available concurrency instead of dropping it, and continue the agreed coverage as capacity frees. One owner per writable file, mutable fixture, browser or device; serialize overlapping writes or isolate worktrees. Respect Bench heavy-work admission — a deferral is not permission to bypass it with parallel retries.
 
 Wait using the harness's real completion mechanism: a Codex parent resumes a running tool session with its wait/poll API; a Claude parent is re-invoked on completion and should not poll. Do useful independent work meanwhile. A timeout or lost output does not prove a mutation or a provider job failed — inspect before replacing a worker.
 
-**3. Verify.** Relevant project checks and independent runtime assertions establish behavior; a worker's prose does not. Route the adversarial pass to a separate Astra reviewer at `medium` with the requirements and the final diff in fresh context, never the author's verdict. Add an Opus lane where its judgment improves the result and it is available. Label coverage honestly per the policy below.
+**3. Verify.** Relevant project checks and independent runtime assertions establish behavior; a worker's prose does not. Route the adversarial pass to a separate Astra reviewer at `medium` with the requirements and the final diff in fresh context, never the author's verdict. Sol and Luna never take this step. An Astra review of Sol- or Luna-authored work is same-family and is labelled so. Add an Opus lane where its judgment improves the result and it is available. Label coverage honestly per the policy below.
 
 **4. Review and integrate — parent.** Read the diff, the artifacts and the actual verification output before accepting anything. Send rejected work back as a revised order stating what was wrong and what correct looks like. Merge the lanes yourself, resolve conflicts yourself, and run the gates the change actually calls for. Checkpoint completed artifacts, remaining work, actual launch settings and outstanding state changes at useful boundaries.
 
@@ -88,7 +94,7 @@ Wait using the harness's real completion mechanism: a Codex parent resumes a run
 
 - **State the lane's boundaries in the order.** Scope, ownership, deliverable, acceptance, and whether the lane may fan out. Delegated fan-out is allowed when it serves a known sub-work-list; the parent names that scope and ownership so children do not duplicate assignments.
 - **Workers checkpoint.** A lane that dies on a provider limit leaves no report. Long write lanes commit or persist their artifact as they go.
-- **Raise the window for a long lane.** Astra's Codex context is 272K by default; raise it per lane with `-c model_context_window=…` or split the order at ~200K.
+- **Raise the window for a long lane.** Astra's, Sol's and Luna's Codex context is 272K by default; raise it per lane with `-c model_context_window=…` or split the order at ~200K.
 - **No self-verification scaffolding in orders.** Verification lives in step 3, which is the parent's.
 - **When you bound coverage for a real limit, record what you dropped** so a partial sweep never reads as a complete one.
 
@@ -102,7 +108,7 @@ Core-specific deltas: raise `model_context_window` for a long lane or split its 
 
 ## Optional Opus, complete without Claude
 
-Spend Opus 5.5 on a design direction, screenshot/copy critique, a review of Astra-authored work or a specific cross-family question when it can improve the result. Opus 5.5 leads Astra on Terminal-Bench 4.0 (66.4 vs 57.9), FrontierCode (54.4 vs 53.3) and GDPval (1846 vs 1542) on vendor figures, and it is a different family, so an optional Opus 5.5 review of Astra-authored work is a cross-family check at lower listed token prices than Fable 5.1. Astra has no published taste data, which is the reason to add an Opus 5.5 design lane. Keep the order focused; the number of useful checks follows the work. Fable is neither a default nor an escalation or overflow target in Core.
+Spend Opus 5.5 on a design direction, screenshot/copy critique, a review of Astra-, Sol- or Luna-authored work or a specific cross-family question when it can improve the result. Opus 5.5 leads Astra on Terminal-Bench 4.0 (66.4 vs 57.9), FrontierCode (54.4 vs 53.3) and GDPval (1846 vs 1542) on vendor figures, and it is a different family, so an optional Opus 5.5 review of Astra-authored work is a cross-family check at lower listed token prices than Fable 5.1. Astra has no published taste data, which is the reason to add an Opus 5.5 design lane. Keep the order focused; the number of useful checks follows the work. Fable is neither a default nor an escalation or overflow target in Core.
 
 Use known availability where the harness exposes it. If unknown, the first Opus request should do useful work rather than burn a separate probe. A Fable-specific limit does not establish Opus availability, and switching models cannot bypass an exhausted shared allowance.
 
@@ -112,9 +118,9 @@ Opus unavailability does not create an approval gate or block otherwise accepted
 
 ## Review and acceptance
 
-The implementing worker's self-report is a claim. The orchestrator reads the diff, relevant artifacts and actual verification output before acceptance. Use a separate Astra reviewer at `medium` for substantive work, with the requirements and final diff in fresh context; avoid feeding it the author's verdict as the answer. The reviewer should seek counterexamples, missing requirements and unsupported evidence. Recheck after fixes when the findings or changed scope warrant it.
+The implementing worker's self-report is a claim. The orchestrator reads the diff, relevant artifacts and actual verification output before acceptance. Use a separate Astra reviewer at `medium` for substantive work, including work authored by Sol or Luna, with the requirements and final diff in fresh context; avoid feeding it the author's verdict as the answer. The reviewer should seek counterexamples, missing requirements and unsupported evidence. Recheck after fixes when the findings or changed scope warrant it.
 
-Keep review coverage precise: `same-family` for Astra checking Astra, `cross-family` for a real Opus review of Astra work or Astra review of Opus work, and `orchestrator-only` for inline work without a separate reviewer. Different effort levels do not create different model families. An optional Opus design critique does not turn the entire implementation into cross-family-reviewed code; name what it covered.
+Keep review coverage precise: `same-family` for Astra checking Astra, Sol or Luna work (all three are GPT-6), `cross-family` for a real Opus 5.5 review of Astra, Sol or Luna work or Astra review of Opus work, and `orchestrator-only` for inline work without a separate reviewer. Different effort levels do not create different model families. An optional Opus design critique does not turn the entire implementation into cross-family-reviewed code; name what it covered.
 
 Relevant project checks and independent runtime assertions establish behavior; review prose and screenshots alone do not prove correctness. For UI, Astra can implement and judge against the existing design system, explicit visual references and acceptance criteria, while checking accessibility and task flows. Prefer Opus judgment when useful and available; when absent, deliver the work with an honest same-family design-review label. Do not claim equivalent design quality or defer solely because Claude is missing.
 
