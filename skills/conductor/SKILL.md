@@ -1,10 +1,9 @@
 ---
 name: conductor
 description: Coordinate mixed-model work across Claude Code and Codex. Keep the current main agent responsible for grounding, work orders, integration and final acceptance; delegate bounded execution and independent review when worthwhile. Produce readable explanatory HTML reports with evidence chosen for the task. Use for /conductor, $conductor, "conduct this", "orchestrate at high", "mixed-model build", "use opus + codex", "use Claude and Codex", "have codex verify", "have codex write the blocks", "writing lane", "mixed-model ultracode", or a multi-stream build requiring independent implementation and review.
-effort: high
 ---
 
-# Conductor — mixed-model orchestration at `high`
+# Conductor — mixed-model orchestration
 
 ## Profile scope
 
@@ -12,11 +11,13 @@ This entry point selects the default mixed-model profile. For Codex-first orches
 
 **What this is for.** Conductor exists to accomplish work that is too large, too long-running or too multi-stranded for one agent in one pass — a migration across a repository, a feature with design and data and copy strands, an epic that spans sessions, a research or document build that runs for hours. The unit of ambition is the *run*, not the turn. Everything below — the work orders, the lanes, the review gates, the report — is machinery for holding a large piece of work together well enough that it finishes and can be trusted. **Verification is a part of that machinery, not its purpose.** The restraint sections exist so the capacity goes where it produces work, and are not a reason to attempt less.
 
-**The premise.** Ultracode is not a model — it's `xhigh` reasoning plus a standing "workflow everything, cost be damned" instruction. You don't need either to fan out: the `Workflow` and `Agent` tools work at any effort. Conductor gets Ultracode-grade output for a fraction of the cost by keeping the main loop at `high`, invoking fan-out **on-demand**, and spending the expensive/high-judgment tokens only where judgment lives — decomposition, work orders, review, integration.
+**The premise.** Ultracode is not a model — it's `xhigh` reasoning plus a standing "workflow everything, cost be damned" instruction. You don't need either to fan out: the `Workflow` and `Agent` tools work at any effort. Conductor gets Ultracode-grade output for a fraction of the cost by keeping an Astra main loop at `medium` (Claude at `high`), invoking fan-out **on-demand**, and spending the expensive/high-judgment tokens only where judgment lives — decomposition, work orders, review, integration.
 
 **The orchestrator never delegates three things: the plan, the work orders, the final review.** Everything else is dispatched. This holds whichever model runs the main loop.
 
 ## Model selection contract — 13 September 2026
+
+**Astra defaults to `medium` for the parent and every worker role, including planning, stateful execution, writing and review.** Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. Higher review effort still requires observed failure evidence. This policy overrides historical Astra effort recommendations and examples below, and conflicting defaults in supporting skills. Pass `--effort medium` unless that override is justified. Claude model and effort defaults are unchanged. A skill cannot change the effort of an already-running parent or worker.
 
 This contract supersedes historical routing recommendations below. Select a role before launching, and record the model, effort, task-specific reason and acceptance criteria in the work order's `routing.json`.
 
@@ -24,11 +25,11 @@ This contract supersedes historical routing recommendations below. Select a role
 |---|---|---|
 | Bounded routine intake candidate packets | gpt-5.6-luna | medium |
 | Well-specified implementation and runtime mechanics | gpt-6-astra | medium |
-| Stateful execution, recovery, long execution of an established plan | gpt-6-astra | high |
+| Stateful execution, recovery, long execution of an established plan | gpt-6-astra | medium |
 | Ordinary investigation, design and review | claude-opus-5 | high |
 | Ambiguous architecture, sustained reasoning and synthesis | claude-fable-5-1 | high |
 | Adversarial review | claude-fable-5-1 | high |
-| Cross-family review of Claude work | gpt-6-astra | high |
+| Cross-family review of Claude work | gpt-6-astra | medium |
 
 Long horizon means hours of work or continuity across sessions; duration and file count alone do not select a model. Route by the work's bottleneck. Higher review effort requires observed failure evidence and a separately recorded reason. Match the reviewer family against the author family; Astra reviewing Astra is not independent cross-family review.
 

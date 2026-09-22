@@ -19,7 +19,7 @@ The default `conductor` profile remains mixed-model. [Conductor Claude](../condu
 
 ## Parent and transport
 
-Launch the parent in Codex on `gpt-6-astra` at `high` for a workflow with no Claude dependency. The parent owns grounding, the plan, work orders, integration and final acceptance. A skill cannot switch the already-running parent model. If invoked from Claude Code, explain that the current parent still consumes Claude capacity; use its available Codex bridge for workers, and preserve a resumable handoff for an Astra parent rather than promising Claude-free continuity from that session.
+Launch the parent in Codex on `gpt-6-astra` at `medium` for a workflow with no Claude dependency. The parent owns grounding, the plan, work orders, integration and final acceptance. A skill cannot switch the already-running parent model. If invoked from Claude Code, explain that the current parent still consumes Claude capacity; use its available Codex bridge for workers, and preserve a resumable handoff for an Astra parent rather than promising Claude-free continuity from that session.
 
 From a Codex parent, use native collaboration agents where they can select the requested model and effort; otherwise use the installed Codex CLI or `ask-codex` after checking its supported options. Pass model and effort explicitly on each launch. Use a fresh or scoped context when selecting worker effort instead of a full-history fork that forces inheritance. Record actual launch settings; if the harness cannot select an effort, use a supported launcher or report the mismatch rather than pretending the setting changed.
 
@@ -31,16 +31,18 @@ Use the harness's real concurrency and completion mechanisms. Only the Claude ha
 
 | Work | Model | Effort and reason |
 |---|---|---|
-| Grounding, plan, work orders, integration, final acceptance | gpt-6-astra | high — orchestrator judgment |
-| Exact mechanical edits and repetitive transformations | gpt-6-astra | low — established pattern and clear acceptance |
-| Well-specified implementation, refactors and ordinary fixes | gpt-6-astra | medium — defined behavior and scope |
-| Runtime replay with known steps and assertions | gpt-6-astra | medium — execution mechanics |
-| Architecture, investigation, ambiguity and sustained synthesis | gpt-6-astra | high — resolve uncertainty |
-| Stateful work, recovery, ownership and screen-dependent runtime testing | gpt-6-astra | high — reason about state and side effects |
-| Adversarial review | gpt-6-astra, separate reviewer | high — challenge requirements, implementation and evidence |
-| Design, UI/copy judgment and substantial writing | gpt-6-astra | high — use the brief and existing references; Opus high may contribute |
+| Grounding, plan, work orders, integration, final acceptance | gpt-6-astra | medium — default |
+| Exact mechanical edits and repetitive transformations | gpt-6-astra | medium — default; low may be selected with a task-specific reason |
+| Well-specified implementation, refactors and ordinary fixes | gpt-6-astra | medium — default |
+| Runtime replay with known steps and assertions | gpt-6-astra | medium — default |
+| Architecture, investigation, ambiguity and sustained synthesis | gpt-6-astra | medium — default |
+| Stateful work, recovery, ownership and screen-dependent runtime testing | gpt-6-astra | medium — default |
+| Adversarial review | gpt-6-astra, separate reviewer | medium — default |
+| Design, UI/copy judgment and substantial writing | gpt-6-astra | medium — default; optional Opus remains high |
 
-Effort follows the task's uncertainty. Low does not own architecture or subjective acceptance. Move work to Medium or High when its assumptions stop being mechanical. Escalate beyond High when a concrete unresolved problem warrants it, using supported effort levels and recording why. Core has no fixed retry count or escalation budget: persist through meaningful progress, change the approach when evidence disproves it, and checkpoint genuine external blockers. Repeating unchanged failed calls is not progress.
+**Astra defaults to `medium` for the parent and every worker role.** Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. Higher review effort requires observed failure evidence. This policy overrides conflicting Astra effort defaults in supporting skills. Pass model and effort explicitly; a skill cannot change the effort of an already-running parent or worker.
+
+Escalate when a concrete unresolved problem warrants it, using supported effort levels and recording why. Core has no fixed retry count or escalation budget: persist through meaningful progress, change the approach when evidence disproves it, and checkpoint genuine external blockers. Repeating unchanged failed calls is not progress.
 
 ## Fan-out follows the work
 
@@ -72,7 +74,7 @@ Queue what exceeds available concurrency instead of dropping it, and continue th
 
 Wait using the harness's real completion mechanism: a Codex parent resumes a running tool session with its wait/poll API; a Claude parent is re-invoked on completion and should not poll. Do useful independent work meanwhile. A timeout or lost output does not prove a mutation or a provider job failed — inspect before replacing a worker.
 
-**3. Verify.** Relevant project checks and independent runtime assertions establish behavior; a worker's prose does not. Route the adversarial pass to a separate Astra High reviewer with the requirements and the final diff in fresh context, never the author's verdict. Add an Opus lane where its judgment improves the result and it is available. Label coverage honestly per the policy below.
+**3. Verify.** Relevant project checks and independent runtime assertions establish behavior; a worker's prose does not. Route the adversarial pass to a separate Astra reviewer at `medium` with the requirements and the final diff in fresh context, never the author's verdict. Add an Opus lane where its judgment improves the result and it is available. Label coverage honestly per the policy below.
 
 **4. Review and integrate — parent.** Read the diff, the artifacts and the actual verification output before accepting anything. Send rejected work back as a revised order stating what was wrong and what correct looks like. Merge the lanes yourself, resolve conflicts yourself, and run the gates the change actually calls for. Checkpoint completed artifacts, remaining work, actual launch settings and outstanding state changes at useful boundaries.
 
@@ -106,7 +108,7 @@ Opus unavailability does not create an approval gate or block otherwise accepted
 
 ## Review and acceptance
 
-The implementing worker's self-report is a claim. The orchestrator reads the diff, relevant artifacts and actual verification output before acceptance. Use a separate Astra High reviewer for substantive work, with the requirements and final diff in fresh context; avoid feeding it the author's verdict as the answer. The reviewer should seek counterexamples, missing requirements and unsupported evidence. Recheck after fixes when the findings or changed scope warrant it.
+The implementing worker's self-report is a claim. The orchestrator reads the diff, relevant artifacts and actual verification output before acceptance. Use a separate Astra reviewer at `medium` for substantive work, with the requirements and final diff in fresh context; avoid feeding it the author's verdict as the answer. The reviewer should seek counterexamples, missing requirements and unsupported evidence. Recheck after fixes when the findings or changed scope warrant it.
 
 Keep review coverage precise: `same-family` for Astra checking Astra, `cross-family` for a real Opus review of Astra work or Astra review of Opus work, and `orchestrator-only` for inline work without a separate reviewer. Different effort levels do not create different model families. An optional Opus design critique does not turn the entire implementation into cross-family-reviewed code; name what it covered.
 
