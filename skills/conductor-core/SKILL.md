@@ -97,7 +97,7 @@ Wait using the harness's real completion mechanism: a Codex parent resumes a run
 
 - **State the lane's boundaries in the order.** Scope, ownership, deliverable, acceptance, and whether the lane may fan out. Delegated fan-out is allowed when it serves a known sub-work-list; the parent names that scope and ownership so children do not duplicate assignments.
 - **Workers checkpoint.** A lane that dies on a provider limit leaves no report. Long write lanes commit or persist their artifact as they go.
-- **Raise the window for a long lane.** Astra's, Sol's and Luna's Codex context is 272K by default; raise it per lane with `-c model_context_window=…` or split the order at ~200K.
+- **Raise the window for a long lane.** Astra's, Sol's and Luna's Codex context is 272K by default; raise it per lane with `codex exec -c model_context_window=…` (in `ask-codex`, `-c` means `--context`) or split the order at ~200K.
 - **No self-verification scaffolding in orders.** Verification lives in step 3, which is the parent's.
 - **When you bound coverage for a real limit, record what you dropped** so a partial sweep never reads as a complete one.
 
