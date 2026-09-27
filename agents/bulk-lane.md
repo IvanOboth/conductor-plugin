@@ -1,6 +1,6 @@
 ---
 name: bulk-lane
-description: Conductor's cheap Claude execution lane. Use for mechanical work with exact anchors — renames, applying a defined contract across files, small migrations — one lane per item. Since 2026-09-22 Opus 5.5 at low is the default for mechanical sweeps (Anthropic reports low comes close to Opus 5 at high on several coding evaluations); GPT-6 Astra at medium via ask-codex is the overflow when Claude quota is tight. Pinned to Opus 5.5 at low effort.
+description: Conductor's cheap Claude execution lane. Use for mechanical work with exact anchors — renames, applying a defined contract across files, small migrations — one lane per item. Since 2026-09-22 Opus 5.5 at low is the default for mechanical sweeps (Anthropic reports low comes close to Opus 5 at high on several coding evaluations); GPT-6 Sol at high via `ask-codex -m gpt-6-sol --effort high` is the overflow when Claude quota is tight (27 Sep 2026). Pinned to Opus 5.5 at low effort.
 model: opus
 effort: low
 ---

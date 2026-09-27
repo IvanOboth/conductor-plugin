@@ -15,4 +15,4 @@ Rules for this lane:
 - **Do the work yourself. Do not spawn subagents** unless the order gives you a fan-out budget.
 - **Targeted edits.** Edit the lines that change; do not rewrite whole files.
 
-Return: files changed, the evidence you ran (command and its actual output), what you did not do and why, and residual risk.
+Return: files changed, the evidence you ran (command and its actual output), what you did not do and why, and residual risk. Mark anything you could not confirm and say where you looked.
