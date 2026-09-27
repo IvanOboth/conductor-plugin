@@ -56,10 +56,17 @@ def save_active(d):
     with open(ACTIVE_RUNS, "w", encoding="utf-8") as fh:
         json.dump(d, fh, indent=1)
 
-# USD per 1M tokens: (input, output, cache_read, cache_write). Jul 2026.
+# USD per 1M tokens: (input, output, cache_read, cache_write). List prices, 23 Sep 2026.
+# Longer keys come first: price_for() takes the first prefix match.
 # cache_read ≈ 10% of input; cache_write ≈ 1.25x input (5m tier; 1h tier is 2x —
 # we use 1.25x, so treat cache-write cost as a floor estimate).
 PRICES = {
+    "claude-opus-5-5":  (4.00, 20.00, 0.20, 5.00),
+    "claude-opus-5":    (5.00, 25.00, 0.50, 6.25),
+    "claude-fable-5-1": (10.00, 50.00, 0.25, 12.50),
+    "gpt-6-astra":      (10.00, 50.00, 1.00, 12.50),
+    "gpt-6-sol":        (2.00, 10.00, 0.20, 2.50),
+    "gpt-6-luna":       (0.10, 0.50, 0.01, 0.125),
     "claude-opus-4-8":  (5.00, 25.00, 0.50, 6.25),
     "claude-opus-4":    (15.00, 75.00, 1.50, 18.75),
     "claude-sonnet-5":  (2.00, 10.00, 0.20, 2.50),
@@ -177,7 +184,7 @@ def codex_lanes(since, until):
             if totals:
                 out.append({
                     "agent": os.path.basename(path).replace(".jsonl", "")[:40],
-                    "family": "openai", "model": model or "gpt-5.6-sol",
+                    "family": "openai", "model": model or "gpt-6 (model not recorded)",
                     "in": totals.get("input_tokens", 0),
                     "out": totals.get("output_tokens", 0) + totals.get("reasoning_output_tokens", 0),
                     "cr": totals.get("cached_input_tokens", 0), "cw": 0,

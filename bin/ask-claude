@@ -6,6 +6,9 @@
 
 set -e
 
+# Headless child agents must not publish identity into their parent Orca pane.
+unset ORCA_PANE_KEY ORCA_TAB_ID ORCA_AGENT_LAUNCH_TOKEN
+
 # Show help
 if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "Usage: ask-claude [OPTIONS] \"prompt\""
@@ -97,6 +100,52 @@ $CONTEXT_CONTENT
 ---
 
 $PROMPT"
+fi
+
+# Resolve Orca's selected Claude host account for parents without an explicit
+# CLAUDE_CONFIG_DIR. Use its existing auth directory; never copy credentials.
+if [[ "$KEEP_ENV" != "true" && -z "${CLAUDE_CONFIG_DIR:-}" ]]; then
+  ORCA_CLAUDE_CONFIG_DIR=$(python3 - <<'PY_ACCOUNT'
+import json
+import os
+from pathlib import Path
+import sys
+
+root = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "orca"
+index = root / "orca-profile-index.json"
+if not index.exists():
+    sys.exit(0)
+try:
+    profile = json.loads(index.read_text())["activeProfileId"]
+    if not isinstance(profile, str) or not profile or Path(profile).name != profile or profile in (".", ".."):
+        raise ValueError("invalid active profile")
+    settings = json.loads((root / "profiles" / profile / "orca-data.json").read_text())["settings"]
+    runtime = settings.get("activeClaudeManagedAccountIdsByRuntime")
+    account = runtime.get("host") if isinstance(runtime, dict) else settings.get("activeClaudeManagedAccountId")
+    if account is not None:
+        if not isinstance(account, str) or not account or Path(account).name != account or account in (".", ".."):
+            raise ValueError("invalid selected account")
+        selected = root / "claude-accounts" / account / "auth"
+        accounts = settings.get("claudeManagedAccounts", [])
+        record = next((item for item in accounts if item.get("id") == account), None)
+        if not record or record.get("managedAuthRuntime", "host") != "host":
+            raise ValueError("selected account is not a registered host account")
+        if Path(record.get("managedAuthPath", "")).resolve() != selected.resolve():
+            raise ValueError("selected account auth path does not match its Orca directory")
+        if not (selected / ".credentials.json").is_file():
+            raise ValueError("selected Orca account has no credentials; reconnect that account in Orca")
+        print(selected)
+except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+    print(f"ask-claude: cannot resolve Orca account: {error}", file=sys.stderr)
+    sys.exit(2)
+PY_ACCOUNT
+  ) || exit $?
+  if [[ -n "$ORCA_CLAUDE_CONFIG_DIR" ]]; then
+    export CLAUDE_CONFIG_DIR="$ORCA_CLAUDE_CONFIG_DIR"
+    # Managed credentials must not be overridden by inherited OAuth headers/tokens.
+    unset CLAUDE_CODE_OAUTH_TOKEN AWS_BEARER_TOKEN_BEDROCK ANTHROPIC_CUSTOM_HEADERS
+    echo "ask-claude: using Orca selected Claude home: $CLAUDE_CONFIG_DIR" >&2
+  fi
 fi
 
 # Strip proxy env by default.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conductor"
+  short_description: "Orchestrate mixed-model parallel builds"
+  default_prompt: "Use $conductor to orchestrate this build across independent Codex and Claude lanes, then integrate and verify the result."

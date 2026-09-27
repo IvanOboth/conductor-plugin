@@ -5,15 +5,17 @@ description: Ask Codex (GPT-6 Astra) to run local app verification that needs co
 
 # Codex Computer Use
 
-Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (GPT-6 Astra — computer use is its strongest suit: OSWorld 2.0 72.6, ScreenSpot-Pro 92.7) drives your machine at `--effort medium` for a stated flow, `high` when the next step depends on reading the screen; Claude reads back the screenshots and report and decides whether the behavior is right.
+Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (GPT-6 Astra — runtime and computer use are where Astra is needed: OSWorld 2.0 73.5 against GPT-6 Sol high's 58.3, per OpenAI's 22 Sep 2026 charts) drives your machine with `-m gpt-6-astra --effort medium` for every run; Claude reads back the screenshots and report and decides whether the behavior is right.
 
 Do **not** reach for this for ordinary code reading, typechecking, linting, or tests Claude can run itself — those are cheaper inline. This is for when *seeing the running thing* is the acceptance test.
 
 Launching apps, simulators, or browsers to verify the requested work is fine without asking. Ask first only if the run could disrupt the user's environment beyond that — closing their apps, changing system settings, or acting on real accounts or data.
 
+For native Android/iOS QA, read [mobile-app-testing](../mobile-app-testing/SKILL.md) and use its device, authentication, evidence and cleanup workflow. Route the bounded run to `gpt-6-astra` with explicit effort, or execute directly when Astra already owns it. Mobile Next supports compatible virtual and physical targets; a mobile-sized web view is separate evidence.
+
 ## Three ways Codex does computer use
 
-1. **Headless shell (default).** `codex exec` / `ask-codex` runs non-interactively and does computer use *through the shell*: `open -a`, `xcrun simctl` / Simulator, `agent-browser` or Playwright to drive a real browser, `screencapture` for pixels, `lsof`/`ps` to inspect a running server, `curl` against a local port. Scriptable, isolated, cheap — still the first choice for anything web, CLI, or simulator. Codex also carries the Playwright MCP (`mcp__playwright__browser_*`) headlessly, so it can drive an isolated browser without `agent-browser` at all. **Record flows as video, not GIF:** web → `agent-browser --session <lane> record start <dir>/<flow>.webm [url]` before the flow, `record stop` after (needs system `ffmpeg`), then `ffmpeg … -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart` to mp4; iOS Simulator → `xcrun simctl io booted recordVideo`; Android emulator → `adb shell screenrecord`. The work order names the output path; the report lists it. This rung also runs on a **headless Linux server** (`ssh <host> codex exec …`, agent-browser + Playwright MCP) — rungs 2 and 3 below are macOS-only, and so are the simulators.
+1. **Headless shell (default).** `codex exec` / `ask-codex` runs non-interactively and does computer use *through the shell*: `open -a`, `xcrun simctl` / Simulator, `agent-browser` or Playwright to drive a real browser, `screencapture` for pixels, `lsof`/`ps` to inspect a running server, `curl` against a local port. Scriptable, isolated, cheap — still the first choice for anything web, CLI, or simulator. Codex also carries the Playwright MCP (`mcp__playwright__browser_*`) headlessly, so it can drive an isolated browser without `agent-browser` at all. **Choose evidence first:** follow the installed Conductor skill’s evidence gate. Record video only when an application has changed and the recording demonstrates testing of that change. Static reports, research and skill edits use screenshots or command evidence. For selected web recordings, follow Conductor’s installed-version-aware Browser video evidence procedure; the work order names the output path and assertions. This rung also runs on a **headless Linux server** (`ssh <host> codex exec …`, agent-browser + Playwright MCP) — rungs 2 and 3 below are macOS-only, and so is the iOS Simulator; Android runtime selection is covered by mobile-app-testing.
 2. **Headless GUI computer use — `node_repl` + `@oai/sky`.** The bundled `computer-use@openai-bundled` plugin registers a `node_repl` MCP server in `~/.codex/config.toml`, and **`codex exec` loads it** — so accessibility-tree reads, clicks, typing, and per-app screenshots of *arbitrary* macOS apps are reachable from a plain Claude shell-out. Verified 2026-08-07: a headless `codex exec -s danger-full-access` bootstrapped `sky`, listed apps, and returned Finder's AX tree plus a PNG. Use it when the target has no CLI and no scriptable surface — a native app, a menu-bar flow, an Xcode/Simulator GUI step, or Chrome under the user's *real* logged-in profile.
 3. **Codex desktop app (`@Computer` / `@AppName`).** The interactive front door to the same engine, at `~/.codex/computer-use/`. Reserve it for flows where a person should watch and intervene mid-run; a headless lane no longer has to hand a task back merely because it is GUI-shaped.
 
@@ -27,22 +29,22 @@ Take the cheapest rung that can prove the assertion: shell first, `sky` when not
 
 **2. Write a self-contained prompt.** Codex does not share Claude's context — spell out how to launch/reach the thing, the exact steps, the assertion, and where to leave artifacts. See *Prompt requirements* below.
 
-**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the effort every time: `medium` for a stated flow, `high` when the next step depends on reading the screen:
+**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the model and effort every time: `-m gpt-6-astra --effort medium`, including flows where the next step depends on reading the screen (Astra runs at `medium` for every role since 13 Sep 2026):
 
 ```bash
-ask-codex --effort medium --clean "
+ask-codex -m gpt-6-astra --effort medium --clean "
 <self-contained computer-use prompt — see below>
 Save screenshots to <scratchpad>/verify/ as NN-label.png.
 Write your findings to <scratchpad>/verify/report.md when done.
 "
 ```
 
-Equivalent direct form (the reference invocation): `codex exec -c model_reasoning_effort=medium -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
+Equivalent direct form (the reference invocation): `codex exec -m gpt-6-astra -c model_reasoning_effort=medium -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
 
 For a GUI target, drop to `codex exec` directly — `ask-codex` has no flag for full access (it offers only `--readonly` and workspace-write), and the lane needs to write screenshots outside the repo. This is the verified form:
 
 ```bash
-codex exec -c model_reasoning_effort=high -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
+codex exec -m gpt-6-astra -c model_reasoning_effort=medium -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
   globalThis.sky = (await import('@oai/sky')).sky;
 <the steps, then the assertion>
 For each state that matters, call sky.get_app_state({ app: '<display name or bundle id>' }), copy the file:// path at state.screenshot.url into <scratchpad>/verify/NN-label.png, and write the verdict to <scratchpad>/verify/report.md.

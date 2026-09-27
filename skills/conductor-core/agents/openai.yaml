@@ -1,0 +1,4 @@
+interface:
+  display_name: "Conductor Core"
+  short_description: "Astra-led Codex runs with Sol workers, optional Opus"
+  default_prompt: "Use $conductor-core to plan, dispatch and verify this work with Astra, using Opus only where useful and available."

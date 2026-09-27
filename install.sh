@@ -11,19 +11,24 @@
 # rewrites ${CLAUDE_PLUGIN_ROOT} — which only resolves inside a real plugin — to
 # the absolute install path.
 #
-# Usage:  ./install.sh [--prefix DIR] [--bin DIR] [--dry-run] [--uninstall]
+# Usage:  ./install.sh [--prefix DIR] [--bin DIR] [--dry-run] [--uninstall] | --link-skill
 
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Link-only mode preserves supporting files and CLI binaries.
+if [[ "${1:-}" == "--link-skill" ]]; then
+  [[ $# -eq 1 ]] || { echo "--link-skill cannot be combined with other options" >&2; exit 2; }
+  exec python3 "${SRC}/scripts/link-personal-skills.py"
+fi
 PREFIX="${HOME}/.claude"
 BINDIR="${HOME}/.local/bin"
 DATADIR=""   # derived from PREFIX after arg parsing
 DRY_RUN=false
 UNINSTALL=false
 
-SKILLS=(conductor codex-review codex-computer-use agent-browser run-report)
-AGENTS=(design-lane bulk-lane verify-lane)
+SKILLS=(conductor conductor-core conductor-claude mobile-app-testing codex-review codex-computer-use agent-browser run-report)
+AGENTS=(design-lane exec-lane bulk-lane verify-lane write-lane)
 BINS=(ask-codex ask-claude)
 
 while [[ $# -gt 0 ]]; do
