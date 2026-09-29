@@ -1,4 +1,4 @@
 interface:
   display_name: "Mobile App Testing"
   short_description: "Native device QA with reproducible evidence"
-  default_prompt: "Use $mobile-app-testing to verify the changed native mobile flows and deliver evidence, routing device execution to GPT-6 Astra."
+  default_prompt: "Use $mobile-app-testing to verify the changed native mobile flows and deliver evidence, routing device execution to GPT-6.1 Sol at high effort."

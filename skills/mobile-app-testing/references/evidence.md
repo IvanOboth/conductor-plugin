@@ -4,7 +4,7 @@ Use the installed Conductor evidence gate when applicable: record testing of cha
 
 ## Recording ownership
 
-Use the driver's supported start/stop recording API when it manages recorder lifetime. Otherwise launch the platform recorder in a durable task-owned shell/session. A short-lived lane shell can kill a background recorder and leave a single-frame file. The owner must survive until recording stops; it can be the Astra lane or the orchestrator.
+Use the driver's supported start/stop recording API when it manages recorder lifetime. Otherwise launch the platform recorder in a durable task-owned shell/session. A short-lived lane shell can kill a background recorder and leave a single-frame file. The owner must survive until recording stops; it can be the GPT-6.1 Sol lane or the orchestrator.
 
 - Android: `adb -s <serial> shell screenrecord /sdcard/<unique-flow>.mp4`, then stop that owned recorder with SIGINT and `adb pull`. The usual three-minute cap needs separate labelled clips for longer flows. Track the recorder PID/session; never kill every `screenrecord` process on a shared device.
 - iOS simulator: `xcrun simctl io <device-udid> recordVideo --codec h264 <flow>.mp4`, then SIGINT the owned process. Prefer a specific device over an ambiguous `booted` target.

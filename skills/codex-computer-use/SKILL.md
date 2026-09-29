@@ -1,17 +1,17 @@
 ---
 name: codex-computer-use
-description: Ask Codex (GPT-6 Astra) to run local app verification that needs computer use — launching apps, driving a browser or simulator, capturing screenshots, or any independent runtime inspection outside Claude's current context. This is how GPT-6 Astra is invoked for computer-use verification. Use when the user asks Claude to have Codex or GPT-6 Astra test a flow, verify UI behavior, inspect a running app, capture screenshots, or report confirmation and feedback about implemented behavior. Do NOT use for ordinary code reading, typechecking, linting, or tests Claude can run directly.
+description: Ask Codex (GPT-6.1 Sol) to run local app verification that needs computer use — launching apps, driving a browser or simulator, capturing screenshots, or any independent runtime inspection outside Claude's current context. This is how GPT-6.1 Sol is invoked for computer-use verification. Use when the user asks Claude to have Codex or GPT-6.1 Sol test a flow, verify UI behavior, inspect a running app, capture screenshots, or report confirmation and feedback about implemented behavior. Do NOT use for ordinary code reading, typechecking, linting, or tests Claude can run directly.
 ---
 
 # Codex Computer Use
 
-Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (GPT-6 Astra — runtime and computer use are where Astra is needed: OSWorld 2.0 73.5 against GPT-6 Sol high's 58.3, per OpenAI's 22 Sep 2026 charts) drives your machine with `-m gpt-6-astra --effort medium` for every run; Claude reads back the screenshots and report and decides whether the behavior is right.
+Use Codex as a separate **local verification agent** when the task needs real UI interaction, screenshots, simulator/browser/device state, or an independent runtime check outside Claude's current context. Codex (GPT-6.1 Sol, which replaced GPT-6 Astra here on 29 Sep 2026) drives your machine with `-m gpt-6.1-sol --effort high` for every run. On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol at `max` scores 71.4% on OSWorld 2.0 at about $1.30 per task, against Astra `max`'s 73.5% at about $9.30, about a seventh of the cost; the `high` figure is not published. It needs Codex CLI 0.159.0 or later; 0.156.1 is rejected by the server under a ChatGPT login. An account home may still default to an older model, so always pass `-m gpt-6.1-sol`. Claude reads back the screenshots and report and decides whether the behavior is right.
 
 Do **not** reach for this for ordinary code reading, typechecking, linting, or tests Claude can run itself — those are cheaper inline. This is for when *seeing the running thing* is the acceptance test.
 
 Launching apps, simulators, or browsers to verify the requested work is fine without asking. Ask first only if the run could disrupt the user's environment beyond that — closing their apps, changing system settings, or acting on real accounts or data.
 
-For native Android/iOS QA, read [mobile-app-testing](../mobile-app-testing/SKILL.md) and use its device, authentication, evidence and cleanup workflow. Route the bounded run to `gpt-6-astra` with explicit effort, or execute directly when Astra already owns it. Mobile Next supports compatible virtual and physical targets; a mobile-sized web view is separate evidence.
+For native Android/iOS QA, read [mobile-app-testing](../mobile-app-testing/SKILL.md) and use its device, authentication, evidence and cleanup workflow. Route the bounded run to `gpt-6.1-sol` at `high`, or execute directly when GPT-6.1 Sol already owns it. Mobile Next supports compatible virtual and physical targets; a mobile-sized web view is separate evidence.
 
 ## Three ways Codex does computer use
 
@@ -29,22 +29,22 @@ Take the cheapest rung that can prove the assertion: shell first, `sky` when not
 
 **2. Write a self-contained prompt.** Codex does not share Claude's context — spell out how to launch/reach the thing, the exact steps, the assertion, and where to leave artifacts. See *Prompt requirements* below.
 
-**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the model and effort every time: `-m gpt-6-astra --effort medium`, including flows where the next step depends on reading the screen (Astra runs at `medium` for every role since 13 Sep 2026):
+**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the model and effort every time: `-m gpt-6.1-sol --effort high`, including flows where the next step depends on reading the screen. Use `xhigh` only as the retry when a `high` run came back thin:
 
 ```bash
-ask-codex -m gpt-6-astra --effort medium --clean "
+ask-codex -m gpt-6.1-sol --effort high --clean "
 <self-contained computer-use prompt — see below>
 Save screenshots to <scratchpad>/verify/ as NN-label.png.
 Write your findings to <scratchpad>/verify/report.md when done.
 "
 ```
 
-Equivalent direct form (the reference invocation): `codex exec -m gpt-6-astra -c model_reasoning_effort=medium -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
+Equivalent direct form (the reference invocation): `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
 
 For a GUI target, drop to `codex exec` directly — `ask-codex` has no flag for full access (it offers only `--readonly` and workspace-write), and the lane needs to write screenshots outside the repo. This is the verified form:
 
 ```bash
-codex exec -m gpt-6-astra -c model_reasoning_effort=medium -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
+codex exec -m gpt-6.1-sol -c model_reasoning_effort=high -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
   globalThis.sky = (await import('@oai/sky')).sky;
 <the steps, then the assertion>
 For each state that matters, call sky.get_app_state({ app: '<display name or bundle id>' }), copy the file:// path at state.screenshot.url into <scratchpad>/verify/NN-label.png, and write the verdict to <scratchpad>/verify/report.md.
@@ -70,7 +70,7 @@ A computer-use prompt Codex can execute unsupervised includes:
 - **Where to put artifacts** — screenshot directory (`NN-label.png`) and report path.
 - **What not to touch** — don't submit real forms, don't act on production data, don't close the user's other apps.
 
-Keep it lean otherwise — hand over the target, the steps, and the assertion, then trust GPT-6 Astra to drive. Over-specifying every click wastes its run.
+Keep it lean otherwise — hand over the target, the steps, and the assertion, then trust GPT-6.1 Sol to drive. Over-specifying every click wastes its run.
 
 ## Reporting back
 
