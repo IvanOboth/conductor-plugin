@@ -223,8 +223,8 @@ look something up.
   - GPT-6.1 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
     fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`,
     or `opus` at `high` as the optional cross-family review.
-  - Luna-authored → `opus` at `high` (cross-family) or GPT-6.1 Sol at `high` (same
-    family, labelled so).
+  - Luna-authored → `opus` at `high` (cross-family). Only in Conductor Core: GPT-6.1 Sol
+    at `high`, labelled same family.
   - Luna never reviews.
   Raise review effort only after an observed failure, and record the reason.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and

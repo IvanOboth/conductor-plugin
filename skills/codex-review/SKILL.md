@@ -136,7 +136,7 @@ Optionally supplement with:
 
 Codex needs to investigate files, run tests, post issue comments, and apply fixes — so use the default `workspace-write` sandbox (don't pass `--readonly`). The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
-The default reviewer is GPT-6.1 Sol at `high` (29 Sep 2026; it replaced GPT-6 Sol and GPT-6 Astra). On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about $1.50 per task, against Astra high's 74.8% at about $7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), run `-m gpt-6.1-sol --effort xhigh` and add the Fable 5.1 `verify-lane` judgment review alongside it. Use `xhigh` also as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
+The default reviewer is GPT-6.1 Sol at `high` (29 Sep 2026; it replaced GPT-6 Sol and GPT-6 Astra). On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about $1.50 per task, against Astra high's 74.8% at about $7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), run `-m gpt-6.1-sol --effort xhigh` and add a judgment review by a different model from the author: Fable 5.1 (`verify-lane`) for Opus-authored work, Opus 5.5 at `high` for Fable-authored work. Use `xhigh` also as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
 
 GPT-6.1 Sol needs Codex CLI 0.159.0 or later; 0.156.1 is rejected by the server under a ChatGPT login. Always pass `-m gpt-6.1-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
 
@@ -238,7 +238,11 @@ Severity lives in the reasoning, not in a label. If Codex didn't flag any blocki
 
 ### Step 4: Fix Issues (if --fix flag)
 
-If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass:
+If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass.
+
+If Codex applied fixes itself, those fixes are GPT-authored and need a review by a different model before you report: an Opus 5.5 lane at `high` reviews the fix diff (`git diff` since the review started). In Conductor Core, a separate fresh-context GPT-6.1 Sol reviewer at `xhigh` does it instead, labelled `same-model, fresh context`.
+
+Quick verification after your own fixes:
 
 ```bash
 ask-codex -m gpt-6.1-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
