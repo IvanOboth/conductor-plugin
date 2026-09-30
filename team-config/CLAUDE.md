@@ -3,7 +3,7 @@
 <!-- conductor-core-profile -->
 ## Conductor Core opt-in
 
-When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Astra owns the workflow at `medium`; Sol at `high` is the main worker; Opus is optional, and Fable is never selected. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
+When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. GPT-6.1 Sol at `high` owns the workflow and is the main worker; Luna at `high` takes bounded high-volume items. GPT-6.1 Sol-authored work gets a separate fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`, or Opus 5.5 at `high` as the optional cross-family review. Luna-authored work is reviewed by GPT-6.1 Sol at `high` (same family, labelled so). Fable is never selected. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
 <!-- /conductor-core-profile -->
 
 <!-- conductor-claude-profile -->
@@ -73,41 +73,41 @@ Run the main loop on **Opus 5.5 at `high`**. Reach for `Agent`/`Workflow` when a
 |---|---|---|---|---|---|---|
 | opus-5.5 | 9 | 9.3 | 9.3 | 7.5 † | 9 † | 8.5 † |
 | fable-5.1 | 5 | 9.2 | 8.8 | 8.5 | 9 | 9 |
-| gpt-6-astra | 8 | 8.8 | 9.0 | 9.5 | 6 | 7 |
-| gpt-6-sol | 9.5 | 8.3 ‡ | 8.4 ‡ | 9 ‡ | 5 ‡ | 6.5 ‡ |
+| gpt-6.1-sol | 9.5 | 8.9 § | 9.1 § | 9 § | 5.5 § | 6.5 § |
 | gpt-6-luna | 10 | 7.2 ‡ | 7.4 ‡ | 8.5 ‡ | 4 ‡ | 6 ‡ |
 
-Higher is better. **Cost** is cost per task as you pay it, not price per token; on a ChatGPT subscription a Codex lane spends quota rather than dollars. **Reasoning** covers plans, reviews and judgment calls; **autonomy** is how far a model gets unsupervised; **steerability** is whether it does what the order said, no more and no less; **taste** covers UI, code quality, API design and copy in a UI; **writing** is prose a human reads and judges the author by. † Provisional from vendor evidence (22 Sep 2026); re-rate by 6 Oct. ‡ Provisional internal estimates (23 Sep 2026); re-rate by 7 Oct. The `opus` alias resolves to Opus 5.5 (`claude-opus-5-5`) and `fable` to Fable 5.1 (`claude-fable-5-1`).
+Higher is better. **Cost** is cost per task as you pay it, not price per token; on a ChatGPT subscription a Codex lane spends quota rather than dollars. **Reasoning** covers plans, reviews and judgment calls; **autonomy** is how far a model gets unsupervised; **steerability** is whether it does what the order said, no more and no less; **taste** covers UI, code quality, API design and copy in a UI; **writing** is prose a human reads and judges the author by. † Provisional from vendor evidence (22 Sep 2026); re-rate by 6 Oct. ‡ Provisional internal estimates (23 Sep 2026); re-rate by 7 Oct. § Provisional from vendor and Vellum evidence (29 Sep 2026); re-rate by 13 Oct. The `opus` alias resolves to Opus 5.5 (`claude-opus-5-5`) and `fable` to Fable 5.1 (`claude-fable-5-1`).
 
-**Who does what (27 Sep 2026).** Opus 5.5 is the predominant model. Sol at `high` is the default GPT model. Astra and Fable are used where they are needed, and not held back when they are.
+**Who does what (29 Sep 2026).** Opus 5.5 is the predominant model and writes the code. GPT-6.1 Sol is the only GPT model for review, exploration and computer use: `high` by default, `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default. Fable is used where it is needed, and not held back when it is.
 
 | Work | Model and effort |
 |---|---|
 | Main loop: plan, work orders, integration, final review | Opus 5.5 `high` |
-| Implementation, refactors, migrations, terminal, CI, infra, investigation | Opus 5.5 `medium` (`exec-lane`); `high` when the lane is hard |
+| Implementation, refactors, migrations, terminal, CI, infra | Opus 5.5 `medium` (`exec-lane`); `high` when the lane is hard |
+| Investigation and exploration | GPT-6.1 Sol `high` |
 | Mechanical sweeps with exact anchors | Opus 5.5 `low` (`bulk-lane`), one lane per item |
 | Design, UI, copy in a UI, API shape | Opus 5.5 `high` (`design-lane`); Fable 5.1 `high` when critical |
-| Bug hunts of unknown scope | Opus 5.5 `high`; second attempt Fable 5.1 `high` or Astra `medium` (cross-family) |
-| Cross-family review of Claude-authored work | Sol `high` via `codex-review`; Astra `medium` when the change is critical and the risk is production, money or data |
+| Bug hunts of unknown scope | Opus 5.5 `high`; second attempt GPT-6.1 Sol `high` (cross-family) or Fable 5.1 `high` |
+| Cross-family review of Claude-authored work | GPT-6.1 Sol `high` via `codex-review`; `xhigh` when the change is critical or a `high` pass came back thin |
 | Judgment review of Opus-authored work | Fable 5.1 `high` (`verify-lane`), critical work only |
-| Review of Fable-, Astra- or Sol-authored work | Opus 5.5 `high` |
-| Runtime and computer-use verification | Astra `medium` via `codex-computer-use` or `mobile-app-testing`; Claude judges the pixels |
-| Ops, runbooks, business-workflow automation, agentic science | Astra `medium` |
-| Codex overflow when Claude quota is tight | Sol `high`; Astra `medium` for ambiguous or stateful work |
+| Review of Fable-, GPT-6.1 Sol- or Luna-authored work | Opus 5.5 `high` |
+| Runtime and computer-use verification | GPT-6.1 Sol `high` via `codex-computer-use` or `mobile-app-testing`; Claude judges the pixels |
+| Ops, runbooks, business-workflow automation | GPT-6.1 Sol `high` |
+| Codex overflow when Claude quota is tight | GPT-6.1 Sol `high` |
 | Bounded high-volume items (intake packets, classify, extract) | Luna `high`; a stronger model reads the output |
 | Ambiguous architecture, deep research, Opus 5.5 has missed | Fable 5.1 `high` |
 | High-stakes writing (counterparty mail, proposals, board documents) | Fable 5.1 `high` (`write-lane`) |
-| Volume writing (film blocks, storyboards, internal docs, drafts) | Opus 5.5 `medium`; Astra `medium` for 30-block packages whose structure must hold |
+| Volume writing (film blocks, storyboards, internal docs, drafts) | Opus 5.5 `medium` |
 
-**Critical** means: it deploys to production or changes production data; it touches auth, payments, money or personal data; it is a schema or data migration or otherwise hard to reverse; it is a client-facing deliverable (proposal, deck, flagship UI surface); or it changes this routing and agent configuration. Critical work gets Fable's judgment review beside the cross-family review, and Astra replaces Sol in that review when the risk is production, money or data. Everything else is routine: Sol `high` cross-family review plus your own read of the diff.
+**Critical** means: it deploys to production or changes production data; it touches auth, payments, money or personal data; it is a schema or data migration or otherwise hard to reverse; it is a client-facing deliverable (proposal, deck, flagship UI surface); or it changes this routing and agent configuration. Critical work gets GPT-6.1 Sol `xhigh` + Fable 5.1 `high`: the cross-family review at `xhigh` and Fable's judgment review beside it. Everything else is routine: GPT-6.1 Sol `high` cross-family review plus your own read of the diff.
 
-**Why Sol at `high`, and Astra only where needed.** On OpenAI's 22 Sep charts, Sol at `high` scores 47.7 on FrontierCode against Astra `medium`'s 48.8, at about a fifth of the cost per task ($0.64 vs $3.08 on DeepSWE), and `high` adds 8.7 DeepSWE points over Sol `medium` for $0.26 more. Astra keeps the roles where the gap is large: computer use (OSWorld 2.0 73.5 vs Sol 58.3) and automation (AutomationBench 41.4 vs 31.2). The review gate in front of an unattended merge stays on Astra.
+**Why GPT-6.1 Sol (29 Sep 2026).** It replaces GPT-6 Astra and GPT-6 Sol, which are out of routing. On OpenAI's 29 Sep charts (via Vellum, vendor-reported), GPT-6.1 Sol at `high` scores 75.2% on DeepSWE v1.1 at about $1.50 per task, against Astra `high` 74.8% at about $7.70 and GPT-6 Sol `max` 68.8%. On OSWorld 2.0 it reaches 71.4% at `max` for about $1.30 per task, against Astra `max` 73.5% at about $9.30; the `high` figure is not published. It matches Astra on GDP.pdf (32.0% vs 32.2%) at a fifth of the cost. Astra still leads on AutomationBench (41.4% vs 35–36%). Its weak spot is writing code, so implementation stays on Opus 5.5.
 
 **Rules:**
-- The reviewer is always a different model from the author. The one exception is a Conductor Claude run (no Codex available), where routine Opus work gets a fresh-context Opus 5.5 reviewer labelled same-model; critical work still goes to Fable. Sol may review diffs; it does not verify runtime behaviour, judge design, or make plan-level calls. Luna never reviews.
-- **Effort is the control.** Set it on every lane. `high` is the ceiling for Opus 5.5; past it, change the model. Astra runs at `medium`, Sol, Luna and Fable at `high`; Fable never at `low` for anything that must look something up. Raise review effort only after an observed failure, with the reason recorded.
+- The reviewer is always a different model from the author. The exceptions are a Conductor Claude run (no Codex available), where routine Opus work gets a fresh-context Opus 5.5 reviewer labelled same-model (critical work still goes to Fable), and a Conductor Core run, where GPT-6.1 Sol work gets a fresh-context GPT-6.1 Sol reviewer at `xhigh` labelled `same-model, fresh context`. GPT-6.1 Sol reviews diffs, explores and verifies runtime mechanics; it does not judge design, and it implements only as Codex overflow or in Conductor Core. Luna never reviews.
+- **Effort is the control.** Set it on every lane. `high` is the ceiling for Opus 5.5; past it, change the model. GPT-6.1 Sol, Luna and Fable run at `high`; GPT-6.1 Sol goes to `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default; Fable never at `low` for anything that must look something up. Raise review effort only after an observed failure, with the reason recorded.
 - These are defaults, not limits. If a lane's output falls short, re-run it on the next effort or another model without asking. When axes conflict for anything that ships: the lane's own axis > steerability > taste > cost.
-- **Always pass the Codex model and effort:** `ask-codex -m MODEL --effort LEVEL --context order.md --output report.md "…" </dev/null`. Account homes can default to different models. Codex windows are 272K under the ChatGPT login; raise it with `codex exec -c model_context_window=…` (in `ask-codex`, `-c` means `--context`) or split the order at about 200K. Use `--readonly` only for lanes that never write.
+- **Always pass the Codex model and effort:** `ask-codex -m gpt-6.1-sol --effort high --context order.md --output report.md "…" </dev/null`. Account homes can default to different models, including the superseded `gpt-6-sol`, so an omitted `-m` gets the wrong model. GPT-6.1 Sol requires Codex CLI 0.159.0 or later; older versions are rejected by the server under a ChatGPT login. Codex windows are 272K under the ChatGPT login; raise it with `codex exec -c model_context_window=…` (in `ask-codex`, `-c` means `--context`) or split the order at about 200K. Use `--readonly` only for lanes that never write.
 - Never Haiku or Sonnet for judgment work. Never Fast mode on a dispatched lane; it is for interactive work the user is watching.
 - Cross-family lanes are also availability insurance: every lane on one family is a single point of failure.
 
@@ -140,13 +140,13 @@ Gate this before sizing anything.
 
 When you go inline, name the real reason: "coupled chain" and "each item is one tool call" are different arguments.
 
-**Sizing follows the work.** One agent per independent item: 20 files is 20 agents, 5 items is 5. Never batch items into one agent to keep the count down. Spend width where agents are cheap (Opus 5.5 `low`, Sol `high`, Luna `high`) and keep Fable lanes narrow. The session size guideline (`workflowSizeGuideline`: `small` <5 · `medium` <10, the default · `large` <50 · `unrestricted`) is a ceiling, not a target. If you bound coverage for cost, `log()` what you dropped.
+**Sizing follows the work.** One agent per independent item: 20 files is 20 agents, 5 items is 5. Never batch items into one agent to keep the count down. Spend width where agents are cheap (Opus 5.5 `low`, GPT-6.1 Sol `high`, Luna `high`) and keep Fable lanes narrow. The session size guideline (`workflowSizeGuideline`: `small` <5 · `medium` <10, the default · `large` <50 · `unrestricted`) is a ceiling, not a target. If you bound coverage for cost, `log()` what you dropped.
 
 **Turn-by-turn or `Workflow`.** Turn-by-turn (`Agent` calls, background `ask-codex`) for one to three lanes of different kinds, or when the next order depends on a judgment about the last result. A `Workflow` for an enumerated work-list of three or more items, review-then-verify pipelines, competing drafts with judges, fix-until-green loops and runs long enough that resuming from cache matters. A Codex lane inside a Workflow goes through a thin wrapper agent (`model: 'opus'`, `effort: 'low'`) that runs `ask-codex`. The plain `Agent` tool has no effort parameter; use the pinned lane agents (`exec-lane`, `bulk-lane`, `design-lane`, `verify-lane`, `write-lane`) or a Workflow's `agent(prompt, {model, effort})`.
 
 ## Reaching the other family
 
-`gpt-6-sol`, `gpt-6-astra` and `gpt-6-luna` are reachable only through the Codex CLI. Prefer the dedicated skills: `codex-review` for an independent diff review (`-m gpt-6-sol --effort high` by default, `-m gpt-6-astra --effort medium` for critical changes) and `codex-computer-use` for driving the running app (Astra `medium`). For anything else, shell out to `ask-codex` with the pattern in **Rules** above, or `codex exec -m gpt-6-luna -c model_reasoning_effort=high "<prompt>"`.
+`gpt-6.1-sol` and `gpt-6-luna` are reachable only through the Codex CLI. Prefer the dedicated skills: `codex-review` for an independent diff review (`-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for critical changes) and `codex-computer-use` for driving the running app (`-m gpt-6.1-sol --effort high`). For anything else, shell out to `ask-codex` with the pattern in **Rules** above, or `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high "<prompt>"` (Luna lanes: `-m gpt-6-luna -c model_reasoning_effort=high`).
 
 **Read `~/.codex/config.toml` rather than assuming its contents.** `model` and `model_reasoning_effort` there are independent of the Claude session's effort and drift between releases. A verify lane silently running at `low` is worse than no verify lane, because it returns a confident pass.
 
@@ -158,9 +158,9 @@ Judge a browser tool by its real agent interface, not its weakest entry point.
 
 - **Local, driven interactively:** `agent-browser` (`--session <name>` for isolation,
   `snapshot -i` → `@refs`, `screenshot <path>`). **This is the default local lane.**
-- **Local, cheap unattended QA:** Astra at `medium` via the `codex-computer-use` skill. Astra drives
-  and screenshots; **Claude then reads the pixels and judges.** Astra confirms mechanics
-  only.
+- **Local, cheap unattended QA:** GPT-6.1 Sol at `high` via the `codex-computer-use` skill.
+  GPT-6.1 Sol drives and screenshots; **Claude then reads the pixels and judges.** GPT-6.1
+  Sol confirms mechanics only.
 - **Cloud / CI / a deployed URL:** a hosted browser service or Playwright. Cloud browsers
   can't reach `localhost`.
 
@@ -201,7 +201,7 @@ Read the current report design, explanation and evidence-selection sections of t
 
 - **Web (when video is selected):** use an owned agent-browser session and the installed Conductor recording procedure. Check the installed version and `record --help`; do not assume recording opens a fresh context. Prefer direct MP4 where supported and verify the recording plus independent assertions.
 - **iOS Simulator:** `xcrun simctl io <device-udid> recordVideo --codec h264 <path>.mp4`.
-- **Native Android/iOS:** use the installed `mobile-app-testing` skill and route device execution to GPT-6 Astra. Mobile Next can drive supported virtual or physical devices. Use a managed recorder API or a durable owned recorder session; the lane may own it if its lifetime survives the command. Save and verify capture, stop only owned recorders/devices, and have the orchestrator verify cleanup after completion or failure.
+- **Native Android/iOS:** use the installed `mobile-app-testing` skill and route device execution to GPT-6.1 Sol at `high`. Mobile Next can drive supported virtual or physical devices. Use a managed recorder API or a durable owned recorder session; the lane may own it if its lifetime survives the command. Save and verify capture, stop only owned recorders/devices, and have the orchestrator verify cleanup after completion or failure.
 - **Native macOS app:** `screencapture -v <path>.mp4`.
 
 When recording is genuinely infeasible, a captioned screenshot sequence is the fallback —

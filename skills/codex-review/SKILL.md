@@ -57,7 +57,7 @@ That handoff is what Codex receives. The user just types `/codex-review` and you
 │    └─────────────────────────────────────────────┘      │
 │                                                          │
 │ 2. Build rich context and send to Codex:                │
-│    ask-codex -m gpt-6-sol --effort high --clean "      │
+│    ask-codex -m gpt-6.1-sol --effort high --clean "      │
 │      ## Context from Claude Session                     │
 │      Goal: ...                                          │
 │      Approach: ...                                      │
@@ -136,10 +136,12 @@ Optionally supplement with:
 
 Codex needs to investigate files, run tests, post issue comments, and apply fixes — so use the default `workspace-write` sandbox (don't pass `--readonly`). The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
-The default reviewer is GPT-6 Sol at `high` (27 Sep 2026). On OpenAI's 22 Sep charts (vendor-reported), Sol high scores 47.7 on FrontierCode 1.1 against Astra medium's 48.8, at about a fifth of the cost per task. Use `-m gpt-6-astra --effort medium` instead when the change is critical and the risk is production, money or data (it deploys to production or changes production data; touches auth, payments, money or personal data; or is a schema or data migration), or when a Sol review of a large, risky diff came back thin. Other critical changes (a client-facing deliverable, the routing and agent configuration) keep Sol here and add the Fable 5.1 `verify-lane` judgment review.
+The default reviewer is GPT-6.1 Sol at `high` (29 Sep 2026; it replaced GPT-6 Sol and GPT-6 Astra). On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about $1.50 per task, against Astra high's 74.8% at about $7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), run `-m gpt-6.1-sol --effort xhigh` and add a judgment review by a different model from the author: Fable 5.1 (`verify-lane`) for Opus-authored work, Opus 5.5 at `high` for Fable-authored work. Use `xhigh` also as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
+
+GPT-6.1 Sol needs Codex CLI 0.159.0 or later; 0.156.1 is rejected by the server under a ChatGPT login. Always pass `-m gpt-6.1-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
 
 ```bash
-ask-codex -m gpt-6-sol --effort high --clean "
+ask-codex -m gpt-6.1-sol --effort high --clean "
 ## Context from Claude session
 
 ### Original request
@@ -236,10 +238,14 @@ Severity lives in the reasoning, not in a label. If Codex didn't flag any blocki
 
 ### Step 4: Fix Issues (if --fix flag)
 
-If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass:
+If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass.
+
+If Codex applied fixes itself, those fixes are GPT-authored and need a review by a different model before you report: an Opus 5.5 lane at `high` reviews the fix diff (`git diff` since the review started). In Conductor Core, a separate fresh-context GPT-6.1 Sol reviewer at `xhigh` does it instead, labelled `same-model, fresh context`.
+
+Quick verification after your own fixes:
 
 ```bash
-ask-codex -m gpt-6-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
+ask-codex -m gpt-6.1-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
 ```
 
 Codex still runs in `workspace-write` mode here — it may want to read the updated files or run tests to confirm.
@@ -382,14 +388,14 @@ git diff --name-only         # Uncommitted changes
 
 ### Codex Invocation Pattern
 
-Use `workspace-write` (the default) when the review must run tests or apply fixes; do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files. Either way name the model and effort: `-m gpt-6-sol --effort high` by default, `-m gpt-6-astra --effort medium` for a critical change. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
+Use `workspace-write` (the default) when the review must run tests or apply fixes; do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files. Either way name the model and effort: `-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for a critical change. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
 
 ```bash
 # Review only — Codex investigates but won't apply fixes unless told to
-ask-codex -m gpt-6-sol --effort high --clean "Review prompt (without 'apply blocking fixes')..."
+ask-codex -m gpt-6.1-sol --effort high --clean "Review prompt (without 'apply blocking fixes')..."
 
 # Review + fix — Codex applies blocking fixes itself
-ask-codex -m gpt-6-sol --effort high --clean "Review prompt (with 'apply blocking fixes')..."
+ask-codex -m gpt-6.1-sol --effort high --clean "Review prompt (with 'apply blocking fixes')..."
 ```
 
 ### Error Handling

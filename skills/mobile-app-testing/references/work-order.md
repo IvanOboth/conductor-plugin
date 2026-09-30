@@ -17,9 +17,9 @@ Keep a project's durable facts in `docs/testing/mobile-profile.md` (or its estab
 ```text
 Scope: <change, requested flows, source/artifact>
 Profile: <path; project instructions also apply>
-Execution: gpt-6-astra, effort <medium|high>, reason <task bottleneck>
+Execution: gpt-6.1-sol, effort <high|xhigh>, reason <task bottleneck>
 Routing record: <routing.json with actual model, effort, reason and acceptance criteria>
-Review: <active profile; Astra review for Conductor Core, Claude review where required; orchestrator accepts>
+Review: <active profile; fresh-context GPT-6.1 Sol xhigh review (same-model, labelled) for Conductor Core, Claude review where required; orchestrator accepts>
 Ownership: <one device/session owner; fixture; source files permitted to change>
 Checkpoint: <private path known to orchestrator, written before provisioning>
 Instance name/tag: <run-unique provider name recorded before the start request>
@@ -42,12 +42,12 @@ The lane returns a case matrix with build/platform, expected vs actual result, p
 
 ## Launch permissions and route availability
 
-Check installed `ask-codex --help`, `codex exec --help`, login status and the relevant sandbox/network settings in Codex's active configuration. Inspect only needed settings; do not copy auth or full configuration into reports. Wrapper versions differ: this checkout’s `bin/ask-codex` explicitly selects workspace-write; the separately installed Bench wrapper observed on 14 September 2026 omits that flag by default and inherits configuration. Inspect the executable actually being launched. Neither its name nor the global config establishes the effective mode or network access. Check available quota/status if the harness exposes it; no artificial model request is needed just to prove the route exists.
+GPT-6.1 Sol needs Codex CLI 0.159.0 or later (`codex --version`); 0.156.1 is rejected by the server under a ChatGPT login. Check installed `ask-codex --help`, `codex exec --help`, login status and the relevant sandbox/network settings in Codex's active configuration. Inspect only needed settings; do not copy auth or full configuration into reports. Wrapper versions differ: this checkout’s `bin/ask-codex` explicitly selects workspace-write; the separately installed Bench wrapper observed on 14 September 2026 omits that flag by default and inherits configuration. Inspect the executable actually being launched. Neither its name nor the global config establishes the effective mode or network access. Check available quota/status if the harness exposes it; no artificial model request is needed just to prove the route exists.
 
 If the wrapper cannot express the task's permitted execution mode, use the CLI directly. For a lane whose writes stay inside the workspace, a baseline form is:
 
 ```sh
-codex exec -m gpt-6-astra -c model_reasoning_effort=high \
+codex exec -m gpt-6.1-sol -c model_reasoning_effort=high \
   --sandbox workspace-write -o result.md - < order.md
 ```
 
@@ -55,4 +55,4 @@ Set the host-supported approval policy deliberately for an unattended lane; wher
 
 Where the host supports and permits it, workspace-write network access can be configured with `-c sandbox_workspace_write.network_access=true`; separately grant the necessary writable paths using the supported harness controls. For an authorized device run that genuinely must act outside the workspace, `codex exec --sandbox danger-full-access ...` is an explicit alternative only when allowed by the host/task permissions. Name the reason and ownership boundaries. These examples do not authorize bypassing a sandbox denial, changing global configuration, or disabling approval controls. If the current harness forbids a required mode, report that concrete block or select another permitted route.
 
-On quota/launch failure, checkpoint the device ID/deadline and build jobs so the orchestrator can resume or stop them. Continue other authorized work. Use a different executor only when the task permits it and record that change; do not silently replace the requested Astra route or claim completion.
+On quota/launch failure, checkpoint the device ID/deadline and build jobs so the orchestrator can resume or stop them. Continue other authorized work. Use a different executor only when the task permits it and record that change; do not silently replace the requested GPT-6.1 Sol route or claim completion.
