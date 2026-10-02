@@ -1,4 +1,5 @@
 """Offline coverage for ask-codex --worktree, --resume and the session id line (#19)."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,10 @@ args=sys.argv[1:]
 if '-o' in args: open(args[args.index('-o')+1],'w').write('final\n')
 print('pong')
 '''
+
+
+def slug(branch):
+    return branch.replace('/', '-') + '-' + hashlib.sha1(branch.encode()).hexdigest()[:8]
 
 
 class AskCodexWorktree(unittest.TestCase):
@@ -51,7 +56,7 @@ class AskCodexWorktree(unittest.TestCase):
     def test_worktree_created_on_branch_passed_with_C_and_reused(self):
         result = self.run_ask('--worktree', 'lane/x', 'do the order')
         self.assertEqual(result.returncode, 0, result.stderr)
-        path = self.wt_root / 'repo' / 'lane-x'
+        path = self.wt_root / 'repo' / slug('lane/x')
         branch = subprocess.run(['git', '-C', str(path), 'branch', '--show-current'],
                                 capture_output=True, text=True, check=True).stdout.strip()
         self.assertEqual(branch, 'lane/x')
@@ -69,7 +74,7 @@ class AskCodexWorktree(unittest.TestCase):
 
     def test_resume_uses_exec_resume_with_sandbox_config_and_no_C(self):
         self.run_ask('--worktree', 'lane/y', 'first run')
-        path = self.wt_root / 'repo' / 'lane-y'
+        path = self.wt_root / 'repo' / slug('lane/y')
         result = self.run_ask('--resume', SESSION, '--worktree', 'lane/y', '-m', 'gpt-6.1-sol',
                               '-o', 'out.md')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -113,6 +118,24 @@ class AskCodexWorktree(unittest.TestCase):
         self.assertEqual(missing.returncode, 0, missing.stderr)
         self.assertEqual(Path(self.calls()[-1]['cwd']).resolve(), self.repo)
         self.assertIn('the current directory decides where the lane works', missing.stderr)
+
+    def test_resume_hint_repeats_clean(self):
+        result = self.run_ask('--clean', 'summarise')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f'(continue it with: ask-codex --resume {SESSION} --clean)', result.stderr)
+
+    def test_worktree_folder_is_collision_resistant(self):
+        first = self.run_ask('--worktree', 'lane/x', 'one')
+        self.assertEqual(first.returncode, 0, first.stderr)
+        second = self.run_ask('--worktree', 'lane-x', 'two')
+        self.assertEqual(second.returncode, 0, second.stderr)
+        a, b = self.wt_root / 'repo' / slug('lane/x'), self.wt_root / 'repo' / slug('lane-x')
+        self.assertNotEqual(a, b)
+        self.assertTrue(a.name.startswith('lane-x-') and b.name.startswith('lane-x-'))
+        for path, branch in ((a, 'lane/x'), (b, 'lane-x')):
+            current = subprocess.run(['git', '-C', str(path), 'branch', '--show-current'],
+                                     capture_output=True, text=True, check=True).stdout.strip()
+            self.assertEqual(current, branch)
 
 
 if __name__ == '__main__':

@@ -23,7 +23,8 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  --output, -o FILE    Save the final response to FILE (written by the CLI, works with --readonly)"
   echo "  --debug-log FILE     Save raw session transcript to this file"
   echo "  --worktree BRANCH    Run the lane in its own git worktree on BRANCH, at"
-  echo "                       \${ASK_CODEX_WORKTREE_ROOT:-~/runs/codex-worktrees}/<repo>/<branch with / as ->."
+  echo "                       \${ASK_CODEX_WORKTREE_ROOT:-~/runs/codex-worktrees}/<repo>/<branch with / as ->-<hash>,"
+  echo "                       where <hash> is the first 8 hex chars of sha1(BRANCH) (lane/x -> lane-x-<hash>)."
   echo "                       Reuses that worktree when it already exists on BRANCH (a resumed lane);"
   echo "                       creates BRANCH from --base when it does not exist. Never removes it."
   echo "  --base REF           Start point for a new --worktree branch (default: HEAD)"
@@ -33,7 +34,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "                       resume inside that lane's worktree; without it the resume starts in the"
   echo "                       session's saved directory (read from its rollout file)."
   echo "                       Every run prints its session id on stderr when codex reports one, with"
-  echo "                       the full resume command (worktree, --readonly, model and effort)."
+  echo "                       the full resume command (worktree, --readonly, model, effort, --clean)."
   echo "  --help, -h           Show this help"
   echo ""
   echo "Examples:"
@@ -196,7 +197,10 @@ if [[ -n "$WORKTREE_BRANCH" ]]; then
   else
     WT_REPO_NAME=$(basename "$WT_REPO_TOP")
   fi
-  WT_PATH="${ASK_CODEX_WORKTREE_ROOT:-$HOME/runs/codex-worktrees}/$WT_REPO_NAME/${WORKTREE_BRANCH//\//-}"
+  # Readable slug plus the first 8 hex chars of sha1(branch): lane/x and lane-x
+  # share a slug and must not share a folder. (python3, not sha1sum: macOS has none.)
+  WT_HASH=$(python3 -c 'import hashlib,sys; print(hashlib.sha1(sys.argv[1].encode()).hexdigest()[:8])' "$WORKTREE_BRANCH")
+  WT_PATH="${ASK_CODEX_WORKTREE_ROOT:-$HOME/runs/codex-worktrees}/$WT_REPO_NAME/${WORKTREE_BRANCH//\//-}-$WT_HASH"
   # Which branch (if any) is checked out at WT_PATH as a worktree of THIS repo?
   WT_REGISTERED_BRANCH=""
   WT_REGISTERED=false
@@ -368,6 +372,7 @@ resume_hint() {
   [[ "$SANDBOX" != "read-only" ]] || hint+=" --readonly"
   [[ -z "$MODEL" ]] || hint+=" -m $(printf '%q' "$MODEL")"
   [[ -z "$EFFORT" ]] || hint+=" --effort $EFFORT"
+  [[ "$CLEAN" != true ]] || hint+=" --clean"
   printf '%s' "$hint"
 }
 
