@@ -1,0 +1,20 @@
+{
+  "description": "Conductor context watch (issue #17): tells a long conductor run to hand off to a fresh session at 70% context.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/context-watch.py\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/context-watch.py\"", "timeout": 10 }
+        ]
+      }
+    ]
+  }
+}

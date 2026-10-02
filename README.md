@@ -67,6 +67,17 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 }
 ```
 
+### Context handoff for long runs
+
+A conductor run that fills its context window ends in compaction, which keeps the plan only as a summary. The `context-watch` hook tells the orchestrator when its context passes 70% and again at 85%. The orchestrator then writes a continuation order and runs `conductor-handoff --order <path>`, which starts a fresh session in a new Orca terminal in the same worktree and stands the old one down (issue #17). A plugin install gets the hook from `hooks/hooks.json`. A linked checkout installs it with:
+
+```bash
+python3 scripts/install-context-hook.py        # PostToolUse + Stop hooks, links conductor-handoff into ~/.local/bin
+python3 scripts/install-context-hook.py --uninstall
+```
+
+The hook only acts in conductor sessions: one that loaded a conductor skill, or one whose working directory has `.conductor/work-list.md`. Hooks are not told the window size. The hook reads it from a file the statusline writes (pipe your statusline's stdin to `scripts/context-statusline-tap.sh`); without that file it assumes 1M for Opus and Fable 5.x and 200K for other models. Settings: `CONDUCTOR_HANDOFF_PCT` (70), `CONDUCTOR_HANDOFF_NOW_PCT` (85), `CONDUCTOR_CONTEXT_WINDOW`, and `CONDUCTOR_CONTEXT_WATCH=off|all`.
+
 ## What's in the box
 
 | Component | What it is |
@@ -86,6 +97,8 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 | `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents) |
 | `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
+| `bin/conductor-handoff` | Starts the successor orchestrator in a new Orca terminal from a continuation order, records the handoff and stands the old session down |
+| `scripts/context-watch.py` | PostToolUse/Stop hook: tells a conductor session to hand off at 70% context |
 | `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
 
 ## Prerequisites

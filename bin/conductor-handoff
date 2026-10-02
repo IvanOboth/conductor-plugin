@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""conductor-handoff — start a fresh orchestrator session that continues this run.
+
+Run by the orchestrator once its continuation order is written (conductor skill,
+"Context handoff"; issue #17). It does what the mikono #896 session did by hand:
+
+  1. checks the order exists and is substantial;
+  2. opens an Orca terminal in the same worktree running claude with this
+     session's model, effort and permission mode;
+  3. waits for the TUI and sends "/<skill> Read <order> …";
+  4. records the handoff in <worktree>/.conductor/handoffs.jsonl and in the
+     context-watch state, so the watch stops prompting this session;
+  5. renames this session's tab "… (handed off)" and prints the stand-down rules.
+
+Exit codes: 0 handed off · 2 bad order or arguments · 3 Orca unavailable (the
+manual command is printed) · 4 chain guard (3 handoffs in 2 hours; --force
+overrides) · 5 Orca refused the terminal or the prompt.
+"""
+import argparse
+import json
+import os
+import shlex
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+MIN_ORDER_BYTES = 400
+CHAIN_LIMIT, CHAIN_WINDOW = 3, 2 * 3600
+PERMISSION_FLAGS = {
+    'bypassPermissions': ['--dangerously-skip-permissions'],
+    'acceptEdits': ['--permission-mode', 'acceptEdits'],
+    'plan': ['--permission-mode', 'plan'],
+}
+MODEL_ALIASES = {'claude-opus-5-5': 'opus', 'claude-fable-5-1': 'fable'}
+
+
+def state_path(sid):
+    base = os.environ.get('XDG_STATE_HOME') or str(Path.home() / '.local/state')
+    return Path(base) / 'conductor/context' / f'{sid}.json'
+
+
+def load_json(path):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def orca(*args, timeout=60):
+    """Run an orca CLI command with --json; return (ok, result-or-error-text)."""
+    try:
+        p = subprocess.run(['orca', *args, '--json'], capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, str(exc)
+    try:
+        d = json.loads(p.stdout)
+    except ValueError:
+        return False, (p.stdout + p.stderr).strip()[-400:]
+    return bool(d.get('ok')), d.get('result') if d.get('ok') else json.dumps(d.get('error') or d)[:400]
+
+
+def worktree_of(path):
+    p = subprocess.run(['git', '-C', str(path), 'rev-parse', '--show-toplevel'], capture_output=True, text=True)
+    return Path(p.stdout.strip()) if p.returncode == 0 else Path(path)
+
+
+def recent_handoffs(ledger):
+    cutoff = time.time() - CHAIN_WINDOW
+    rows = []
+    try:
+        for line in ledger.read_text().splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            if row.get('epoch', 0) >= cutoff:
+                rows.append(row)
+    except OSError:
+        pass
+    return rows
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    ap.add_argument('--order', required=True, help='continuation order the new session executes')
+    ap.add_argument('--worktree', help='worktree the new session runs in (default: git top level of the cwd)')
+    ap.add_argument('--title', help='tab title for the new session (default: this tab title + " (cont.)")')
+    ap.add_argument('--skill', help='conductor | conductor-claude | conductor-core (default: the one this session loaded)')
+    ap.add_argument('--model', help='claude --model for the new session (default: this session\'s model, else opus)')
+    ap.add_argument('--effort', help='claude --effort (default: this session\'s, else high)')
+    ap.add_argument('--permission-mode', help='default | acceptEdits | bypassPermissions | plan (default: this session\'s)')
+    ap.add_argument('--note', default='', help='one extra sentence appended to the start prompt')
+    ap.add_argument('--force', action='store_true', help='skip the chain guard')
+    ap.add_argument('--dry-run', action='store_true', help='print what would happen; change nothing')
+    a = ap.parse_args(argv)
+
+    order = Path(a.order).expanduser().resolve()
+    if not order.is_file() or order.stat().st_size < MIN_ORDER_BYTES:
+        print(f'conductor-handoff: {order} is missing or under {MIN_ORDER_BYTES} bytes; write the '
+              'continuation order first (conductor skill, "Context handoff").', file=sys.stderr)
+        return 2
+    worktree = Path(a.worktree).expanduser().resolve() if a.worktree else worktree_of(Path.cwd())
+    sid = os.environ.get('CLAUDE_CODE_SESSION_ID', '')
+    state = load_json(state_path(sid)) if sid else {}
+    if state.get('handoff') and not a.force:
+        h = state['handoff']
+        print(f'conductor-handoff: this session already handed off at {h.get("at")} to {h.get("to_terminal")}. '
+              'Stand down; --force starts another successor.', file=sys.stderr)
+        return 4
+
+    skill = a.skill or state.get('skill') or 'conductor'
+    model_id = a.model or state.get('model') or 'opus'
+    model = MODEL_ALIASES.get(model_id, model_id)
+    effort = a.effort or os.environ.get('CLAUDE_EFFORT') or 'high'
+    pmode = a.permission_mode or state.get('permission_mode') or 'default'
+    cmd = ['claude', '--model', model, '--effort', effort, *PERMISSION_FLAGS.get(pmode, [])]
+    launch = f'cd {shlex.quote(str(worktree))} && {shlex.join(cmd)}'
+    pct = state.get('pct')
+    old_handle = os.environ.get('ORCA_TERMINAL_HANDLE', '')
+    prompt = (f'/{skill} Read {order} and execute it in full as the orchestrator. You are taking over this '
+              f'run from session {sid or "unknown"}' + (f' (Orca terminal {old_handle})' if old_handle else '')
+              + (f', which handed off at {pct}% context' if pct is not None else '')
+              + f' and has stood down. You are in {worktree}. Start now.' + (f' {a.note}' if a.note else ''))
+
+    ledger = worktree / '.conductor/handoffs.jsonl'
+    chain = recent_handoffs(ledger)
+    if len(chain) >= CHAIN_LIMIT and not a.force:
+        print(f'conductor-handoff: {len(chain)} handoffs in this worktree in the last 2 hours. A run that keeps '
+              'handing off is not converging; stop and tell Ivan (or pass --force).', file=sys.stderr)
+        return 4
+
+    base_title = a.title
+    if not base_title and old_handle:
+        ok, res = orca('terminal', 'show', '--terminal', old_handle, timeout=20)
+        if ok:
+            base_title = ((res or {}).get('terminal') or {}).get('title')
+    base_title = (base_title or f'{worktree.name} conductor').replace(' (handed off)', '')
+    title = a.title or (base_title if base_title.endswith('(cont.)') else f'{base_title} (cont.)')
+
+    if a.dry_run:
+        print(json.dumps({'worktree': str(worktree), 'title': title, 'launch': launch, 'prompt': prompt,
+                          'recent_handoffs': len(chain)}, indent=1))
+        return 0
+
+    ok, res = orca('status', timeout=20)
+    if not ok or ((res or {}).get('runtime') or {}).get('state') != 'ready':
+        print('conductor-handoff: the Orca runtime is not ready, so no successor was started. Ask Ivan to open '
+              'a terminal and run:\n  ' + launch + '\nthen paste:\n  ' + prompt, file=sys.stderr)
+        return 3
+
+    ok, res = orca('terminal', 'create', '--worktree', f'path:{worktree}', '--title', title, '--command', launch)
+    if not ok:
+        print(f'conductor-handoff: orca terminal create failed: {res}', file=sys.stderr)
+        return 5
+    handle = ((res or {}).get('terminal') or {}).get('handle')
+    orca('terminal', 'wait', '--terminal', handle, '--for', 'tui-idle', '--timeout-ms', '120000', timeout=140)
+    ok, res = orca('terminal', 'send', '--terminal', handle, '--text', prompt, '--enter',
+                   '--wait-submit', '20', timeout=60)
+    if not ok:
+        print(f'conductor-handoff: terminal {handle} started but the prompt was not accepted: {res}\n'
+              f'Send it by hand: orca terminal send --terminal {handle} --text {shlex.quote(prompt)} --enter',
+              file=sys.stderr)
+        return 5
+
+    now = datetime.now(timezone.utc)
+    row = {'at': now.isoformat(timespec='seconds'), 'epoch': int(now.timestamp()), 'from_session': sid,
+           'from_terminal': old_handle, 'to_terminal': handle, 'order': str(order), 'pct': pct,
+           'model': model, 'effort': effort, 'permission_mode': pmode, 'skill': skill}
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    with ledger.open('a') as fh:
+        fh.write(json.dumps(row) + '\n')
+    if sid:
+        state['handoff'] = row
+        sp = state_path(sid)
+        sp.parent.mkdir(parents=True, exist_ok=True)
+        sp.write_text(json.dumps(state, indent=1))
+    if old_handle:
+        orca('terminal', 'rename', '--terminal', old_handle, '--title', f'{base_title} (handed off)', timeout=20)
+
+    print(f'Handed off: new orchestrator in Orca terminal {handle} ("{title}"), worktree {worktree}.\n'
+          f'Recorded in {ledger}.\n\n'
+          'Stand down now:\n'
+          '- No merges, pushes, deploys, issue edits or lane dispatches from this session.\n'
+          '- If the successor messages you, answer its questions from what you know, then stop.\n'
+          '- If a lane of yours reports after this point, forward its result to the successor '
+          '(SendMessage, or a note in the order) and do nothing else with it.\n'
+          '- Tell Ivan in two lines: handed off at what context %, to which terminal, which order file.')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -103,7 +103,7 @@ Wait using the harness's real completion mechanism: a Codex parent resumes a run
 
 ## Long-horizon runs
 
-The shared **Long-horizon runs** section governs: persist the work-list as a file, phase an epic into waves rather than one flat fan-out, checkpoint at wave boundaries, and resume from what landed rather than from memory. Read it there.
+The shared **Long-horizon runs** section governs: persist the work-list as a file, phase an epic into waves rather than one flat fan-out, checkpoint at wave boundaries, and resume from what landed rather than from memory. Read it there. Its **Context handoff** rules apply to a Claude parent (the hook and `conductor-handoff` are Claude Code tools). A Codex parent gets no hook: at a wave boundary, compare its usage with the 272K window, and past ~70% write the same continuation order and start a fresh Codex parent on it.
 
 Core-specific deltas: raise `model_context_window` for a long lane or split its order at ~200K, since GPT-6.1 Sol's Codex window is 272K under the ChatGPT login. An `ultra` lane — GPT-6.1 Sol fanning out to its own subagents — is for a self-contained long-horizon order that caps its own fan-out and names its worker budget, never for a wave the parent is already fanning out. A provider limit or an Orca terminal loss is an interruption to resume from, not a reason to restate the plan from scratch: the committed branches and the work-list file are the resume point.
 
