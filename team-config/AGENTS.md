@@ -131,7 +131,7 @@ say so in the report when you used it.
 
 ## Parallel writes
 
-If your work order names a worktree and branch (you were launched with
+If your prompt names a worktree and branch (you were launched with
 `ask-codex --worktree`), work only there and commit on that branch. Otherwise you share
 the working tree with other lanes: two write-lanes touching the same file collide, so if
 you were dispatched alongside another write lane on overlapping files, stop and say so

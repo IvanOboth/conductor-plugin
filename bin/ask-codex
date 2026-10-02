@@ -412,12 +412,27 @@ print_session_hint() {
     echo "ask-codex: session id $SESSION_ID (continue it with: $(resume_hint "$SESSION_ID"))" >&2
   fi
 }
-( cd "$RUN_DIR" && exec "${CMD[@]}" "$PROMPT" ) >"$CODEX_STDOUT" 2>"$CODEX_STDERR" &
+# A background job gets /dev/null as stdin unless told otherwise. A fresh run
+# keeps the caller's stdin, as before (`git diff | ask-codex "Review this"`,
+# `ask-codex -`); a resume never reads it, so an open pipe cannot hang it.
+if [[ -n "$RESUME_ID" ]]; then
+  ( cd "$RUN_DIR" && exec "${CMD[@]}" "$PROMPT" ) </dev/null >"$CODEX_STDOUT" 2>"$CODEX_STDERR" &
+else
+  ( cd "$RUN_DIR" && exec "${CMD[@]}" "$PROMPT" ) <&0 >"$CODEX_STDOUT" 2>"$CODEX_STDERR" &
+fi
 CODEX_PID=$!
-# Do not orphan codex when the launcher itself is stopped.
-trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 143' TERM
-trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 130' INT
-trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 129' HUP
+# Do not orphan codex when the launcher itself is stopped. Pass the same signal
+# on and wait, so codex's own handler can stop the tools it started before the
+# launcher returns. `|| true`: under set -e a failed kill would end the handler.
+stop_codex() {
+  kill -"$1" "$CODEX_PID" 2>/dev/null || true
+  wait "$CODEX_PID" 2>/dev/null || true
+  rm -f "$CODEX_STDOUT" "$CODEX_STDERR" "$CLEAN_TMPFILE"
+  exit "$2"
+}
+trap 'stop_codex TERM 143' TERM
+trap 'stop_codex INT 130' INT
+trap 'stop_codex HUP 129' HUP
 while kill -0 "$CODEX_PID" 2>/dev/null; do
   print_session_hint
   sleep "$POLL_SECONDS"

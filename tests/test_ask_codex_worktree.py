@@ -196,3 +196,51 @@ class AskCodexWorktree(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+STDIN_CODEX = r'''#!/usr/bin/env python3
+import os,sys
+open(os.environ['STDIN_LOG'],'w').write(sys.stdin.read())
+print('session id: %s' % os.environ['FAKE_SESSION'],file=sys.stderr,flush=True)
+print('pong')
+'''
+
+# Its SIGINT handler stands in for codex stopping the tools it started: it
+# writes a marker before exiting, which must happen before the launcher returns.
+INT_CODEX = r'''#!/usr/bin/env python3
+import os,signal,sys,time
+def stop(*_):
+    time.sleep(0.5)
+    open(os.environ['CLEANUP_LOG'],'w').write('cleaned\n')
+    sys.exit(130)
+signal.signal(signal.SIGINT, stop)
+print('session id: %s' % os.environ['FAKE_SESSION'],file=sys.stderr,flush=True)
+time.sleep(30)
+'''
+
+
+class AskCodexLaunchContract(unittest.TestCase):
+    setUp = AskCodexWorktree.setUp
+    env = AskCodexWorktree.env
+
+    def test_fresh_run_passes_the_callers_stdin_to_codex(self):
+        (self.bin / 'codex').write_text(STDIN_CODEX)
+        log = self.root / 'stdin.txt'
+        result = subprocess.run(['bash', str(SCRIPT), '-'], cwd=self.repo,
+                                env=self.env(STDIN_LOG=str(log)), text=True, input='work order\n',
+                                capture_output=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(log.read_text(), 'work order\n')
+
+    def test_interrupt_waits_for_codex_cleanup(self):
+        (self.bin / 'codex').write_text(INT_CODEX)
+        marker = self.root / 'cleanup.txt'
+        proc = subprocess.Popen(['bash', str(SCRIPT), 'long order'], cwd=self.repo,
+                                env=self.env(CLEANUP_LOG=str(marker)), text=True,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, start_new_session=True)
+        time.sleep(2)  # past codex's session header and into its sleep
+        os.killpg(proc.pid, signal.SIGINT)
+        proc.wait(timeout=20)
+        self.assertEqual(proc.returncode, 130)
+        self.assertTrue(marker.exists(), 'launcher returned before codex finished its cleanup')
