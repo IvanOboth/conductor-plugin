@@ -34,7 +34,8 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "                       resume inside that lane's worktree; without it the resume starts in the"
   echo "                       session's saved directory (read from its rollout file)."
   echo "                       Every run prints its session id on stderr when codex reports one, with"
-  echo "                       the full resume command (worktree, --readonly, model, effort, --clean)."
+  echo "                       the full resume command (worktree, --readonly, model, effort, --output,"
+  echo "                       --clean), as soon as codex names the session."
   echo "  --help, -h           Show this help"
   echo ""
   echo "Examples:"
@@ -118,8 +119,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Read from stdin if no prompt provided and stdin is not a terminal
-if [[ -z "$PROMPT" ]] && [[ ! -t 0 ]]; then
+# Read from stdin if no prompt provided and stdin is not a terminal. Never on
+# --resume: its prompt is optional, and reading an open pipe (a Bash tool, a
+# background lane) would hang the printed resume command forever.
+if [[ -z "$PROMPT" ]] && [[ -z "$RESUME_ID" ]] && [[ ! -t 0 ]]; then
   PROMPT=$(cat)
 fi
 
@@ -200,15 +203,22 @@ if [[ -n "$WORKTREE_BRANCH" ]]; then
   # Readable slug plus the first 8 hex chars of sha1(branch): lane/x and lane-x
   # share a slug and must not share a folder. (python3, not sha1sum: macOS has none.)
   WT_HASH=$(python3 -c 'import hashlib,sys; print(hashlib.sha1(sys.argv[1].encode()).hexdigest()[:8])' "$WORKTREE_BRANCH")
-  WT_PATH="${ASK_CODEX_WORKTREE_ROOT:-$HOME/runs/codex-worktrees}/$WT_REPO_NAME/${WORKTREE_BRANCH//\//-}-$WT_HASH"
+  # Absolute from the start: the run cds into WT_PATH and also passes it to -C,
+  # so a relative root would resolve beneath the worktree.
+  WT_ROOT="${ASK_CODEX_WORKTREE_ROOT:-$HOME/runs/codex-worktrees}"
+  [[ "$WT_ROOT" == /* ]] || WT_ROOT="$PWD/$WT_ROOT"
+  WT_PATH="$WT_ROOT/$WT_REPO_NAME/${WORKTREE_BRANCH//\//-}-$WT_HASH"
   # Which branch (if any) is checked out at WT_PATH as a worktree of THIS repo?
   WT_REGISTERED_BRANCH=""
   WT_REGISTERED=false
-  WT_WANT=$(realpath -m "$WT_PATH")
+  # `realpath -m` is GNU-only (BSD realpath lacks -m and fails on paths that do
+  # not exist yet); python3's os.path.realpath handles both.
+  wt_realpath() { python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"; }
+  WT_WANT=$(wt_realpath "$WT_PATH")
   wt_current=""
   while IFS= read -r wt_line; do
     case "$wt_line" in
-      "worktree "*) wt_current=$(realpath -m "${wt_line#worktree }") ;;
+      "worktree "*) wt_current=$(wt_realpath "${wt_line#worktree }") ;;
       "branch "*)
         if [[ "$wt_current" == "$WT_WANT" ]]; then WT_REGISTERED_BRANCH="${wt_line#branch refs/heads/}"; fi ;;
     esac
@@ -388,12 +398,35 @@ CODEX_STDERR=$(mktemp "${TMPDIR:-/tmp}/codex-stderr-XXXXXX")
 # `set -e` is on: assign in a form that survives a non-zero exit so the handler
 # below actually runs instead of the script dying silently.
 CODEX_STATUS=0
-RAW_OUTPUT=$(cd "$RUN_DIR" && "${CMD[@]}" "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
-# codex 0.160 prints "session id: <uuid>" in its stderr header.
-SESSION_ID=$(grep -m1 -oE 'session id: [0-9A-Za-z-]+' "$CODEX_STDERR" 2>/dev/null | sed 's/^session id: //' || true)
-if [[ -n "$SESSION_ID" ]]; then
-  echo "ask-codex: session id $SESSION_ID (continue it with: $(resume_hint "$SESSION_ID"))" >&2
-fi
+# codex runs in the background and its stderr is polled, so the resume command
+# is printed as soon as the header names the session: a lane killed mid-run
+# (timeout, session limit, SIGTERM) has already shown how to continue it.
+CODEX_STDOUT=$(mktemp "${TMPDIR:-/tmp}/codex-stdout-XXXXXX")
+POLL_SECONDS="${ASK_CODEX_POLL_SECONDS:-1}"
+SESSION_ID=""
+print_session_hint() {
+  [[ -z "$SESSION_ID" ]] || return 0
+  # codex 0.160 prints "session id: <uuid>" in its stderr header.
+  SESSION_ID=$(grep -m1 -oE 'session id: [0-9A-Za-z-]+' "$CODEX_STDERR" 2>/dev/null | sed 's/^session id: //' || true)
+  if [[ -n "$SESSION_ID" ]]; then
+    echo "ask-codex: session id $SESSION_ID (continue it with: $(resume_hint "$SESSION_ID"))" >&2
+  fi
+}
+( cd "$RUN_DIR" && exec "${CMD[@]}" "$PROMPT" ) >"$CODEX_STDOUT" 2>"$CODEX_STDERR" &
+CODEX_PID=$!
+# Do not orphan codex when the launcher itself is stopped.
+trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 143' TERM
+trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 130' INT
+trap 'kill "$CODEX_PID" 2>/dev/null; rm -f "$CODEX_STDOUT"; exit 129' HUP
+while kill -0 "$CODEX_PID" 2>/dev/null; do
+  print_session_hint
+  sleep "$POLL_SECONDS"
+done
+wait "$CODEX_PID" || CODEX_STATUS=$?
+trap - TERM INT HUP
+print_session_hint
+RAW_OUTPUT=$(cat "$CODEX_STDOUT")
+rm -f "$CODEX_STDOUT"
 echo "--- End Codex Response ---" >&2
 report_worktree
 
