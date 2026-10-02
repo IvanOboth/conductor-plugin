@@ -174,6 +174,8 @@ def main():
     if tokens:
         window = window_size(sid, model, tokens)
         pct = tokens * 100 // window
+        if pct + 20 <= state.get('pct', 0):  # compacted: the levels count again
+            state['told'], state['stop_blocked'] = [], []
         state.update(tokens=tokens, model=model, window=window, pct=pct, updated=int(time.time()))
     if not tokens or state.get('handoff'):
         save_state(sid, state)

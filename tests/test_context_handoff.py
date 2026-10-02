@@ -20,7 +20,7 @@ if cmd == ['status', '--json']:
 elif cmd == ['terminal', 'create']:
     r = {'terminal': {'handle': 'term_new'}}
 elif cmd == ['terminal', 'show']:
-    r = {'terminal': {'title': '#896 API v1 conductor'}}
+    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor'}}
 else:
     r = {}
 print(json.dumps({'ok': True, 'result': r}))
@@ -84,6 +84,14 @@ class ContextWatchTest(unittest.TestCase):
         self.run_hook()
         self.write(assistant(870_000))
         self.assertIn('Hand off now', self.run_hook()['hookSpecificOutput']['additionalContext'])
+
+    def test_compaction_rearms_the_levels(self):
+        self.write(assistant(750_000))
+        self.assertIsNotNone(self.run_hook())
+        self.write(assistant(120_000))
+        self.assertIsNone(self.run_hook())
+        self.write(assistant(710_000))
+        self.assertIsNotNone(self.run_hook())
 
     def test_subagent_and_non_conductor_sessions_are_ignored(self):
         self.write(assistant(900_000))

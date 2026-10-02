@@ -19,6 +19,7 @@ overrides) · 5 Orca refused the terminal or the prompt.
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -137,7 +138,9 @@ def main(argv=None):
         ok, res = orca('terminal', 'show', '--terminal', old_handle, timeout=20)
         if ok:
             base_title = ((res or {}).get('terminal') or {}).get('title')
-    base_title = (base_title or f'{worktree.name} conductor').replace(' (handed off)', '')
+    # Claude Code prefixes its tab title with a status glyph ("◑ ", "✳ "); keep only the name.
+    base_title = re.sub(r'^[^\w#(\[]+', '', base_title or '').replace(' (handed off)', '').strip()
+    base_title = base_title or f'{worktree.name} conductor'
     title = a.title or (base_title if base_title.endswith('(cont.)') else f'{base_title} (cont.)')
 
     if a.dry_run:
@@ -183,10 +186,10 @@ def main(argv=None):
     print(f'Handed off: new orchestrator in Orca terminal {handle} ("{title}"), worktree {worktree}.\n'
           f'Recorded in {ledger}.\n\n'
           'Stand down now:\n'
-          '- No merges, pushes, deploys, issue edits or lane dispatches from this session.\n'
+          '- No merges, pushes, deploys, issue or comment edits, or lane dispatches from this session.\n'
           '- If the successor messages you, answer its questions from what you know, then stop.\n'
-          '- If a lane of yours reports after this point, forward its result to the successor '
-          '(SendMessage, or a note in the order) and do nothing else with it.\n'
+          '- If a lane of yours reports after this point, forward its result and do nothing else with it:\n'
+          f'    orca terminal send --terminal {handle} --text "<result or report path>" --enter\n'
           '- Tell Ivan in two lines: handed off at what context %, to which terminal, which order file.')
     return 0
 
