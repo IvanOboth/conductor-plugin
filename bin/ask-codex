@@ -260,7 +260,7 @@ report_worktree() {
     git -C "$WT_REPO_TOP" log --oneline "$WORKTREE_BASE..$WORKTREE_BRANCH" 2>&1 | head -n 10 | sed 's/^/  /'
     echo "ask-codex: uncommitted (first 10):"
     git -C "$WT_PATH" status --short 2>&1 | head -n 10 | sed 's/^/  /'
-    echo "ask-codex: remove it after integrating: git worktree remove $WT_PATH"
+    echo "ask-codex: remove it after integrating: git worktree remove $(printf '%q' "$WT_PATH")"
   } >&2 || true
 }
 
