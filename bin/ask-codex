@@ -372,6 +372,7 @@ resume_hint() {
   [[ "$SANDBOX" != "read-only" ]] || hint+=" --readonly"
   [[ -z "$MODEL" ]] || hint+=" -m $(printf '%q' "$MODEL")"
   [[ -z "$EFFORT" ]] || hint+=" --effort $EFFORT"
+  [[ -z "$OUTPUT_FILE" ]] || hint+=" --output $(printf '%q' "$OUTPUT_FILE")"
   [[ "$CLEAN" != true ]] || hint+=" --clean"
   printf '%s' "$hint"
 }
