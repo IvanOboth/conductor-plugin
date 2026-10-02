@@ -150,7 +150,7 @@ When you go inline, name the real reason: "coupled chain" and "each item is one 
 
 **Read `~/.codex/config.toml` rather than assuming its contents.** `model` and `model_reasoning_effort` there are independent of the Claude session's effort and drift between releases. A verify lane silently running at `low` is worse than no verify lane, because it returns a confident pass.
 
-Parallel *write* lanes need isolation: Codex has no worktree isolation of its own, so two Codex write lanes touching the same file collide. Serialize them, or wrap each in an `Agent`/`Workflow` with `isolation: 'worktree'`.
+Parallel *write* lanes need isolation: give each Codex write lane its own worktree with `ask-codex --worktree <branch>` (it commits on that branch; you merge it and remove the worktree), or wrap each in an `Agent`/`Workflow` with `isolation: 'worktree'`. Without either, two Codex write lanes touching the same file collide. Don't use Codex's native `codex exec --worktree`: it leaves detached-HEAD worktrees under each account's `$CODEX_HOME`.
 
 ## Browser automation & UI verification
 
