@@ -95,7 +95,7 @@ The hook only acts in conductor sessions: one that loaded a conductor skill, or 
 | `agents/exec-lane` | Opus 5.5 @ `medium` — implementation, refactors, migrations, terminal and CI work, volume writing |
 | `agents/verify-lane` | Fable 5.1 @ `high` — adversarial verification of critical Opus-authored changes; routine work gets the GPT-6.1 Sol `high` review |
 | `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
-| `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents) |
+| `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents); `--worktree BRANCH` runs a write lane in its own named git worktree; `--resume ID` continues an interrupted session |
 | `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
 | `bin/conductor-handoff` | Starts the successor orchestrator in a new Orca terminal from a continuation order, records the handoff and stands the old session down |
 | `scripts/context-watch.py` | PostToolUse/Stop hook: tells a conductor session to hand off at 70% context |

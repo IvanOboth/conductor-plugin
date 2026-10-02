@@ -131,9 +131,11 @@ say so in the report when you used it.
 
 ## Parallel writes
 
-You have no worktree isolation. Two write-lanes touching the same file collide. If you
-were dispatched alongside another write lane on overlapping files, stop and say so rather
-than racing it.
+If your prompt names a worktree and branch (you were launched with
+`ask-codex --worktree`), work only there and commit on that branch. Otherwise you share
+the working tree with other lanes: two write-lanes touching the same file collide, so if
+you were dispatched alongside another write lane on overlapping files, stop and say so
+rather than racing it.
 
 ## If you ARE the orchestrator
 
