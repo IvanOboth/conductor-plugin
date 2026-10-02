@@ -29,7 +29,7 @@ UNINSTALL=false
 
 SKILLS=(conductor conductor-core conductor-claude mobile-app-testing codex-review codex-computer-use agent-browser run-report)
 AGENTS=(design-lane exec-lane bulk-lane verify-lane write-lane)
-BINS=(ask-codex ask-claude)
+BINS=(ask-codex ask-claude conductor-handoff)
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,6 +54,7 @@ if $UNINSTALL; then
   echo "Removing conductor from ${PREFIX}…"
   for s in "${SKILLS[@]}"; do run rm -rf "${PREFIX}/skills/${s}"; done
   for a in "${AGENTS[@]}"; do run rm -f "${PREFIX}/agents/${a}.md"; done
+  [[ -f "${DATADIR}/install-context-hook.py" ]] && run python3 "${DATADIR}/install-context-hook.py" --settings "${PREFIX}/settings.json" --uninstall --no-link
   run rm -rf "${DATADIR}"
   for b in "${BINS[@]}"; do run rm -f "${BINDIR}/${b}"; done
   echo "Done. (Your own ask-codex/ask-claude, if you had them, were overwritten on install — restore from your dotfiles if needed.)"
@@ -98,8 +99,12 @@ for a in "${AGENTS[@]}"; do
   echo "  agent    ${a}"
 done
 
-run cp "${SRC}/scripts/conductor-report.py" "${DATADIR}/conductor-report.py"
-echo "  script   conductor-report.py"
+for sc in conductor-report.py context-watch.py context-statusline-tap.sh install-context-hook.py; do
+  run cp "${SRC}/scripts/${sc}" "${DATADIR}/${sc}"
+  echo "  script   ${sc}"
+done
+# The context-watch hook (issue #17): PostToolUse + Stop entries in settings.json.
+run python3 "${SRC}/scripts/install-context-hook.py" --settings "${PREFIX}/settings.json" --script-dir "${DATADIR}" --no-link
 
 for b in "${BINS[@]}"; do
   run cp "${SRC}/bin/${b}" "${BINDIR}/${b}"

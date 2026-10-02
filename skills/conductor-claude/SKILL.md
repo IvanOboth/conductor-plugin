@@ -178,7 +178,7 @@ A few rules that keep a Claude-only team from thrashing, beyond the shared sizin
 
 ## Long-horizon runs
 
-The shared **Long-horizon runs** section governs: the work-list is a file rather than a memory, ambition is phased into waves rather than flattened into one fan-out, lanes checkpoint at wave boundaries, and a `Workflow` resumes with `resumeFromRunId`. Read it there.
+The shared **Long-horizon runs** section governs: the work-list is a file rather than a memory, ambition is phased into waves rather than flattened into one fan-out, lanes checkpoint at wave boundaries, and a `Workflow` resumes with `resumeFromRunId`. Read it there. Its **Context handoff** rules apply unchanged: at 70% context the `context-watch` hook prompts you, and `conductor-handoff` starts the successor with `/conductor-claude`, because it reuses the skill this session loaded.
 
 Two things are sharper in this profile, and both argue for *more* structure on a long run, not less ambition:
 
