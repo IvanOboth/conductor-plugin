@@ -22,11 +22,17 @@ elif cmd == ['terminal', 'create']:
         import time; time.sleep(1)
     r = {'terminal': {'handle': 'term_new'}}
 elif cmd == ['terminal', 'show']:
+    if os.environ.get('ORCA_SHOW_FAIL'):
+        print(json.dumps({'ok': False, 'error': {'code': 'timeout'}}))
+        sys.exit(1)
     r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True}}
 elif cmd == ['terminal', 'send']:
     mode = open(os.environ['ORCA_SEND']).read().strip() if os.path.exists(os.environ.get('ORCA_SEND', '')) else 'ok'
     if mode == 'reject':
         print(json.dumps({'ok': True, 'result': {'send': {'accepted': False}}}))
+        sys.exit(1)
+    if mode == 'lost':
+        print(json.dumps({'ok': False, 'error': {'code': 'transport', 'data': {'orchestrationRequestId': 'req-lost'}}}))
         sys.exit(1)
     stages = ['input_accepted'] + (['turn_started'] if mode == 'ok' else [])
     r = {'send': {'accepted': True, 'prompt': {'requestId': 'req1', 'stages': stages}}}
@@ -203,6 +209,23 @@ class HandoffTest(unittest.TestCase):
         procs = [subprocess.Popen([sys.executable, str(HANDOFF), '--order', str(self.order)], env=env, cwd=self.wt,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for _ in range(2)]
         self.assertEqual(sorted(p.wait() for p in procs), [0, 4])
+        self.assertEqual(sum(c[:2] == ['terminal', 'create'] for c in self.calls()), 1)
+
+    def test_lost_response_retries_the_same_request_and_prompt(self):
+        (self.dir / 'send-mode').write_text('lost')
+        self.assertEqual(self.run_handoff().returncode, 5)
+        state = self.state / 'conductor/context/s1.json'
+        state.write_text(json.dumps(dict(json.loads(state.read_text()), pct=73)))
+        (self.dir / 'send-mode').write_text('ok')
+        self.assertEqual(self.run_handoff().returncode, 0)
+        sends = [c for c in self.calls() if c[:2] == ['terminal', 'send']]
+        self.assertEqual(sends[1][sends[1].index('--retry-request') + 1], 'req-lost')
+        self.assertEqual(sends[0][sends[0].index('--text') + 1], sends[1][sends[1].index('--text') + 1])
+
+    def test_unconfirmed_pending_terminal_blocks_a_new_one(self):
+        (self.dir / 'send-mode').write_text('noturn')
+        self.assertEqual(self.run_handoff().returncode, 5)
+        self.assertEqual(self.run_handoff(ORCA_SHOW_FAIL='1').returncode, 5)
         self.assertEqual(sum(c[:2] == ['terminal', 'create'] for c in self.calls()), 1)
 
     def test_every_permission_mode_is_explicit(self):

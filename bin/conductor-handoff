@@ -38,6 +38,7 @@ from pathlib import Path
 MIN_ORDER_BYTES = 400
 CHAIN_LIMIT, CHAIN_WINDOW = 3, 2 * 3600
 PERMISSION_MODES = ('default', 'acceptEdits', 'plan', 'manual', 'dontAsk', 'auto', 'bypassPermissions')
+GONE_CODES = ('terminal_handle_stale', 'terminal_not_found')
 MODEL_ALIASES = {'claude-opus-5-5': 'opus', 'claude-fable-5-1': 'fable'}
 
 
@@ -72,7 +73,9 @@ def orca(*args, timeout=60):
         return False, (p.stdout + p.stderr).strip()[-400:]
     if p.returncode == 0 and d.get('ok'):
         return True, d.get('result') or {}
-    return False, d.get('result') or json.dumps(d.get('error') or d)[:400]
+    if d.get('result'):
+        return False, d['result']
+    return False, {'error': d.get('error') or {'message': str(d)[:400]}}
 
 
 def worktree_of(path):
@@ -176,8 +179,15 @@ def main(argv=None):
     reuse = None
     if marker.get('status') == 'pending' and marker.get('to_terminal'):
         ok, res = orca('terminal', 'show', '--terminal', marker['to_terminal'], timeout=20)
+        code = ((res.get('error') or {}).get('code') if isinstance(res, dict) else None)
         if ok and (res.get('terminal') or {}).get('connected'):
             reuse = marker['to_terminal']
+        elif not (ok or code in GONE_CODES):
+            # Not proven gone: a second successor could run beside the first. Retry later.
+            print(f'conductor-handoff: could not check pending successor {marker["to_terminal"]}: {res}\n'
+                  'Rerun conductor-handoff when Orca answers; it will not start another terminal until it can '
+                  'confirm that one has closed.', file=sys.stderr)
+            return 5
     if not reuse:
         chain = recent_successors(ledger)
         if len(chain) >= CHAIN_LIMIT and not a.force:
@@ -197,6 +207,7 @@ def main(argv=None):
            'permission_mode': pmode, 'skill': skill}
     if reuse:
         handle = reuse
+        prompt = marker.get('prompt') or prompt  # a retried request must carry the identical payload
         marker = dict(marker, attempts=marker.get('attempts', 1) + 1)
     else:
         ok, res = orca('terminal', 'create', '--worktree', f'path:{worktree}', '--title', title, '--command', launch)
@@ -204,7 +215,7 @@ def main(argv=None):
         if not handle:
             print(f'conductor-handoff: orca terminal create failed: {res}', file=sys.stderr)
             return 5
-        marker = dict(row, status='pending', to_terminal=handle, attempts=1)
+        marker = dict(row, status='pending', to_terminal=handle, attempts=1, prompt=prompt)
         write_json(marker_path, marker)
         append(ledger, dict(row, to_terminal=handle, status='created'))
 
@@ -220,8 +231,11 @@ def main(argv=None):
                    *retry, timeout=90)
     send = (res.get('send') or {}) if isinstance(res, dict) else {}
     receipt = send.get('prompt') or {}
-    if receipt.get('requestId') and receipt['requestId'] != 'unsupported-old-host':
-        marker['request_id'] = receipt['requestId']
+    # The request id comes back in the receipt, or in error.data after an ambiguous transport failure.
+    request_id = receipt.get('requestId') or (
+        ((res.get('error') or {}).get('data') or {}).get('orchestrationRequestId') if isinstance(res, dict) else None)
+    if request_id and request_id != 'unsupported-old-host':
+        marker['request_id'] = request_id
         write_json(marker_path, marker)
     stages = receipt.get('stages') or []
     if not (ok and send.get('accepted') and 'turn_started' in stages):
