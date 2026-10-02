@@ -66,11 +66,11 @@ def orca(*args, timeout=60):
     try:
         p = subprocess.run(['orca', *args, '--json'], capture_output=True, text=True, timeout=timeout)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return False, str(exc)
+        return False, {'error': {'message': str(exc)}}
     try:
         d = json.loads(p.stdout)
     except ValueError:
-        return False, (p.stdout + p.stderr).strip()[-400:]
+        return False, {'error': {'message': (p.stdout + p.stderr).strip()[-400:]}}
     if p.returncode == 0 and d.get('ok'):
         return True, d.get('result') or {}
     if d.get('result'):

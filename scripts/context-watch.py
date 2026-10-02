@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 
 SKILL_RE = re.compile(
-    rb'Base directory for this skill: [^"\\\s]*/(conductor(?:-claude|-core)?)(?=[/"\\\s])'
+    rb'Base directory for this skill: [^"\\]*/(conductor(?:-claude|-core)?)(?=["\\])'
     rb'|"skill":\s*"(?:conductor:)?(conductor(?:-claude|-core)?)"'
 )
 TAIL_CHUNKS = (1 << 20, 8 << 20, 32 << 20)

@@ -78,6 +78,7 @@ def main(argv=None):
             backup = path.with_name(f'settings.json.bak-context-hook-{time.strftime("%Y%m%d-%H%M%S")}')
             shutil.copy2(path, backup)
             print(f'backup   {backup}')
+        path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_name('.settings.json.context-hook.tmp')
         tmp.write_text(json.dumps(settings, indent=2) + '\n')
         os.chmod(tmp, path.stat().st_mode & 0o777 if path.exists() else 0o600)

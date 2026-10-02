@@ -108,6 +108,13 @@ class ContextWatchTest(unittest.TestCase):
         self.write(assistant(710_000))
         self.assertIsNotNone(self.run_hook())
 
+    def test_skill_path_with_spaces_is_detected(self):
+        self.transcript.write_text(json.dumps({'type': 'user', 'message': {'content': [{'type': 'text', 'text':
+            'Base directory for this skill: /home/x/My Plugins/skills/conductor-claude\n\n# C'}]}}) + '\n'
+            + json.dumps(assistant(900_000)) + '\n')
+        self.assertIsNotNone(self.run_hook())
+        self.assertEqual(json.loads((self.state / 'conductor/context/s1.json').read_text())['skill'], 'conductor-claude')
+
     def test_subagent_and_non_conductor_sessions_are_ignored(self):
         self.write(assistant(900_000))
         self.assertIsNone(self.run_hook(agent_id='abc'))
@@ -228,6 +235,14 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual(self.run_handoff(ORCA_SHOW_FAIL='1').returncode, 5)
         self.assertEqual(sum(c[:2] == ['terminal', 'create'] for c in self.calls()), 1)
 
+    def test_pending_check_survives_a_missing_orca(self):
+        (self.dir / 'send-mode').write_text('noturn')
+        self.assertEqual(self.run_handoff().returncode, 5)
+        (self.bin / 'orca').write_text('#!/bin/sh\necho not json\nexit 1\n')
+        p = self.run_handoff()
+        self.assertEqual(p.returncode, 5, p.stderr)
+        self.assertNotIn('Traceback', p.stderr)
+
     def test_every_permission_mode_is_explicit(self):
         for mode, flag in (('manual', '--permission-mode manual'), ('default', '--permission-mode default')):
             p = self.run_handoff('--permission-mode', mode, '--dry-run')
@@ -276,6 +291,14 @@ class InstallTest(unittest.TestCase):
             s = json.loads((cfg / 'settings.json').read_text())
             self.assertEqual(s['hooks'], {'PostToolUse': [other]})
             self.assertFalse((Path(tmp) / 'bin/conductor-handoff').exists())
+
+    def test_install_creates_a_missing_settings_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'fresh/config/settings.json'
+            p = subprocess.run([sys.executable, str(INSTALL), '--settings', str(target), '--no-link'],
+                               capture_output=True, text=True)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertIn('conductor-context-watch', target.read_text())
 
     def test_copy_install_hooks_only_the_prefix_settings(self):
         with tempfile.TemporaryDirectory() as tmp:
