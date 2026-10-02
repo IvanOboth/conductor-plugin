@@ -94,6 +94,26 @@ class AskCodexWorktree(unittest.TestCase):
         self.assertIn(f'ask-codex: session id {SESSION} (continue it with: ask-codex --resume {SESSION})',
                       result.stderr)
 
+    def test_resume_hint_is_complete_and_resume_uses_saved_cwd(self):
+        result = self.run_ask('--worktree', 'lane/z', '--readonly', '-m', 'gpt-6.1-sol',
+                              '--effort', 'xhigh', 'review it')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f'(continue it with: ask-codex --resume {SESSION} --worktree lane/z --readonly'
+                      ' -m gpt-6.1-sol --effort xhigh)', result.stderr)
+        # Same shape as a codex 0.160 rollout: first line is session_meta with payload.cwd.
+        saved = self.root / 'saved'; saved.mkdir()
+        day = self.root / 'home' / 'sessions' / '2026' / '10' / '02'; day.mkdir(parents=True)
+        (day / f'rollout-2026-10-02T07-30-23-{SESSION}.jsonl').write_text(
+            json.dumps({'type': 'session_meta', 'payload': {'id': SESSION, 'cwd': str(saved)}}) + '\n')
+        resumed = self.run_ask('--resume', SESSION)
+        self.assertEqual(resumed.returncode, 0, resumed.stderr)
+        self.assertEqual(Path(self.calls()[-1]['cwd']).resolve(), saved)
+        self.assertIn(f'in its saved directory {saved}', resumed.stderr)
+        missing = self.run_ask('--resume', '22222222-0000-0000-0000-000000000000')
+        self.assertEqual(missing.returncode, 0, missing.stderr)
+        self.assertEqual(Path(self.calls()[-1]['cwd']).resolve(), self.repo)
+        self.assertIn('the current directory decides where the lane works', missing.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

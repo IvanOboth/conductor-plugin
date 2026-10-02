@@ -30,8 +30,10 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  --resume SESSION_ID  Continue an interrupted session (codex exec resume). The prompt is"
   echo "                       optional; the default asks the lane to carry on with the same work order."
   echo "                       --context and the output instruction are not re-sent. Add --worktree to"
-  echo "                       resume inside that lane's worktree."
-  echo "                       Every run prints its session id on stderr when codex reports one."
+  echo "                       resume inside that lane's worktree; without it the resume starts in the"
+  echo "                       session's saved directory (read from its rollout file)."
+  echo "                       Every run prints its session id on stderr when codex reports one, with"
+  echo "                       the full resume command (worktree, --readonly, model and effort)."
   echo "  --help, -h           Show this help"
   echo ""
   echo "Examples:"
@@ -336,6 +338,38 @@ fi
 # Every run starts from the caller's directory, except a worktree lane, which
 # starts inside its worktree so that a resume (no -C) works there too.
 RUN_DIR="${WT_PATH:-$PWD}"
+# Codex 0.160's `exec resume` works in the CURRENT directory, not the one the
+# session was saved with. A resume without --worktree therefore starts from the
+# session's saved cwd: the first line of its rollout is a session_meta record
+# whose payload carries "cwd".
+if [[ "$RESUME" == true ]] && [[ -z "$WT_PATH" ]]; then
+  SAVED_CWD=""
+  if [[ "$RESUME_ID" =~ ^[0-9A-Za-z-]+$ ]]; then
+    ROLLOUT=$(find "${CODEX_HOME:-$HOME/.codex}/sessions" -type f -name "rollout-*-$RESUME_ID.jsonl" 2>/dev/null | head -n 1 || true)
+    if [[ -n "$ROLLOUT" ]]; then
+      SAVED_CWD=$(head -n 1 "$ROLLOUT" | python3 -c 'import json,sys
+d=json.loads(sys.stdin.read())
+print(d["payload"]["cwd"] if d.get("type")=="session_meta" else "")' 2>/dev/null || true)
+    fi
+  fi
+  if [[ -n "$SAVED_CWD" ]] && [[ -d "$SAVED_CWD" ]]; then
+    RUN_DIR="$SAVED_CWD"
+    echo "ask-codex: resuming session $RESUME_ID in its saved directory $RUN_DIR" >&2
+  else
+    echo "ask-codex: WARNING could not read the saved directory of session $RESUME_ID; resuming in $RUN_DIR, and the current directory decides where the lane works." >&2
+  fi
+fi
+
+# The hint for continuing this run repeats what `exec resume` would otherwise
+# take from the caller's directory and defaults: worktree, sandbox, model, effort.
+resume_hint() {
+  local hint="ask-codex --resume $(printf '%q' "$1")"
+  [[ -z "$WORKTREE_BRANCH" ]] || hint+=" --worktree $(printf '%q' "$WORKTREE_BRANCH")"
+  [[ "$SANDBOX" != "read-only" ]] || hint+=" --readonly"
+  [[ -z "$MODEL" ]] || hint+=" -m $(printf '%q' "$MODEL")"
+  [[ -z "$EFFORT" ]] || hint+=" --effort $EFFORT"
+  printf '%s' "$hint"
+}
 
 # Execute — keep stderr separate from stdout, but do NOT discard it.
 #
@@ -352,7 +386,7 @@ RAW_OUTPUT=$(cd "$RUN_DIR" && "${CMD[@]}" "$PROMPT" 2>"$CODEX_STDERR") || CODEX_
 # codex 0.160 prints "session id: <uuid>" in its stderr header.
 SESSION_ID=$(grep -m1 -oE 'session id: [0-9A-Za-z-]+' "$CODEX_STDERR" 2>/dev/null | sed 's/^session id: //' || true)
 if [[ -n "$SESSION_ID" ]]; then
-  echo "ask-codex: session id $SESSION_ID (continue it with: ask-codex --resume $SESSION_ID)" >&2
+  echo "ask-codex: session id $SESSION_ID (continue it with: $(resume_hint "$SESSION_ID"))" >&2
 fi
 echo "--- End Codex Response ---" >&2
 report_worktree
