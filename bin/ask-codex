@@ -22,6 +22,16 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  --clean              Extract only final response (strip session logs)"
   echo "  --output, -o FILE    Save the final response to FILE (written by the CLI, works with --readonly)"
   echo "  --debug-log FILE     Save raw session transcript to this file"
+  echo "  --worktree BRANCH    Run the lane in its own git worktree on BRANCH, at"
+  echo "                       \${ASK_CODEX_WORKTREE_ROOT:-~/runs/codex-worktrees}/<repo>/<branch with / as ->."
+  echo "                       Reuses that worktree when it already exists on BRANCH (a resumed lane);"
+  echo "                       creates BRANCH from --base when it does not exist. Never removes it."
+  echo "  --base REF           Start point for a new --worktree branch (default: HEAD)"
+  echo "  --resume SESSION_ID  Continue an interrupted session (codex exec resume). The prompt is"
+  echo "                       optional; the default asks the lane to carry on with the same work order."
+  echo "                       --context and the output instruction are not re-sent. Add --worktree to"
+  echo "                       resume inside that lane's worktree."
+  echo "                       Every run prints its session id on stderr when codex reports one."
   echo "  --help, -h           Show this help"
   echo ""
   echo "Examples:"
@@ -30,6 +40,8 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  ask-codex --context spec.md \"Implement this feature\""
   echo "  ask-codex --clean --output plan.md \"Create an implementation plan\""
   echo "  ask-codex --effort xhigh --readonly \"Review the uncommitted diff adversarially\""
+  echo "  ask-codex --worktree lane/issue-19 --context order.md \"Implement the order\""
+  echo "  ask-codex --resume 01a0fc4d-31bf-7df0-9335-8530299f95f3 --worktree lane/issue-19"
   exit 0
 fi
 
@@ -42,6 +54,10 @@ SANDBOX="workspace-write"
 CLEAN=false
 OUTPUT_FILE=""
 DEBUG_LOG=""
+WORKTREE_BRANCH=""
+WORKTREE_BASE="HEAD"
+RESUME_ID=""
+CONTINUE_PROMPT="You were interrupted. Continue the same work order from where you stopped; your final message is still the deliverable."
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -80,6 +96,18 @@ while [[ $# -gt 0 ]]; do
       DEBUG_LOG="$2"
       shift 2
       ;;
+    --worktree)
+      WORKTREE_BRANCH="$2"
+      shift 2
+      ;;
+    --base)
+      WORKTREE_BASE="$2"
+      shift 2
+      ;;
+    --resume)
+      RESUME_ID="$2"
+      shift 2
+      ;;
     *)
       PROMPT="$1"
       shift
@@ -90,6 +118,14 @@ done
 # Read from stdin if no prompt provided and stdin is not a terminal
 if [[ -z "$PROMPT" ]] && [[ ! -t 0 ]]; then
   PROMPT=$(cat)
+fi
+
+# A resume needs no prompt of its own: the session already holds the work
+# order, its context and the output instruction.
+RESUME=false
+if [[ -n "$RESUME_ID" ]]; then
+  RESUME=true
+  [[ -n "$PROMPT" ]] || PROMPT="$CONTINUE_PROMPT"
 fi
 
 if [[ -z "$PROMPT" ]]; then
@@ -108,6 +144,8 @@ if [[ -n "$OUTPUT_FILE" ]]; then
   if [[ "$OUTPUT_FILE" != /* ]]; then
     OUTPUT_FILE="$(pwd)/$OUTPUT_FILE"
   fi
+fi
+if [[ -n "$OUTPUT_FILE" ]] && [[ "$RESUME" == false ]]; then
   PROMPT="$PROMPT
 
 IMPORTANT OUTPUT INSTRUCTION: Your FINAL message IS the deliverable and will be saved verbatim to a file. Return the COMPLETE, polished document as your final message — every section, table and citation. Do not try to write files yourself; do not include investigation notes, tool logs, or reasoning steps in it."
@@ -120,7 +158,7 @@ if [[ -n "$CONTEXT_FILE" ]] && [[ ! -f "$CONTEXT_FILE" ]]; then
   echo "ask-codex: --context file not found: $CONTEXT_FILE" >&2
   exit 2
 fi
-if [[ -n "$CONTEXT_FILE" ]]; then
+if [[ -n "$CONTEXT_FILE" ]] && [[ "$RESUME" == false ]]; then
   CONTEXT_CONTENT=$(cat "$CONTEXT_FILE")
   PROMPT="Context from $CONTEXT_FILE:
 
@@ -130,6 +168,85 @@ $CONTEXT_CONTENT
 
 $PROMPT"
 fi
+
+# --worktree: give a write lane its own checkout so two lanes in one repo do not
+# share a working tree. Codex's native `exec --worktree` is NOT used: it makes a
+# detached-HEAD checkout under $CODEX_HOME/worktrees/, with no branch name to
+# integrate and in a home that differs per account, so the orchestrator could
+# not find or merge the lane's work. The worktree is never removed here; the
+# orchestrator removes it after it has integrated the branch.
+WT_PATH=""
+WT_REPO_TOP=""
+if [[ -n "$WORKTREE_BRANCH" ]]; then
+  if ! WT_REPO_TOP=$(git rev-parse --show-toplevel 2>/dev/null); then
+    echo "ask-codex: --worktree needs the current directory to be inside a git repository ($(pwd) is not)." >&2
+    exit 2
+  fi
+  if ! git check-ref-format --branch "$WORKTREE_BRANCH" >/dev/null 2>&1; then
+    echo "ask-codex: --worktree '$WORKTREE_BRANCH' is not a valid branch name." >&2
+    exit 2
+  fi
+  # Name the folder after the repository, not after whichever linked worktree
+  # the caller happens to stand in: the common .git dir's parent is the repo.
+  WT_COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+  if [[ "$(basename "$WT_COMMON_DIR")" == ".git" ]]; then
+    WT_REPO_NAME=$(basename "$(dirname "$WT_COMMON_DIR")")
+  else
+    WT_REPO_NAME=$(basename "$WT_REPO_TOP")
+  fi
+  WT_PATH="${ASK_CODEX_WORKTREE_ROOT:-$HOME/runs/codex-worktrees}/$WT_REPO_NAME/${WORKTREE_BRANCH//\//-}"
+  # Which branch (if any) is checked out at WT_PATH as a worktree of THIS repo?
+  WT_REGISTERED_BRANCH=""
+  WT_REGISTERED=false
+  WT_WANT=$(realpath -m "$WT_PATH")
+  wt_current=""
+  while IFS= read -r wt_line; do
+    case "$wt_line" in
+      "worktree "*) wt_current=$(realpath -m "${wt_line#worktree }") ;;
+      "branch "*)
+        if [[ "$wt_current" == "$WT_WANT" ]]; then WT_REGISTERED_BRANCH="${wt_line#branch refs/heads/}"; fi ;;
+    esac
+    if [[ "$wt_current" == "$WT_WANT" ]]; then WT_REGISTERED=true; fi
+  done < <(git worktree list --porcelain 2>/dev/null)
+  if [[ -e "$WT_PATH" ]]; then
+    if [[ "$WT_REGISTERED" == true ]] && [[ "$WT_REGISTERED_BRANCH" == "$WORKTREE_BRANCH" ]]; then
+      echo "ask-codex: reusing worktree $WT_PATH on branch $WORKTREE_BRANCH" >&2
+    else
+      echo "ask-codex: $WT_PATH exists but is not a worktree of $WT_REPO_TOP on branch $WORKTREE_BRANCH; refusing to use it." >&2
+      exit 2
+    fi
+  else
+    mkdir -p "$(dirname "$WT_PATH")"
+    if git show-ref --verify --quiet "refs/heads/$WORKTREE_BRANCH"; then
+      git worktree add "$WT_PATH" "$WORKTREE_BRANCH" >&2 || {
+        echo "ask-codex: could not add a worktree for existing branch $WORKTREE_BRANCH (is it checked out elsewhere?)." >&2; exit 2; }
+    else
+      git worktree add -b "$WORKTREE_BRANCH" "$WT_PATH" "$WORKTREE_BASE" >&2 || {
+        echo "ask-codex: could not create branch $WORKTREE_BRANCH from $WORKTREE_BASE in a new worktree." >&2; exit 2; }
+    fi
+    echo "ask-codex: created worktree $WT_PATH on branch $WORKTREE_BRANCH" >&2
+  fi
+  if [[ "$RESUME" == false ]]; then
+    PROMPT="WORKTREE: You are working in the git worktree $WT_PATH on branch $WORKTREE_BRANCH. Make every change inside that directory and commit your changes on branch $WORKTREE_BRANCH before you finish. Do not switch branches, and do not touch the main checkout at $WT_REPO_TOP.
+
+$PROMPT"
+  fi
+fi
+
+# Print where a worktree lane left its work. Called once the run is over,
+# whatever its outcome: a failed lane's commits are still worth integrating.
+report_worktree() {
+  [[ -n "$WT_PATH" ]] || return 0
+  {
+    echo "ask-codex: worktree $WT_PATH"
+    echo "ask-codex: branch   $WORKTREE_BRANCH"
+    echo "ask-codex: commits ($WORKTREE_BASE..$WORKTREE_BRANCH, first 10):"
+    git -C "$WT_REPO_TOP" log --oneline "$WORKTREE_BASE..$WORKTREE_BRANCH" 2>&1 | head -n 10 | sed 's/^/  /'
+    echo "ask-codex: uncommitted (first 10):"
+    git -C "$WT_PATH" status --short 2>&1 | head -n 10 | sed 's/^/  /'
+    echo "ask-codex: remove it after integrating: git worktree remove $WT_PATH"
+  } >&2 || true
+}
 
 # A Claude parent usually has no CODEX_HOME. Resolve Orca's selected host
 # account at launch time; never copy tokens or overwrite an explicit lane home.
@@ -172,7 +289,13 @@ fi
 # Build command as an ARGUMENT ARRAY, never a string: a string expanded unquoted
 # word-splits paths with spaces and lets a crafted --output/--model value inject
 # extra arguments (e.g. a second -c override) after the validated ones.
-CMD=(codex exec)
+# `codex exec resume` has no --sandbox and no -C: the sandbox goes in as a config
+# override and the run starts from the lane's directory instead (see RUN_DIR).
+if [[ "$RESUME" == true ]]; then
+  CMD=(codex exec resume)
+else
+  CMD=(codex exec)
+fi
 
 if [[ -n "$MODEL" ]]; then
   CMD+=(--model "$MODEL")
@@ -186,7 +309,11 @@ fi
 # `codex exec` has no --ask-for-approval flag of its own — approval policy is a config key.
 # A headless lane cannot answer approval prompts, so it is overridden to "never" here and
 # the sandbox flag carries the write policy (--readonly still maps to the read-only sandbox).
-CMD+=(--sandbox "$SANDBOX" -c approval_policy=never --enable multi_agent)
+if [[ "$RESUME" == true ]]; then
+  CMD+=(-c approval_policy=never --enable multi_agent)
+else
+  CMD+=(--sandbox "$SANDBOX" -c approval_policy=never --enable multi_agent)
+fi
 
 # For --clean mode, use Codex's native -o flag to extract just the final response
 # This replaces the old awk parser which broke when Codex changed its output format
@@ -201,6 +328,15 @@ elif [[ "$CLEAN" == true ]]; then
   CMD+=(-o "$CLEAN_TMPFILE")
 fi
 
+if [[ "$RESUME" == true ]]; then
+  CMD+=(-c "sandbox_mode=\"$SANDBOX\"" "$RESUME_ID")
+elif [[ -n "$WT_PATH" ]]; then
+  CMD+=(-C "$WT_PATH")
+fi
+# Every run starts from the caller's directory, except a worktree lane, which
+# starts inside its worktree so that a resume (no -C) works there too.
+RUN_DIR="${WT_PATH:-$PWD}"
+
 # Execute — keep stderr separate from stdout, but do NOT discard it.
 #
 # Discarding stderr and forcing success is how a broken lane becomes an invisible
@@ -212,8 +348,14 @@ CODEX_STDERR=$(mktemp "${TMPDIR:-/tmp}/codex-stderr-XXXXXX")
 # `set -e` is on: assign in a form that survives a non-zero exit so the handler
 # below actually runs instead of the script dying silently.
 CODEX_STATUS=0
-RAW_OUTPUT=$("${CMD[@]}" "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
+RAW_OUTPUT=$(cd "$RUN_DIR" && "${CMD[@]}" "$PROMPT" 2>"$CODEX_STDERR") || CODEX_STATUS=$?
+# codex 0.160 prints "session id: <uuid>" in its stderr header.
+SESSION_ID=$(grep -m1 -oE 'session id: [0-9A-Za-z-]+' "$CODEX_STDERR" 2>/dev/null | sed 's/^session id: //' || true)
+if [[ -n "$SESSION_ID" ]]; then
+  echo "ask-codex: session id $SESSION_ID (continue it with: ask-codex --resume $SESSION_ID)" >&2
+fi
 echo "--- End Codex Response ---" >&2
+report_worktree
 
 # "No usable output" must look at the -o file too: a run that streams progress to
 # stderr and hands its answer to the CLI's last-message file has succeeded.
