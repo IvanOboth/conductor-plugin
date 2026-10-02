@@ -18,9 +18,18 @@ cmd = sys.argv[1:3]
 if cmd == ['status', '--json']:
     r = {'runtime': {'state': os.environ.get('ORCA_STATE', 'ready')}}
 elif cmd == ['terminal', 'create']:
+    if os.environ.get('ORCA_SLOW'):
+        import time; time.sleep(1)
     r = {'terminal': {'handle': 'term_new'}}
 elif cmd == ['terminal', 'show']:
-    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor'}}
+    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True}}
+elif cmd == ['terminal', 'send']:
+    mode = open(os.environ['ORCA_SEND']).read().strip() if os.path.exists(os.environ.get('ORCA_SEND', '')) else 'ok'
+    if mode == 'reject':
+        print(json.dumps({'ok': True, 'result': {'send': {'accepted': False}}}))
+        sys.exit(1)
+    stages = ['input_accepted'] + (['turn_started'] if mode == 'ok' else [])
+    r = {'send': {'accepted': True, 'prompt': {'requestId': 'req1', 'stages': stages}}}
 else:
     r = {}
 print(json.dumps({'ok': True, 'result': r}))
@@ -115,10 +124,7 @@ class ContextWatchTest(unittest.TestCase):
     def test_recorded_handoff_silences_the_watch(self):
         self.write(assistant(900_000))
         self.run_hook()
-        path = self.state / 'conductor/context/s1.json'
-        state = json.loads(path.read_text())
-        state['handoff'] = {'to_terminal': 'term_new'}
-        path.write_text(json.dumps(state))
+        (self.state / 'conductor/context/s1.handoff.json').write_text(json.dumps({'status': 'done'}))
         self.assertIsNone(self.run_hook('Stop', stop_hook_active=False))
 
 
@@ -147,6 +153,7 @@ class HandoffTest(unittest.TestCase):
 
     def run_handoff(self, *args, **env_extra):
         env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log),
+                   ORCA_SEND=str(self.dir / 'send-mode'),
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', CLAUDE_EFFORT='high',
                    ORCA_TERMINAL_HANDLE='term_old', **env_extra)
         return subprocess.run([sys.executable, str(HANDOFF), '--order', str(self.order), *args],
@@ -169,11 +176,39 @@ class HandoffTest(unittest.TestCase):
         self.assertIn('72% context', prompt)
         rename = next(c for c in calls if c[:2] == ['terminal', 'rename'])
         self.assertEqual(rename[rename.index('--title') + 1], '#896 API v1 conductor (handed off)')
-        row = json.loads((self.wt / '.conductor/handoffs.jsonl').read_text())
-        self.assertEqual(row['to_terminal'], 'term_new')
-        state = json.loads((self.state / 'conductor/context/s1.json').read_text())
-        self.assertEqual(state['handoff']['to_terminal'], 'term_new')
+        rows = [json.loads(l) for l in (self.wt / '.conductor/handoffs.jsonl').read_text().splitlines()]
+        self.assertEqual([(r['status'], r['to_terminal']) for r in rows], [('created', 'term_new'), ('done', 'term_new')])
+        marker = json.loads((self.state / 'conductor/context/s1.handoff.json').read_text())
+        self.assertEqual((marker['status'], marker['to_terminal']), ('done', 'term_new'))
         self.assertEqual(self.run_handoff().returncode, 4)  # already handed off
+
+    def test_failed_send_is_not_a_handoff_and_a_rerun_reuses_the_terminal(self):
+        (self.dir / 'send-mode').write_text('reject')
+        self.assertEqual(self.run_handoff().returncode, 5)
+        marker = json.loads((self.state / 'conductor/context/s1.handoff.json').read_text())
+        self.assertEqual(marker['status'], 'pending')
+        (self.dir / 'send-mode').write_text('noturn')
+        self.assertEqual(self.run_handoff().returncode, 5)
+        (self.dir / 'send-mode').write_text('ok')
+        self.assertEqual(self.run_handoff().returncode, 0)
+        calls = self.calls()
+        self.assertEqual(sum(c[:2] == ['terminal', 'create'] for c in calls), 1)
+        sends = [c for c in calls if c[:2] == ['terminal', 'send']]
+        self.assertNotIn('--retry-request', sends[0])
+        self.assertEqual(sends[-1][sends[-1].index('--retry-request') + 1], 'req1')
+
+    def test_concurrent_handoffs_start_one_successor(self):
+        env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log), ORCA_SLOW='1',
+                   XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', ORCA_TERMINAL_HANDLE='term_old')
+        procs = [subprocess.Popen([sys.executable, str(HANDOFF), '--order', str(self.order)], env=env, cwd=self.wt,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for _ in range(2)]
+        self.assertEqual(sorted(p.wait() for p in procs), [0, 4])
+        self.assertEqual(sum(c[:2] == ['terminal', 'create'] for c in self.calls()), 1)
+
+    def test_every_permission_mode_is_explicit(self):
+        for mode, flag in (('manual', '--permission-mode manual'), ('default', '--permission-mode default')):
+            p = self.run_handoff('--permission-mode', mode, '--dry-run')
+            self.assertIn(flag, json.loads(p.stdout)['launch'])
 
     def test_short_order_is_refused(self):
         self.order.write_text('todo\n')
@@ -199,7 +234,8 @@ class InstallTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cfg = Path(tmp) / 'claude'
             cfg.mkdir()
-            other = {'matcher': '*', 'hooks': [{'type': 'command', 'command': 'orca-hook'}]}
+            other = {'matcher': '*', 'hooks': [{'type': 'command', 'command': 'orca-hook'},
+                                               {'type': 'command', 'command': 'python3 /opt/co/context-watch.py --audit'}]}
             (cfg / 'settings.json').write_text(json.dumps({'model': 'opus', 'hooks': {'PostToolUse': [other]}}))
             env = dict(os.environ, CLAUDE_CONFIG_DIR=str(cfg))
             run = lambda *a: subprocess.run([sys.executable, str(INSTALL), '--bin-dir', str(Path(tmp) / 'bin'), *a],
@@ -220,7 +256,7 @@ class InstallTest(unittest.TestCase):
 
     def test_copy_install_hooks_only_the_prefix_settings(self):
         with tempfile.TemporaryDirectory() as tmp:
-            home, prefix = Path(tmp) / 'home', Path(tmp) / 'prefix'
+            home, prefix = Path(tmp) / 'home', Path(tmp) / 'claude config'
             (home / '.claude').mkdir(parents=True)
             env = dict(os.environ, HOME=str(home))
             env.pop('CLAUDE_CONFIG_DIR', None)
@@ -229,6 +265,10 @@ class InstallTest(unittest.TestCase):
             s = json.loads((prefix / 'settings.json').read_text())
             self.assertIn(str(prefix / 'conductor/context-watch.py'), s['hooks']['Stop'][0]['hooks'][0]['command'])
             self.assertFalse((home / '.claude/settings.json').exists())
+            stop = s['hooks']['Stop'][0]['hooks'][0]['command']
+            p = subprocess.run(['bash', '-c', stop], input=json.dumps({'hook_event_name': 'Stop'}),
+                               capture_output=True, text=True, env=env)
+            self.assertEqual((p.returncode, p.stderr), (0, ''))
 
 
 if __name__ == '__main__':

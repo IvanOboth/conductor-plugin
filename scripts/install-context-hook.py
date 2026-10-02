@@ -12,13 +12,15 @@ scripts/context-watch.py from SCRIPT_DIR, and links bin/conductor-handoff into
 import argparse
 import json
 import os
+import shlex
 import shutil
 import sys
 import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MARK = 'context-watch.py'
+SCRIPT = 'context-watch.py'
+TAG = '# conductor-context-watch'  # ours; other tools' context-watch.py hooks are left alone
 
 
 def settings_path():
@@ -31,7 +33,7 @@ def strip(hooks):
     for event in ('PostToolUse', 'Stop'):
         groups = []
         for g in hooks.get(event, []):
-            g = dict(g, hooks=[h for h in g.get('hooks', []) if MARK not in h.get('command', '')])
+            g = dict(g, hooks=[h for h in g.get('hooks', []) if TAG not in h.get('command', '')])
             if g['hooks']:
                 groups.append(g)
         if groups:
@@ -56,7 +58,8 @@ def main(argv=None):
     before = json.dumps(settings, sort_keys=True)
     hooks = strip(settings.get('hooks', {}))
     if not a.uninstall:
-        cmd = f'python3 {Path(a.script_dir).resolve() / MARK}'
+        # `|| true`: a missing script must never exit 2, which would block every Stop.
+        cmd = f'python3 {shlex.quote(str(Path(a.script_dir).resolve() / SCRIPT))} || true {TAG}'
         entry = {'type': 'command', 'command': cmd, 'timeout': 10}
         hooks.setdefault('PostToolUse', []).append({'matcher': '*', 'hooks': [entry]})
         hooks.setdefault('Stop', []).append({'hooks': [dict(entry)]})

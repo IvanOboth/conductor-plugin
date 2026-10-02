@@ -11,11 +11,12 @@ was loaded, or the working directory holds .conductor/work-list.md) it injects
 the handoff instruction when usage crosses CONDUCTOR_HANDOFF_PCT (default 70),
 again at CONDUCTOR_HANDOFF_NOW_PCT (default 85) and every 5 points after. The
 Stop hook blocks one stop per level, so an idle session over the threshold
-still hears it. It goes quiet once conductor-handoff records a handoff.
+still hears it. It goes quiet once conductor-handoff writes <session>.handoff.json.
 
 Never fails the session: any error exits 0 with no output.
 CONDUCTOR_CONTEXT_WATCH=off disables it; =all watches every session.
 """
+import fcntl
 import json
 import os
 import re
@@ -155,6 +156,23 @@ def main():
     if not sid or not transcript.is_file():
         return
 
+    d = state_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    with (d / f'{sid}.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)  # concurrent hooks for one session update state in turn
+        out = watch(data, event, sid, transcript, mode)
+    if out:
+        print(json.dumps(out))
+
+
+def handed_off(sid):
+    try:  # written only by conductor-handoff, never by this hook
+        return json.loads((state_dir() / f'{sid}.handoff.json').read_text()).get('status') == 'done'
+    except (OSError, ValueError):
+        return False
+
+
+def watch(data, event, sid, transcript, mode):
     state = load_state(sid)
     if not state.get('skill'):
         found = scan_for_skill(transcript, state)
@@ -168,7 +186,7 @@ def main():
     watched = bool(state.get('skill')) or mode == 'all'
     if not watched:
         save_state(sid, state)
-        return
+        return None
 
     tokens, model = last_usage(transcript)
     if tokens:
@@ -177,16 +195,16 @@ def main():
         if pct + 20 <= state.get('pct', 0):  # compacted: the levels count again
             state['told'], state['stop_blocked'] = [], []
         state.update(tokens=tokens, model=model, window=window, pct=pct, updated=int(time.time()))
-    if not tokens or state.get('handoff'):
+    if not tokens or handed_off(sid):
         save_state(sid, state)
-        return
+        return None
 
     threshold = int(os.environ.get('CONDUCTOR_HANDOFF_PCT', 70))
     now = int(os.environ.get('CONDUCTOR_HANDOFF_NOW_PCT', 85))
     crossed = [lv for lv in levels(threshold, now) if pct >= lv]
     if not crossed:
         save_state(sid, state)
-        return
+        return None
     level = crossed[-1]
     out = None
     if event == 'PostToolUse' and level not in state.get('told', []):
@@ -198,8 +216,7 @@ def main():
         state.setdefault('told', []).append(level)
         out = {'decision': 'block', 'reason': message(pct, tokens, window, now, True)}
     save_state(sid, state)
-    if out:
-        print(json.dumps(out))
+    return out
 
 
 if __name__ == '__main__':
