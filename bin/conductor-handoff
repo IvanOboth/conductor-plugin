@@ -121,8 +121,9 @@ def main(argv=None):
     old_handle = os.environ.get('ORCA_TERMINAL_HANDLE', '')
     prompt = (f'/{skill} Read {order} and execute it in full as the orchestrator. You are taking over this '
               f'run from session {sid or "unknown"}' + (f' (Orca terminal {old_handle})' if old_handle else '')
-              + (f', which handed off at {pct}% context' if pct is not None else '')
-              + f' and has stood down. You are in {worktree}. Start now.' + (f' {a.note}' if a.note else ''))
+              + (f', which handed off at {pct}% context and has stood down' if pct is not None
+                 else ', which has stood down')
+              + f'. You are in {worktree}. Start now.' + (f' {a.note}' if a.note else ''))
 
     ledger = worktree / '.conductor/handoffs.jsonl'
     chain = recent_handoffs(ledger)
