@@ -204,12 +204,13 @@ def main(argv=None):
         print(f'conductor-handoff: this session already handed off at {marker.get("at")} to '
               f'{marker.get("to_terminal")}. Stand down; --force starts another successor.', file=sys.stderr)
         return 4
-    reuse = None
+    reuse = reuse_path = None
     if marker.get('status') == 'pending' and marker.get('to_terminal'):
         ok, res = orca('terminal', 'show', '--terminal', marker['to_terminal'], timeout=20)
         code = ((res.get('error') or {}).get('code') if isinstance(res, dict) else None)
         if ok and (res.get('terminal') or {}).get('connected'):
             reuse = marker['to_terminal']
+            reuse_path = (res.get('terminal') or {}).get('worktreePath')
         elif not (ok or code in GONE_CODES):
             # Not proven gone: a second successor could run beside the first. Retry later.
             print(f'conductor-handoff: could not check pending successor {marker["to_terminal"]}: {res}\n'
@@ -229,27 +230,46 @@ def main(argv=None):
               'a terminal and run:\n  ' + launch + '\nthen paste:\n  ' + prompt, file=sys.stderr)
         return 3
 
-    tab_worktree = worktree
-    ok, entry = listed_worktree(worktree)
-    if not ok:
-        print(f'conductor-handoff: could not read the Orca worktree list: {entry}', file=sys.stderr)
-        return 5
-    if entry is None:
-        host = Path(a.terminal_worktree).expanduser().resolve() if a.terminal_worktree else None
-        if host is None and old_handle:
-            ok2, res = orca('terminal', 'show', '--terminal', old_handle, timeout=20)
-            path = (res.get('terminal') or {}).get('worktreePath') if ok2 and isinstance(res, dict) else None
-            host = Path(path).resolve() if path else None
-        host_entry = listed_worktree(host)[1] if host else None
-        if host_entry is not None:
-            tab_worktree, entry = host, host_entry
-        elif not a.allow_unlisted:
-            print(f'conductor-handoff: Orca does not list {worktree} (it was probably made with `git worktree add`), '
-                  'and no listed worktree was found to host the successor\'s tab, so it would not show in the Orca '
-                  'sidebar. No successor was started.\nRerun with --terminal-worktree <a listed worktree directory>, '
-                  'or --allow-unlisted to proceed anyway. Create run worktrees with `orca worktree create`.',
-                  file=sys.stderr)
+    # Where the successor's tab will live, and whether Orca lists that worktree (its sidebar).
+    if reuse:
+        # A retry reuses the pending terminal, so check where that terminal actually is.
+        tab_worktree = Path(reuse_path).resolve() if reuse_path else worktree
+        ok, entry = listed_worktree(tab_worktree)
+        if not ok:
+            print(f'conductor-handoff: could not read the Orca worktree list: {entry}', file=sys.stderr)
+            return 5
+        if entry is None and not a.allow_unlisted:
+            print(f'conductor-handoff: the pending successor terminal {reuse} sits in {tab_worktree}, which Orca '
+                  'does not list, so it is hidden from the sidebar. Nothing was sent. Close it '
+                  f'(`orca terminal close --terminal {reuse}`) and rerun, or pass --allow-unlisted.', file=sys.stderr)
             return 6
+    else:
+        tab_worktree = worktree
+        ok, entry = listed_worktree(worktree)
+        if not ok:
+            print(f'conductor-handoff: could not read the Orca worktree list: {entry}', file=sys.stderr)
+            return 5
+        if entry is None:
+            host = Path(a.terminal_worktree).expanduser().resolve() if a.terminal_worktree else None
+            if host is None and old_handle:
+                ok2, res = orca('terminal', 'show', '--terminal', old_handle, timeout=20)
+                path = (res.get('terminal') or {}).get('worktreePath') if ok2 and isinstance(res, dict) else None
+                host = Path(path).resolve() if path else None
+            host_entry = None
+            if host:
+                ok3, host_entry = listed_worktree(host)
+                if not ok3:
+                    print(f'conductor-handoff: could not read the Orca worktree list: {host_entry}', file=sys.stderr)
+                    return 5
+            if host_entry is not None:
+                tab_worktree, entry = host, host_entry
+            elif not a.allow_unlisted:
+                print(f'conductor-handoff: Orca does not list {worktree} (it was probably made with `git worktree '
+                      'add`), and no listed worktree was found to host the successor\'s tab, so it would not show '
+                      'in the Orca sidebar. No successor was started.\nRerun with --terminal-worktree <a listed '
+                      'worktree directory>, or --allow-unlisted to proceed anyway. Create run worktrees with '
+                      '`orca worktree create`.', file=sys.stderr)
+                return 6
     workspace = (entry or {}).get('displayName') or tab_worktree.name
 
     now = datetime.now(timezone.utc)

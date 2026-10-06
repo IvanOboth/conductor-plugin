@@ -25,9 +25,18 @@ elif cmd == ['terminal', 'show']:
     if os.environ.get('ORCA_SHOW_FAIL'):
         print(json.dumps({'ok': False, 'error': {'code': 'timeout'}}))
         sys.exit(1)
-    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True,
-                      'worktreePath': os.environ.get('ORCA_OLD_WT', os.environ['ORCA_WT'])}}
+    handle = sys.argv[sys.argv.index('--terminal') + 1]
+    path = os.environ.get('ORCA_NEW_WT') if handle == 'term_new' and os.environ.get('ORCA_NEW_WT') else \
+        os.environ.get('ORCA_OLD_WT', os.environ['ORCA_WT'])
+    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True, 'worktreePath': path}}
 elif cmd == ['worktree', 'list']:
+    if os.environ.get('ORCA_LIST_FAIL_FROM'):
+        n_path = os.environ['ORCA_LOG'] + '.lists'
+        n = int(open(n_path).read()) + 1 if os.path.exists(n_path) else 1
+        open(n_path, 'w').write(str(n))
+        if n >= int(os.environ['ORCA_LIST_FAIL_FROM']):
+            print(json.dumps({'ok': False, 'error': {'code': 'timeout'}}))
+            sys.exit(1)
     rows = [{'path': os.environ['ORCA_HOST'], 'displayName': 'Landing Page'}] if os.environ.get('ORCA_HOST') else []
     if not os.environ.get('ORCA_UNLISTED'):
         rows.append({'path': os.environ['ORCA_WT'], 'displayName': 'API v1 #896'})
@@ -229,6 +238,33 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stderr)
         create = next(c for c in self.calls() if c[:2] == ['terminal', 'create'])
         self.assertEqual(create[create.index('--worktree') + 1], f'path:{host}')
+
+    def test_failed_host_lookup_is_not_taken_as_visible(self):
+        host = str((self.dir / 'host').resolve())
+        p = self.run_handoff(ORCA_UNLISTED='1', ORCA_HOST=host, ORCA_OLD_WT=host, ORCA_LIST_FAIL_FROM='2')
+        self.assertEqual(p.returncode, 5, p.stderr)
+        self.assertFalse([c for c in self.calls() if c[:2] == ['terminal', 'create']])
+
+    def _seed_pending(self):
+        sd = self.state / 'conductor/context'
+        (sd / 's1.handoff.json').write_text(json.dumps({'status': 'pending', 'to_terminal': 'term_new',
+                                                         'prompt': 'p', 'attempts': 1}))
+
+    def test_pending_terminal_in_an_unlisted_worktree_is_not_sent_to(self):
+        self._seed_pending()
+        host = str((self.dir / 'host').resolve())
+        p = self.run_handoff(ORCA_UNLISTED='1', ORCA_HOST=host, ORCA_OLD_WT=host, ORCA_NEW_WT=str(self.wt.resolve()))
+        self.assertEqual(p.returncode, 6, p.stderr)
+        self.assertIn('pending successor terminal term_new', p.stderr)
+        self.assertFalse([c for c in self.calls() if c[:2] in (['terminal', 'send'], ['terminal', 'create'])])
+
+    def test_pending_terminal_in_a_listed_worktree_is_reused_and_named(self):
+        self._seed_pending()
+        host = str((self.dir / 'host').resolve())
+        p = self.run_handoff(ORCA_UNLISTED='1', ORCA_HOST=host, ORCA_OLD_WT=host, ORCA_NEW_WT=host)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertFalse([c for c in self.calls() if c[:2] == ['terminal', 'create']])
+        self.assertIn('workspace "Landing Page"', p.stdout)
 
     def test_allow_unlisted_hands_off_and_says_it_is_hidden(self):
         p = self.run_handoff('--allow-unlisted', ORCA_UNLISTED='1')
