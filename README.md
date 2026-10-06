@@ -69,7 +69,7 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 
 ### Context handoff for long runs
 
-A conductor run that fills its context window ends in compaction, which keeps the plan only as a summary. The `context-watch` hook tells the orchestrator when its context passes 70% and again at 85%. The orchestrator then writes a continuation order and runs `conductor-handoff --order <path>`, which starts a fresh session in a new Orca terminal in the same worktree and stands the old one down (issue #17). A plugin install gets the hook from `hooks/hooks.json`. A linked checkout installs it with:
+A conductor run that fills its context window ends in compaction, which keeps the plan only as a summary. The `context-watch` hook tells the orchestrator when its context passes 70% and again at 85%. The orchestrator then writes a continuation order and runs `conductor-handoff --order <path>`, which starts a fresh session in a new Orca terminal in the same worktree and stands the old one down (issue #17). The successor's tab must land in a worktree Orca lists, so Ivan can see it: for an unlisted worktree (made with `git worktree add`) the tab opens in `--terminal-worktree <dir>`, else this session's listed worktree, and the script refuses with exit 6 when none is listed (`--allow-unlisted` overrides). Runs should create worktrees with `orca worktree create`. A plugin install gets the hook from `hooks/hooks.json`. A linked checkout installs it with:
 
 ```bash
 python3 scripts/install-context-hook.py        # PostToolUse + Stop hooks, links conductor-handoff into ~/.local/bin
