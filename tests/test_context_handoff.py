@@ -25,7 +25,13 @@ elif cmd == ['terminal', 'show']:
     if os.environ.get('ORCA_SHOW_FAIL'):
         print(json.dumps({'ok': False, 'error': {'code': 'timeout'}}))
         sys.exit(1)
-    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True}}
+    r = {'terminal': {'title': '\u25d1 #896 API v1 conductor', 'connected': True,
+                      'worktreePath': os.environ.get('ORCA_OLD_WT', os.environ['ORCA_WT'])}}
+elif cmd == ['worktree', 'list']:
+    rows = [{'path': os.environ['ORCA_HOST'], 'displayName': 'Landing Page'}] if os.environ.get('ORCA_HOST') else []
+    if not os.environ.get('ORCA_UNLISTED'):
+        rows.append({'path': os.environ['ORCA_WT'], 'displayName': 'API v1 #896'})
+    r = {'worktrees': rows}
 elif cmd == ['terminal', 'send']:
     mode = open(os.environ['ORCA_SEND']).read().strip() if os.path.exists(os.environ.get('ORCA_SEND', '')) else 'ok'
     if mode == 'reject':
@@ -168,7 +174,7 @@ class HandoffTest(unittest.TestCase):
         env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log),
                    ORCA_SEND=str(self.dir / 'send-mode'),
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', CLAUDE_EFFORT='high',
-                   ORCA_TERMINAL_HANDLE='term_old', **env_extra)
+                   ORCA_TERMINAL_HANDLE='term_old', ORCA_WT=str(self.wt.resolve()), **env_extra)
         return subprocess.run([sys.executable, str(HANDOFF), '--order', str(self.order), *args],
                               capture_output=True, text=True, env=env, cwd=self.wt)
 
@@ -195,6 +201,41 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual((marker['status'], marker['to_terminal']), ('done', 'term_new'))
         self.assertEqual(self.run_handoff().returncode, 4)  # already handed off
 
+    def test_output_names_the_sidebar_workspace_and_tab(self):
+        p = self.run_handoff()
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('Orca sidebar: workspace "API v1 #896", tab "#896 API v1 conductor (cont.)"', p.stdout)
+
+    def test_unlisted_worktree_with_no_listed_host_is_refused_before_any_terminal(self):
+        p = self.run_handoff(ORCA_UNLISTED='1')
+        self.assertEqual(p.returncode, 6, p.stderr)
+        self.assertIn('does not list', p.stderr)
+        self.assertFalse([c for c in self.calls() if c[:2] == ['terminal', 'create']])
+        self.assertFalse((self.wt / '.conductor/handoffs.jsonl').exists())
+
+    def test_unlisted_target_opens_its_tab_in_the_old_sessions_listed_worktree(self):
+        host = str((self.dir / 'host').resolve())
+        p = self.run_handoff(ORCA_UNLISTED='1', ORCA_HOST=host, ORCA_OLD_WT=host)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        create = next(c for c in self.calls() if c[:2] == ['terminal', 'create'])
+        self.assertEqual(create[create.index('--worktree') + 1], f'path:{host}')
+        self.assertIn(f'cd {self.wt.resolve()} && claude', create[create.index('--command') + 1])
+        self.assertIn('workspace "Landing Page"', p.stdout)
+        self.assertIn(f'the session works in {self.wt.resolve()}', p.stdout)
+
+    def test_terminal_worktree_overrides_the_host(self):
+        host = str((self.dir / 'other').resolve())
+        p = self.run_handoff('--terminal-worktree', host, ORCA_UNLISTED='1', ORCA_HOST=host)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        create = next(c for c in self.calls() if c[:2] == ['terminal', 'create'])
+        self.assertEqual(create[create.index('--worktree') + 1], f'path:{host}')
+
+    def test_allow_unlisted_hands_off_and_says_it_is_hidden(self):
+        p = self.run_handoff('--allow-unlisted', ORCA_UNLISTED='1')
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn('NOT in the Orca sidebar', p.stdout)
+        self.assertIn('orca terminal read --terminal term_new', p.stdout)
+
     def test_failed_send_is_not_a_handoff_and_a_rerun_reuses_the_terminal(self):
         (self.dir / 'send-mode').write_text('reject')
         self.assertEqual(self.run_handoff().returncode, 5)
@@ -212,7 +253,8 @@ class HandoffTest(unittest.TestCase):
 
     def test_concurrent_handoffs_start_one_successor(self):
         env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log), ORCA_SLOW='1',
-                   XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', ORCA_TERMINAL_HANDLE='term_old')
+                   XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', ORCA_TERMINAL_HANDLE='term_old',
+                   ORCA_WT=str(self.wt.resolve()))
         procs = [subprocess.Popen([sys.executable, str(HANDOFF), '--order', str(self.order)], env=env, cwd=self.wt,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for _ in range(2)]
         self.assertEqual(sorted(p.wait() for p in procs), [0, 4])
