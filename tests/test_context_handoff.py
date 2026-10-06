@@ -40,7 +40,7 @@ elif cmd == ['worktree', 'list']:
     rows = [{'path': os.environ['ORCA_HOST'], 'displayName': 'Landing Page'}] if os.environ.get('ORCA_HOST') else []
     if not os.environ.get('ORCA_UNLISTED'):
         rows.append({'path': os.environ['ORCA_WT'], 'displayName': 'API v1 #896'})
-    r = {'worktrees': rows}
+    r = {'worktrees': rows, 'truncated': bool(os.environ.get('ORCA_TRUNCATED'))}
 elif cmd == ['terminal', 'send']:
     mode = open(os.environ['ORCA_SEND']).read().strip() if os.path.exists(os.environ.get('ORCA_SEND', '')) else 'ok'
     if mode == 'reject':
@@ -243,6 +243,12 @@ class HandoffTest(unittest.TestCase):
         host = str((self.dir / 'host').resolve())
         p = self.run_handoff(ORCA_UNLISTED='1', ORCA_HOST=host, ORCA_OLD_WT=host, ORCA_LIST_FAIL_FROM='2')
         self.assertEqual(p.returncode, 5, p.stderr)
+        self.assertFalse([c for c in self.calls() if c[:2] == ['terminal', 'create']])
+
+    def test_truncated_worktree_list_is_a_failed_read(self):
+        p = self.run_handoff(ORCA_TRUNCATED='1')
+        self.assertEqual(p.returncode, 5, p.stderr)
+        self.assertIn('truncated', p.stderr)
         self.assertFalse([c for c in self.calls() if c[:2] == ['terminal', 'create']])
 
     def _seed_pending(self):

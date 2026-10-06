@@ -29,7 +29,8 @@ unless --allow-unlisted is passed.
 Exit codes: 0 handed off · 2 bad order or arguments · 3 Orca unavailable (the
 manual command is printed) · 4 already handed off, or chain guard (3 successors
 in 2 hours; --force overrides) · 5 Orca refused the terminal or the prompt, or
-the successor's turn was not seen to start (rerun to retry the same terminal) ·
+the successor's turn was not seen to start (rerun to retry the same terminal), or
+the Orca worktree list could not be read (rerun; nothing was started) ·
 6 the worktree is not listed in Orca (see above).
 """
 import argparse
@@ -110,11 +111,15 @@ def recent_successors(ledger):
 
 def listed_worktree(worktree):
     """(ok, entry): the Orca worktree-list entry for this path, None when Orca does not list it."""
-    ok, res = orca('worktree', 'list', timeout=30)
+    ok, res = orca('worktree', 'list', '--limit', '10000', timeout=30)
     if not ok:
         return False, res
+    if isinstance(res, dict) and res.get('truncated'):
+        return False, {'error': {'message': 'orca worktree list came back truncated'}}
     rows = res.get('worktrees', []) if isinstance(res, dict) else res
     for row in rows or []:
+        if row.get('isArchived'):
+            continue
         path = row.get('path') or (row.get('git') or {}).get('path') or ''
         if path and Path(path).expanduser().resolve() == worktree:
             return True, row
