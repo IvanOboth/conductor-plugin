@@ -24,7 +24,8 @@ not, there is nothing to update; `verify-skill-create` makes one.
    python3 .claude/skills/verify-<app>/scripts/feature_map_check.py \
      .claude/skills/verify-<app>/features --base origin/<base>
    ```
-   It fails when your diff touched a feature's `sources` and you did not change its file, and when
+   It fails when your diff touched the `sources` of a feature or a journey (`features/journeys/`)
+   and you did not change its file, and when
    your branch added a route no feature covers. The repo's CI runs the same check on the PR.
 
 2. **Decide per touched feature.** Read the feature file next to your diff. Ask one question: does

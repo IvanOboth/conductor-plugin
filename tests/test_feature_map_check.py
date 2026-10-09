@@ -75,7 +75,7 @@ class FeatureMapCheckTest(unittest.TestCase):
     def test_clean_map_covers_routes_and_skips_ignored(self):
         result = fmc.check(self.map, None)
         self.assertEqual(result['errors'], [])
-        self.assertEqual(result['summary'], {'version': fmc.VERSION, 'features': 2, 'routes': 3, 'covered_routes': 3})
+        self.assertEqual(result['summary'], {'version': fmc.VERSION, 'features': 2, 'journeys': 0, 'routes': 3, 'covered_routes': 3})
 
     def test_glob_brackets_are_literal_and_double_star_skips_groups(self):
         rx = fmc.glob_to_regex('app/**/sales/[id]/*.tsx')
@@ -128,6 +128,29 @@ class FeatureMapCheckTest(unittest.TestCase):
         p.parent.mkdir(parents=True)
         p.write_text('export default 4\n')
         self.assertEqual(fmc.check(self.map, 'main')['new_uncovered_routes'], ['app/報告/page.tsx'])
+
+
+    def journey(self, features='[sales, stock]'):
+        return (f"---\nid: sell-and-restock\npersona: Rep\nsurface: web\nfeatures: {features}\nsources:\n  - app/**/sales/**\n---\n\n"
+                "# Sell and restock\n\nJob.\n\n## Goal and context\n\nx\n\n## Steps the user expects\n\n1. x\n\n"
+                "## Path in the app\n\n1. x\n\n## Driving it with verify-demo\n\nPreconditions: x\n\n## Gotchas\n\n- x\n")
+
+    def test_journeys_are_validated_indexed_and_follow_their_sources(self):
+        (self.map / 'journeys').mkdir()
+        (self.map / 'journeys/sell-and-restock.md').write_text(self.journey('[sales, nowhere]'))
+        errors = fmc.check(self.map, None)['errors']
+        self.assertIn('journeys/sell-and-restock.md is not listed in README.md', errors)
+        self.assertTrue(any("lists feature 'nowhere'" in e for e in errors))
+        (self.map / 'journeys/sell-and-restock.md').write_text(self.journey())
+        with (self.map / 'README.md').open('a') as fh:
+            fh.write('- [Sell and restock](./journeys/sell-and-restock.md)\n')
+        git(self.repo, 'add', '-A')
+        git(self.repo, 'commit', '-qm', 'journey')
+        self.assertEqual(fmc.check(self.map, None)['errors'], [])
+        (self.repo / 'app/(g)/sales/page.tsx').write_text('export default 5\n')
+        (self.map / 'sales.md').write_text(FEATURE.format(id='sales', area='sales') + '- Changed.\n')
+        result = fmc.check(self.map, 'main')
+        self.assertEqual([t['feature'] for t in result['touched_features']], ['journeys/sell-and-restock.md'])
 
 
 if __name__ == '__main__':

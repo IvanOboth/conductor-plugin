@@ -113,6 +113,10 @@ Each feature file has front matter (`id`, `sources`), an H1, one paragraph, and 
 poteto's format: it lets a script tell a pull request which feature files its diff touches, so
 upkeep is a check rather than a memory exercise. The body stays user-facing.
 
+Journeys are optional and come later: a `features/journeys/` file describes one persona's job across
+features (a rep's outlet visit, a back-office settlement). `journey-review` writes and walks them;
+the checker validates them like features and lists them in the same index.
+
 Enumerate the work-list yourself: list the route files (`git ls-files '<app>/**/page.tsx'` or the
 router's equivalent), group them into features (one per module or flow a user would name), and
 assign every route to exactly one feature. Then write `features/map.json` (route globs, ignores,

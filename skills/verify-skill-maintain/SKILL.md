@@ -71,7 +71,8 @@ alone, and file an issue if the run is authorised to).
    through the UI where the app allows, and otherwise report it with its identifier. Use `target` on
    the test track; never `launch` a dev server for this pass.
    Drive every feature at least once: its main entry point, plus every recipe step the source wave
-   flagged. A feature that cannot be reached is `unreachable` only with the concrete prerequisite
+   flagged. Walk every journey file's `Path in the app` too; a journey whose path changed is drift in
+   the journey file, and a journey that got harder is a finding for `journey-review`. A feature that cannot be reached is `unreachable` only with the concrete prerequisite
    (persona, permission, seeded data, external service) and the route you tried; if the map omits
    that prerequisite, that is drift. Keep to the map's write policy for shared data.
 

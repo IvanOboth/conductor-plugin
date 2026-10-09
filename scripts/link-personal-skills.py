@@ -27,7 +27,8 @@ def main(skill="conductor"):
     titles = {'conductor-core': 'Conductor Core', 'conductor-claude': 'Conductor Claude',
               'mobile-app-testing': 'Mobile app testing', 'verify-skill-create': 'Create a verification skill',
               'verify-skill-maintain': 'Maintain a verification skill', 'feature-map-update': 'Update the feature map',
-              'verify-skill-eval': 'Evaluate a guidance change', 'how': 'How'}
+              'verify-skill-eval': 'Evaluate a guidance change', 'how': 'How',
+              'journey-review': 'Review a user journey'}
     if skill in titles:
         description = (source / 'SKILL.md').read_text().split('\ndescription: ', 1)[1].split('\n', 1)[0]
         title = titles[skill]
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
     SKILLS = ['conductor', 'conductor-core', 'conductor-claude', 'mobile-app-testing', 'verify-skill-create',
-              'verify-skill-maintain', 'feature-map-update', 'verify-skill-eval', 'how']
+              'verify-skill-maintain', 'feature-map-update', 'verify-skill-eval', 'how', 'journey-review']
     parser.add_argument('--skill', choices=SKILLS)
     args = parser.parse_args()
     for skill in ([args.skill] if args.skill else SKILLS):

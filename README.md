@@ -21,7 +21,7 @@ Fan-out follows the enumerated work: no artificial worker cap, token ceiling or 
 ## Verification skills and feature maps
 
 Agents verify, record and reproduce faster when the project tells them how: how to start or target
-the app, how to sign in as each persona, where every feature lives and what proves it works. Five
+the app, how to sign in as each persona, where every feature lives and what proves it works. Six
 skills build and keep that knowledge in each product repository, adapted from poteto's pstack
 (MIT):
 
@@ -31,6 +31,7 @@ skills build and keep that knowledge in each product repository, adapted from po
 | [`feature-map-update`](skills/feature-map-update/SKILL.md) | In every PR that changes a user path: the checker lists the feature files the diff touched and fails on a new unmapped route; the author updates and re-drives them. |
 | [`verify-skill-maintain`](skills/verify-skill-maintain/SKILL.md) | Scheduled pass: one source reader per feature, one live pass over every feature, one PR of proven corrections; regressions are reported, not written into the map. |
 | [`verify-skill-eval`](skills/verify-skill-eval/SKILL.md) | Paired headless trials with and without a guidance change, metrics from transcripts, blind judging. |
+| [`journey-review`](skills/journey-review/SKILL.md) | Walks a persona's job across the map (a rep's outlet visit: order, adjust, payment, receipt), finds where the flow fights how they work, finds why in the code, designs the better flow, then fixes it or files the proposal. Journeys live in `features/journeys/`. |
 | [`how`](skills/how/SKILL.md) | Explains how a subsystem works (explorers, explainer, optional three-model critique) and moves durable findings into the map or `AGENTS.md`. |
 
 `verify-mikono` (IvanOboth/mikono) is the first map built with these skills. animatix-lab's

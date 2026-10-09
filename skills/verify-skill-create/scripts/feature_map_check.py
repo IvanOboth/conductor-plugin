@@ -42,8 +42,9 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-VERSION = "3"
+VERSION = "4"
 REQUIRED_H2 = ["Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas"]
+JOURNEY_H2 = ["Goal and context", "Steps the user expects", "Path in the app", "Driving it with", "Gotchas"]
 
 
 def glob_to_regex(pattern: str) -> re.Pattern[str]:
@@ -168,8 +169,43 @@ def load_features(map_dir: Path, harness: str, errors: list[str]) -> list[Featur
     return features
 
 
-def index_links(readme: Path) -> list[str]:
+def load_journeys(map_dir: Path, harness: str, feature_ids: set[str], errors: list[str]) -> list[Feature]:
+    """Journey files (features/journeys/*.md): a persona's job across features, used by journey-review."""
+    journeys = []
+    for path in sorted((map_dir / "journeys").glob("*.md")):
+        rel = f"journeys/{path.name}"
+        meta, body = parse_front_matter(path.read_text(encoding="utf-8"))
+        if meta.get("id") != path.stem:
+            errors.append(f"{rel}: front matter id is {meta.get('id')!r}, expected {path.stem!r}")
+        if not meta.get("persona"):
+            errors.append(f"{rel}: front matter needs persona")
+        listed = meta.get("features")
+        if isinstance(listed, str):
+            listed = [f.strip() for f in listed.strip("[]").split(",") if f.strip()]
+        if not listed:
+            errors.append(f"{rel}: front matter needs the features it crosses")
+        for fid in listed or []:
+            if fid not in feature_ids:
+                errors.append(f"{rel}: lists feature {fid!r}, which has no feature file")
+        sources = meta.get("sources")
+        if not isinstance(sources, list) or not sources:
+            errors.append(f"{rel}: front matter needs a non-empty sources list")
+            sources = []
+        if not re.search(r"^# \S", body, re.M):
+            errors.append(f"{rel}: missing the H1 title")
+        h2 = re.findall(r"^## (.+?)\s*$", body, re.M)
+        expected = [h if h != "Driving it with" else f"Driving it with {harness}" for h in JOURNEY_H2]
+        if h2 != expected:
+            errors.append(f"{rel}: H2 sections are {h2}, expected exactly {expected}")
+        journeys.append(Feature(str(path.stem), path, list(sources), [glob_to_regex(x) for x in sources]))
+    return journeys
+
+
+def index_links(readme: Path, prefix: str = "") -> list[str]:
+    """Index links to map files: top-level feature files, or those under `prefix` (e.g. "journeys/")."""
     links = re.findall(r"\]\((?:\./)?([^)#\s]+\.md)\)", readme.read_text(encoding="utf-8"))
+    if prefix:
+        return [link for link in links if link.startswith(prefix) and "/" not in link[len(prefix):]]
     return [link for link in links if "/" not in link]
 
 
@@ -209,6 +245,14 @@ def check(map_dir: Path, base: str | None, allow_unchanged: set[str] | None = No
         errors.append(f"README.md lists {name} more than once")
 
     features = load_features(map_dir, harness, errors)
+    journeys = load_journeys(map_dir, harness, {f.id for f in features}, errors)
+    if readme.exists():
+        jlinked = index_links(readme, "journeys/")
+        jfiles = sorted(f"journeys/{p.name}" for p in (map_dir / "journeys").glob("*.md"))
+        for name in sorted(set(jlinked) - set(jfiles)):
+            errors.append(f"README.md links {name}, which does not exist")
+        for name in sorted(set(jfiles) - set(jlinked)):
+            errors.append(f"{name} is not listed in README.md")
     all_files = tracked_files(repo)
     for feat in features:
         if feat.patterns and not any(matches_any(f, feat.patterns) for f in all_files):
@@ -229,15 +273,16 @@ def check(map_dir: Path, base: str | None, allow_unchanged: set[str] | None = No
     if base:
         changed, added = changed_files(repo, base)
         map_rel = str(map_dir.resolve().relative_to(repo))
-        changed_maps = {Path(c).name for c in changed if c.startswith(map_rel + "/")}
-        for feat in features:
+        changed_maps = {c[len(map_rel) + 1:] for c in changed if c.startswith(map_rel + "/")}
+        for feat in features + journeys:
+            key = str(feat.path.resolve().relative_to(map_dir.resolve()))
             hits = [c for c in changed if matches_any(c, feat.patterns)]
-            if hits and feat.path.name not in changed_maps:
+            if hits and key not in changed_maps:
                 acknowledged = feat.id in allow_unchanged
-                touched.append({"feature": feat.path.name, "changed_sources": hits[:10], "acknowledged": acknowledged})
+                touched.append({"feature": key, "changed_sources": hits[:10], "acknowledged": acknowledged})
                 if not acknowledged:
                     errors.append(
-                        f"{feat.path.name}: {len(hits)} source file(s) changed on this branch but the feature "
+                        f"{key}: {len(hits)} source file(s) changed on this branch but the map "
                         f"file did not (e.g. {hits[0]}). Update it, or, if a user reaches, sees and does "
                         f"everything exactly as before, acknowledge with --allow-unchanged {feat.id} "
                         f"(CI: a line 'map unchanged: {feat.id} — <reason>' in the PR description)"
@@ -261,6 +306,7 @@ def check(map_dir: Path, base: str | None, allow_unchanged: set[str] | None = No
         "summary": {
             "version": VERSION,
             "features": len(features),
+            "journeys": len(journeys),
             "routes": len(routes),
             "covered_routes": len(routes) - len(uncovered) - len(new_uncovered),
         },
