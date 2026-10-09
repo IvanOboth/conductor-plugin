@@ -42,7 +42,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-VERSION = "2"
+VERSION = "3"
 REQUIRED_H2 = ["Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas"]
 
 
@@ -111,23 +111,35 @@ def git(repo: Path, *args: str) -> str:
 
 
 def tracked_files(repo: Path) -> list[str]:
-    """Tracked files plus untracked ones that are not ignored, so a new uncommitted route counts."""
-    return sorted({p for p in git(repo, "ls-files", "--cached", "--others", "--exclude-standard").splitlines() if p})
+    """Tracked files plus untracked ones that are not ignored, so a new uncommitted route counts.
+    NUL-delimited, so non-ASCII paths are not quoted and escaped."""
+    out = git(repo, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    return sorted({p for p in out.split("\0") if p})
 
 
 def changed_files(repo: Path, base: str) -> tuple[list[str], list[str]]:
     """Files changed between the merge base and the working tree, and the subset that are new."""
     merge_base = git(repo, "merge-base", base, "HEAD").strip()
     changed, added = set(), set()
-    for line in git(repo, "diff", "--name-status", merge_base).splitlines():
-        parts = line.split("\t")
-        status, path = parts[0], parts[-1]
-        changed.add(path)
-        if status.startswith("A") or status.startswith("R"):
+    fields = git(repo, "diff", "-z", "--name-status", merge_base).split("\0")
+    i = 0
+    while i < len(fields) and fields[i]:
+        status = fields[i]
+        if status[0] in "RC":
+            old, new = fields[i + 1], fields[i + 2]
+            changed.update({old, new})  # the feature losing the file is touched too
+            added.add(new)
+            i += 3
+        else:
+            path = fields[i + 1]
+            changed.add(path)
+            if status.startswith("A"):
+                added.add(path)
+            i += 2
+    for path in git(repo, "ls-files", "-z", "--others", "--exclude-standard").split("\0"):
+        if path:
+            changed.add(path)
             added.add(path)
-    for path in git(repo, "ls-files", "--others", "--exclude-standard").splitlines():
-        changed.add(path)
-        added.add(path)
     return sorted(changed), sorted(added)
 
 

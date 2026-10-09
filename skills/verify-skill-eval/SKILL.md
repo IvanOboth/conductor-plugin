@@ -42,8 +42,11 @@ check ("send me the screenshot path and the balance shown"). The same prompt goe
 
 ## 4. Run
 
+The scripts sit in `scripts/` beside this SKILL.md (Claude Code shows the directory as the skill's
+base directory; on the bench it is `~/.claude/skills/verify-skill-eval/`).
+
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-eval/scripts/run_trials.py" run plan.json
+python3 <this skill's directory>/scripts/run_trials.py run plan.json
 ```
 
 `plan.json` (format in the script's docstring) names the arms, the tasks, reps (2 or more; one run
@@ -61,7 +64,9 @@ pushes and watchers (`Bash(npx convex:*)`, `Bash(pnpm convex:*)`, `Bash(pnpm dev
 First read each unfinished trial's `<label>.err` and stream tail: a trial killed by a usage limit or
 a timeout is a lost trial, not a failure of its arm; re-run it. Then, for each trial, read its final
 message and the evidence it names, against the task's acceptance
-check, without looking at its arm (`summary.md` lists labels; hide the arm column while judging).
+check, without looking at its arm (`judge.md` lists each trial by neutral label, in label order, with its task and final message
+and nothing else; score from it before you open `summary.md`, which shows the arms and the
+guidance metrics).
 Record pass, partial or fail with one line of reason. For a second opinion, give a judge from the
 other model family (GPT-6.1 Sol at `high`) the labels, the outputs and the checks, never the arms.
 Disagreement between you and the judge means the check is ambiguous: tighten it and re-judge.

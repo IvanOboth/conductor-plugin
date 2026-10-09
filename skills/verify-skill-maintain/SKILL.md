@@ -36,7 +36,9 @@ alone, and file an issue if the run is authorised to).
    stop and point at `verify-skill-create`.
 
 1. **Checker.** Run the plugin's copy, which carries the tests:
-   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-create/scripts/feature_map_check.py" <skill>/features`,
+   `python3 <verify-skill-create's directory>/scripts/feature_map_check.py <skill>/features` (on the
+   bench `~/.claude/skills/verify-skill-create/`; in a plugin install
+   `${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-create/`),
    adding `--base <the base SHA the last pass covered>` on a scheduled pass to list the features whose
    sources changed since. If the repo's vendored copy reports an older `--version`, replace it in
    this pass's PR.

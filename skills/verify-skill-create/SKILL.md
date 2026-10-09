@@ -119,7 +119,8 @@ assign every route to exactly one feature. Then write `features/map.json` (route
 harness name) and copy the checker into the skill:
 
 ```bash
-cp "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-create/scripts/feature_map_check.py" .claude/skills/verify-<app>/scripts/
+# the checker sits in scripts/ beside this SKILL.md (on the bench: ~/.claude/skills/verify-skill-create/)
+cp <this skill's directory>/scripts/feature_map_check.py .claude/skills/verify-<app>/scripts/
 ```
 
 Fan out one lane per feature (Opus 5.5 `medium`; at most 6 concurrent browser lanes on the bench),

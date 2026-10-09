@@ -116,5 +116,19 @@ class FeatureMapCheckTest(unittest.TestCase):
         self.assertEqual(fmc.main([str(self.map), '--base', 'main', '--allow-unchanged-from', str(body)]), 0)
 
 
+    def test_rename_between_features_touches_both(self):
+        (self.repo / 'app/(g)/sales/stock').mkdir()
+        git(self.repo, 'mv', 'app/stock/page.tsx', 'app/(g)/sales/stock/page.tsx')
+        (self.map / 'sales.md').write_text(FEATURE.format(id='sales', area='sales') + '- Stock moved here.\n')
+        result = fmc.check(self.map, 'main')
+        self.assertEqual([t['feature'] for t in result['touched_features']], ['stock.md'])
+
+    def test_non_ascii_route_is_seen(self):
+        p = self.repo / 'app/報告/page.tsx'
+        p.parent.mkdir(parents=True)
+        p.write_text('export default 4\n')
+        self.assertEqual(fmc.check(self.map, 'main')['new_uncovered_routes'], ['app/報告/page.tsx'])
+
+
 if __name__ == '__main__':
     unittest.main()

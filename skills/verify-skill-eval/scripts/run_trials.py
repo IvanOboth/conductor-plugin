@@ -47,12 +47,28 @@ def trials(plan: dict) -> list[dict]:
     ]
 
 
+def identity(plan: dict, trial: dict) -> dict:
+    """What makes two runs of a label the same experiment: prompt, model, effort, checkout revision."""
+    cwd = plan["arms"][trial["arm"]]["cwd"]
+    rev = subprocess.run(["git", "-C", cwd, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    return {"prompt_sha": hashlib.sha1(trial["prompt"].encode()).hexdigest()[:12], "model": plan.get("model", "opus"),
+            "effort": plan.get("effort", "medium"), "rev": rev, "deny": plan.get("deny", [])}
+
+
+def has_result(stream: Path) -> bool:
+    return stream.exists() and any('"type":"result"' in line.replace(" ", "") for line in stream.open(errors="replace"))
+
+
 def run_one(plan: dict, trial: dict) -> dict:
     out = Path(plan["out"])
     stream = out / f"{trial['label']}.jsonl"
     meta_path = out / f"{trial['label']}.meta.json"
+    ident = identity(plan, trial)
     if meta_path.exists():
-        return json.loads(meta_path.read_text())
+        meta = json.loads(meta_path.read_text())
+        # Reuse only a finished trial of the same experiment; re-run timeouts, crashes and changed setups.
+        if has_result(stream) and not meta.get("timed_out") and meta.get("identity", ident) == ident:
+            return meta
     arm = plan["arms"][trial["arm"]]
     env = {**os.environ, "VERIFY_RUN_ID": trial["label"], **arm.get("env", {})}
     settings = out / "trial-settings.json"
@@ -65,15 +81,20 @@ def run_one(plan: dict, trial: dict) -> dict:
         proc = subprocess.Popen(cmd, cwd=arm["cwd"], env=env, stdin=subprocess.DEVNULL, stdout=fh,
                                 stderr=err, start_new_session=True)
         try:
-            code = proc.wait(timeout=plan.get("timeout_s", 2400))
-            timed_out = False
+            proc.wait(timeout=plan.get("timeout_s", 2400))
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGTERM)
+            timed_out = True
+        else:
+            timed_out = False
+        # Kill the whole process group either way: children (browsers, shells) can outlive the parent.
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                os.killpg(proc.pid, sig)
+            except ProcessLookupError:
+                break
             time.sleep(5)
-            if proc.poll() is None:
-                os.killpg(proc.pid, signal.SIGKILL)
-            code, timed_out = proc.wait(), True
-    meta = {**trial, "exit": code, "timed_out": timed_out, "wall_s": round(time.time() - started, 1)}
+        code = proc.wait()
+    meta = {**trial, "exit": code, "timed_out": timed_out, "wall_s": round(time.time() - started, 1), "identity": ident}
     meta_path.write_text(json.dumps(meta, indent=1))
     return meta
 
@@ -138,6 +159,13 @@ def summarise(plan: dict) -> None:
     lines += ["", "Success is judged from the evidence, not from these numbers: read each final message and",
               "its screenshots against the task's acceptance check, blind to the arm (labels are neutral)."]
     (out / "summary.md").write_text("\n".join(lines) + "\n")
+    # The judging sheet: neutral labels in label order, the task and the deliverable only. No arm, no
+    # guidance hits, no tool counts. Judge from this file before opening summary.md.
+    judge = ["# Judging sheet", "", "Score each trial pass / partial / fail against its task's acceptance check.", ""]
+    for r in sorted(rows, key=lambda r: r["label"]):
+        judge += [f"## {r['label']} · task {r['task']}", "", f"Finished: {r['finished']}", "", "```text",
+                  r["final_message"].strip() or "(no final message)", "```", ""]
+    (out / "judge.md").write_text("\n".join(judge))
     print("\n".join(lines))
 
 
