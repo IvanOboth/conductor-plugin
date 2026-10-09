@@ -33,8 +33,9 @@ skills build and keep that knowledge in each product repository, adapted from po
 | [`verify-skill-eval`](skills/verify-skill-eval/SKILL.md) | Paired headless trials with and without a guidance change, metrics from transcripts, blind judging. |
 | [`how`](skills/how/SKILL.md) | Explains how a subsystem works (explorers, explainer, optional three-model critique) and moves durable findings into the map or `AGENTS.md`. |
 
-The first project map is `verify-mikono` in IvanOboth/mikono; animatix-lab's `verify-animatix` was
-built by its team on the same pattern.
+`verify-mikono` (IvanOboth/mikono) is the first map built with these skills. animatix-lab's
+`verify-animatix`, written by the Animatix team on poteto's pattern, has the helper and a
+four-feature map but not yet `map.json`, the checker or a maintenance pass.
 
 ## Install
 

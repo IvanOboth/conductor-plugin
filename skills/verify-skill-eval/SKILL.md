@@ -1,6 +1,7 @@
 ---
 name: verify-skill-eval
 description: Measure whether a change to agent guidance (a verification skill, a feature map, an AGENTS.md section, a rewritten skill) makes agents better at real tasks — paired headless Claude trials in two checkouts, same organic prompts, neutral labels, metrics from the transcripts (time, turns, tool calls, cost, whether the guidance was actually read), and a blind judgement of each result against its acceptance check. Use for "does the map help", "test agents with and without", "A/B this skill", or before promoting a guidance change across projects.
+disable-model-invocation: true
 ---
 
 # Evaluate a guidance change
@@ -48,13 +49,18 @@ python3 "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-eval/scripts/run_trials.py" r
 `plan.json` (format in the script's docstring) names the arms, the tasks, reps (2 or more; one run
 per arm is an anecdote), the model and effort (Opus 5.5 at `medium` matches a build or verify
 lane), concurrency (4 browser-driving trials at once on the bench), a timeout, and `probe` strings
-that show the guidance was used (the helper's name, `features/`). Run it in the background with
-stdin closed; it resumes, skipping finished trials. Each trial gets a neutral label and its own
+that show the guidance was used (the helper's name, `features/`), and `deny`: permission rules every
+trial runs under. Trials run unattended with permissions bypassed, and the arm without the guidance
+follows whatever setup the repo documents, so deny anything that writes to shared state: backend
+pushes and watchers (`Bash(npx convex:*)`, `Bash(pnpm convex:*)`, `Bash(pnpm dev:*)`), deploys,
+`git push`. Run it in the background with stdin closed; it resumes, skipping finished trials. Each trial gets a neutral label and its own
 `VERIFY_RUN_ID`.
 
 ## 5. Judge blind
 
-For each trial, read its final message and the evidence it names, against the task's acceptance
+First read each unfinished trial's `<label>.err` and stream tail: a trial killed by a usage limit or
+a timeout is a lost trial, not a failure of its arm; re-run it. Then, for each trial, read its final
+message and the evidence it names, against the task's acceptance
 check, without looking at its arm (`summary.md` lists labels; hide the arm column while judging).
 Record pass, partial or fail with one line of reason. For a second opinion, give a judge from the
 other model family (GPT-6.1 Sol at `high`) the labels, the outputs and the checks, never the arms.

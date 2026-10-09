@@ -1,6 +1,7 @@
 ---
 name: verify-skill-create
 description: Generate a project-local verification skill (`.claude/skills/verify-<app>/`) that lets any agent drive the real app the way a user does — a small helper CLI (target or launch, doctor, sign-in as a test persona, shot, record, stop) plus a feature map that says where every user-facing feature lives, which persona reaches it, how to drive it and what proves it worked. Use for /verify-skill-create, "make a verification skill for <repo>", "give agents a map of the app", "agents keep getting lost verifying <app>", or when enrolling a project in the bench pipeline. Keep it current with verify-skill-maintain and feature-map-update.
+disable-model-invocation: true
 ---
 
 # Create a verification skill
@@ -94,7 +95,9 @@ matter the skill never registers. Then these sections, each from what you found 
   and the resulting state, prove writes from a second view, read the PNG yourself, record video
   only when an application change needs demonstrating (Conductor's evidence gate), publish a URL
   rather than a disk path on a headless host.
-- **Cleanup:** never kill by process name; evidence survives.
+- **Cleanup:** never kill by process name; evidence survives. On a shared backend, clean the residue,
+  not the instance: name every row the run created, remove it through the UI where the app allows,
+  otherwise report it with its identifier.
 - **Keep the map true:** the checker command (step 5) and the same-PR rule.
 - **Helpers:** every script and its invocation.
 
@@ -121,14 +124,17 @@ cp "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-create/scripts/feature_map_check.p
 
 Fan out one lane per feature (Opus 5.5 `medium`; at most 6 concurrent browser lanes on the bench),
 each with its route list, the entry contract, a read-only rule for shared data, its own
-`VERIFY_RUN_ID`, and the instruction to read the source and then drive every entry point live
-before writing. A small app can start with the top five features; a product used by clients should
+`VERIFY_RUN_ID`, the rule "use `target` on the deployed test track; never `launch`, never start a
+dev server or a backend watcher", and the instruction to read the source and then drive every entry
+point live before writing. `sources` should name the shared components a feature renders, not only
+its route directories: a renamed button in a shared component must still flag the feature. A small app can start with the top five features; a product used by clients should
 be mapped whole, because the map is only trusted when it is complete.
 
 ## 5. Prove it before handing it over
 
-- `python3 .claude/skills/verify-<app>/scripts/feature_map_check.py .claude/skills/verify-<app>/features`
-  exits 0 (warnings are acceptable only for routes you deliberately left out, listed in `route_ignore`).
+- `python3 .claude/skills/verify-<app>/scripts/feature_map_check.py .claude/skills/verify-<app>/features --strict`
+  exits 0: every route is mapped or listed in `route_ignore`. A partial map is a draft; say so and
+  keep the remaining features on the work-list.
 - Run the skill's own instructions end to end once: target or launch, doctor, sign in, drive one
   mapped feature, capture evidence, stop. Confirm the evidence still exists after stop.
 - Read every feature file the lanes wrote. Reject a file that guesses: a recipe step must say
@@ -137,9 +143,16 @@ be mapped whole, because the map is only trusted when it is complete.
 
 ## 6. Wire it in
 
-- `AGENTS.md`: the browser-verification section points at the skill; older browser skills become
-  a short pointer to it, so two skills do not give conflicting instructions.
-- The bench: the repo's `verify-order.<repo>.md` tells verify lanes to read the map; the
-  bench-intake enrollment checklist names the skill.
-- The upkeep loop: `feature-map-update` in every PR that changes a user path, and a scheduled
-  `verify-skill-maintain` pass.
+- `AGENTS.md`: the browser-verification section points at the skill and carries the same-PR rule
+  ("a change that alters a user path updates its feature file; run the checker"). Every agent and
+  developer reads `AGENTS.md`, so the rule lives there, not in one pipeline's prompt. Older browser
+  skills become a short pointer, so two skills do not give conflicting instructions.
+- CI: a workflow runs the checker with `--base origin/<base>` on every pull request and passes the
+  PR description as `--allow-unchanged-from`, so a touched feature fails until its file is updated
+  or the author writes `map unchanged: <id> — <reason>`. Mikono's `.github/workflows/feature-map.yml`
+  is the example.
+- The bench: the repo's `verify-order.<repo>.md` tells verify lanes to extract the skill from the
+  base branch, `target` the verify URL (never `launch`), and read the feature file for the route
+  they verify; the bench-intake enrollment checklist names the skill.
+- The scheduled half: a `verify-skill-maintain` pass on a timer. Until one is enabled, the map's
+  README must not claim it runs.

@@ -1,6 +1,7 @@
 ---
 name: verify-skill-maintain
 description: Scheduled upkeep pass that keeps a project's verification skill and feature map true to the app — checker first, one source reader per feature file, one live pass that drives every feature, then at most one PR of proven corrections. Product regressions found on the way are reported, never written into the map. Use for /verify-skill-maintain, "audit the verify skill", "is the feature map still right", the daily maintenance timer, or after a large merge wave.
+disable-model-invocation: true
 ---
 
 # Maintain a verification skill
@@ -31,16 +32,21 @@ alone, and file an issue if the run is authorised to).
 ## Pass
 
 0. **Locate the target.** The project-local skill with a helper and `features/` (for example
-   `.claude/skills/verify-mikono/`). None: stop and point at `verify-skill-create`.
+   `.claude/skills/verify-mikono/`). Several: ask which (unattended: the one the timer names). None:
+   stop and point at `verify-skill-create`.
 
-1. **Checker.** Run `scripts/feature_map_check.py <skill>/features` and, for a daily pass,
-   `--base <yesterday's base SHA or origin/<base>~N>` to list features whose sources changed.
+1. **Checker.** Run the plugin's copy, which carries the tests:
+   `python3 "${CLAUDE_PLUGIN_ROOT}/skills/verify-skill-create/scripts/feature_map_check.py" <skill>/features`,
+   adding `--base <the base SHA the last pass covered>` on a scheduled pass to list the features whose
+   sources changed since. If the repo's vendored copy reports an older `--version`, replace it in
+   this pass's PR.
    Fix index hygiene first: missing, extra, duplicate or dead entries; malformed files. List
    uncovered routes; each one either joins a feature's `sources` and gets a section, or goes into
    `route_ignore` with a reason.
 
-2. **Source wave.** One read-only lane per feature file, concurrently (GPT-6.1 Sol `high` via
-   `ask-codex`, or Opus 5.5 `medium` when Codex quota is out). Prioritise the features the checker
+2. **Source wave.** One read-only lane per feature file (GPT-6.1 Sol `high` via `ask-codex`, with
+   "do not edit files" in the order; Opus 5.5 `medium` when Codex quota is out), at most 6 at once
+   on the bench. Prioritise the features the checker
    flagged; a full pass covers all of them. Each lane reads the feature file and the code its
    `sources` name and returns: a one-paragraph summary of how the feature works now, likely drift
    with `file:line` citations (labels, routes, persona gates, new sub-features), and one live
@@ -57,6 +63,11 @@ alone, and file an issue if the run is authorised to).
      and sign in again, rather than hoping;
    - evidence captured so far survives every cleanup; check its directory, do not assume;
    - nothing a drive started outlives its usefulness; `stop` after failed attempts too.
+   A doctor failure caused by skill drift (a changed sign-in screen, a moved route) is drift: fix it
+   under edit scope, re-run doctor once, and call the pass `blocked` only if it still fails. Clean
+   the residue, not the instance: the backend is shared, so name every row a drive created, remove it
+   through the UI where the app allows, and otherwise report it with its identifier. Use `target` on
+   the test track; never `launch` a dev server for this pass.
    Drive every feature at least once: its main entry point, plus every recipe step the source wave
    flagged. A feature that cannot be reached is `unreachable` only with the concrete prerequisite
    (persona, permission, seeded data, external service) and the route you tried; if the map omits
@@ -79,6 +90,7 @@ report page and give the hub URL.
 
 ## Cadence
 
-Daily on an active product, and after any merge wave of more than about ten PRs. On the bench, run
-it as a scheduled Claude session (or a `systemd --user` timer that starts one) in a dedicated
-worktree of the project's base branch, at a time no verify lane is driving the same test track.
+Daily on an active product, and after any merge wave of more than about ten PRs. This skill does not
+invoke itself. On the bench a `systemd --user` timer starts a headless `claude -p` session that runs
+`/verify-skill-maintain` in a dedicated worktree of the base branch, at a time no verify lane is
+driving the same test track. Record the base SHA each pass covered so the next pass starts there.

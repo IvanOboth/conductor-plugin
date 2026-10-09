@@ -24,14 +24,15 @@ not, there is nothing to update; `verify-skill-create` makes one.
    python3 .claude/skills/verify-<app>/scripts/feature_map_check.py \
      .claude/skills/verify-<app>/features --base origin/<base>
    ```
-   It prints the feature files whose `sources` your diff touched and whose file you did not
-   change, and it fails on a route your branch added that no feature covers.
+   It fails when your diff touched a feature's `sources` and you did not change its file, and when
+   your branch added a route no feature covers. The repo's CI runs the same check on the PR.
 
 2. **Decide per touched feature.** Read the feature file next to your diff. Ask one question: does
    a user reach, see or do anything differently? A new or renamed route, button, label, tab, menu
    item, dialog, empty state, a persona gaining or losing access, a new sub-feature, a removed one:
-   update the file. A refactor, a backend fix with the same UI, a style change: leave it, and say
-   in the PR description "map unchanged: <feature>, because <reason>".
+   update the file. A refactor, a backend fix with the same UI, a style change: leave it, pass
+   `--allow-unchanged <feature-id>` locally, and put the line
+   `map unchanged: <feature-id> — <reason>` in the PR description, which CI reads.
 
 3. **Edit the file.** Targeted edits only. Keep the entry contract (front matter, H1, one
    paragraph, the four H2s). Add new route files to `sources`. A new route either joins an
@@ -47,6 +48,7 @@ not, there is nothing to update; `verify-skill-create` makes one.
 
 ## For orchestrators
 
-Put this in every build-lane work order for a repo with a map: "If your change alters a user path,
-update the feature file in the same commit (`feature-map-update`)." Reviewers treat a touched
-feature with no map change and no "map unchanged" line as an incomplete PR.
+The rule lives in the project's `AGENTS.md`, which every lane and developer reads, and in CI, which
+fails the PR. Add one line to build-lane work orders as well: "If your change alters a user path,
+update the feature file in the same commit (`feature-map-update`)." A reviewer treats a touched
+feature with neither a map change nor a `map unchanged:` line as an incomplete PR.

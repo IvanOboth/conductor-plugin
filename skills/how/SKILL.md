@@ -36,7 +36,8 @@ rendering or API surface; background jobs and side effects. Launch the explorers
 with `references/explorer-prompt.md` filled in (`{QUESTION}`, `{EXPLORATION_ANGLE}`):
 
 - GPT-6.1 Sol at `high`: `ask-codex -m gpt-6.1-sol --effort high --context <filled-prompt>.md --output <scratch>/explorer-N.md "Follow the prompt; your final message is the findings." </dev/null`
-  run in the background. Investigation that does not change code is its lane.
+  run in the background, with "Do not edit any file" added to the prompt. Investigation that does
+  not change code is its lane.
 - When Codex quota is out, Opus 5.5 at `medium` (`exec-lane`) with the same prompt and an
   instruction not to edit files.
 
@@ -83,9 +84,9 @@ Run when the asker wants problems or improvements, not only understanding.
    |---|---|
    | A | Opus 5.5 at `high` |
    | B | GPT-6.1 Sol at `high` (`ask-codex`) |
-   | C | Fable 5.1 at `high` (`verify-lane`) |
+   | C | Fable 5.1 at `high` (`verify-lane`), only when the area is critical (money, auth, data migrations, production) or the architecture is genuinely ambiguous; otherwise run A and B |
 
-   Three models from two families means agreement carries signal and blind spots differ.
+   Critics from two families mean agreement carries signal and blind spots differ.
 3. Judge as a pragmatic lead, not an aggregator. Sort findings into **Act on** (worth fixing now),
    **Consider** (real, unclear cost/benefit), **Noted** (valid, low priority) and **Dismissed**
    (wrong, missing context, or taste). Check every Act-on finding in the code yourself.

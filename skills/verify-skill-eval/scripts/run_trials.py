@@ -11,7 +11,8 @@ plan.json:
       "reps": 2, "concurrency": 4, "timeout_s": 2400,
       "arms":  {"a": {"cwd": "/path/checkout-a"}, "b": {"cwd": "/path/checkout-b"}},
       "tasks": [{"id": "t1", "prompt": "…what a user would type…"}],
-      "probe": ["verify-mikono", "features/"]     # strings to look for in tool inputs: did the agent use the guidance?
+      "probe": ["verify-mikono", "features/"],    # strings to look for in tool inputs: did the agent use the guidance?
+      "deny": ["Bash(npx convex:*)", "Bash(git push:*)"]   # permission rules every trial runs under
     }
 
 Each trial is `claude -p <prompt>` in the arm's checkout with stream-json output, stdin closed, its
@@ -54,7 +55,9 @@ def run_one(plan: dict, trial: dict) -> dict:
         return json.loads(meta_path.read_text())
     arm = plan["arms"][trial["arm"]]
     env = {**os.environ, "VERIFY_RUN_ID": trial["label"], **arm.get("env", {})}
-    cmd = ["claude", "-p", trial["prompt"], "--model", plan.get("model", "opus"),
+    settings = out / "trial-settings.json"
+    settings.write_text(json.dumps({"permissions": {"deny": plan.get("deny", [])}}))
+    cmd = ["claude", "-p", trial["prompt"], "--settings", str(settings), "--model", plan.get("model", "opus"),
            "--effort", plan.get("effort", "medium"), "--output-format", "stream-json", "--verbose",
            "--dangerously-skip-permissions", "--no-session-persistence"]
     started = time.time()

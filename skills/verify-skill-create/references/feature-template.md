@@ -3,6 +3,7 @@ id: delivery-trips
 sources:
   - apps/web/app/**/dashboard/delivery/trips/**
   - apps/web/app/**/dashboard/delivery/[tripId]/**        # brackets are literal; only * ** ? are wildcards
+  - apps/web/components/delivery/trip-*.tsx            # shared components the screens render
   - packages/backend/convex/trips*.ts
 ---
 

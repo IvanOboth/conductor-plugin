@@ -75,7 +75,7 @@ class FeatureMapCheckTest(unittest.TestCase):
     def test_clean_map_covers_routes_and_skips_ignored(self):
         result = fmc.check(self.map, None)
         self.assertEqual(result['errors'], [])
-        self.assertEqual(result['summary'], {'features': 2, 'routes': 3, 'covered_routes': 3})
+        self.assertEqual(result['summary'], {'version': fmc.VERSION, 'features': 2, 'routes': 3, 'covered_routes': 3})
 
     def test_glob_brackets_are_literal_and_double_star_skips_groups(self):
         rx = fmc.glob_to_regex('app/**/sales/[id]/*.tsx')
@@ -105,6 +105,15 @@ class FeatureMapCheckTest(unittest.TestCase):
         result = fmc.check(self.map, 'main')
         self.assertEqual(result['touched_features'], [])
         self.assertEqual(fmc.main([str(self.map), '--base', 'main']), 0)
+
+
+    def test_touched_feature_fails_until_updated_or_acknowledged(self):
+        (self.repo / 'app/(g)/sales/page.tsx').write_text('export default 2\n')
+        self.assertEqual(fmc.main([str(self.map), '--base', 'main']), 1)
+        self.assertEqual(fmc.main([str(self.map), '--base', 'main', '--allow-unchanged', 'sales']), 0)
+        body = self.repo / 'pr.md'
+        body.write_text('Refactor only.\n\nmap unchanged: `sales` — same screens and labels\n')
+        self.assertEqual(fmc.main([str(self.map), '--base', 'main', '--allow-unchanged-from', str(body)]), 0)
 
 
 if __name__ == '__main__':

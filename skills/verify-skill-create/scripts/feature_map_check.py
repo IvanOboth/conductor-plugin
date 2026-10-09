@@ -25,9 +25,11 @@ Each feature file starts with front matter:
     ---
 
 Exit status: 0 clean (warnings allowed), 1 errors, 2 usage. --strict turns warnings into errors.
-Errors: broken index, malformed feature files, and new routes in the diff that no feature covers.
-Warnings: routes no feature covers (pre-existing gaps), and features whose sources changed on this
-branch while their feature file did not.
+Errors: broken index, malformed feature files, new routes in the diff that no feature covers, and
+features whose sources changed on this branch while their feature file did not. Acknowledge a
+feature whose user path really is unchanged with --allow-unchanged <id> (repeatable), or with a line
+`map unchanged: <id> — <reason>` in a file passed as --allow-unchanged-from (CI passes the PR body).
+Warnings: routes no feature covers that already existed on the base (pre-existing gaps).
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+VERSION = "2"
 REQUIRED_H2 = ["Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas"]
 
 
@@ -158,7 +161,16 @@ def index_links(readme: Path) -> list[str]:
     return [link for link in links if "/" not in link]
 
 
-def check(map_dir: Path, base: str | None) -> dict[str, object]:
+def read_allowances(path: Path | None) -> set[str]:
+    """Feature ids acknowledged as unchanged by `map unchanged: <id>` lines (e.g. in a PR body)."""
+    if not path or not path.exists():
+        return set()
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return {m.group(1) for m in re.finditer(r"map unchanged:\s*`?([a-z0-9][a-z0-9-]*)`?", text, re.I)}
+
+
+def check(map_dir: Path, base: str | None, allow_unchanged: set[str] | None = None) -> dict[str, object]:
+    allow_unchanged = allow_unchanged or set()
     errors: list[str] = []
     warnings: list[str] = []
     config_path = map_dir / "map.json"
@@ -209,11 +221,15 @@ def check(map_dir: Path, base: str | None) -> dict[str, object]:
         for feat in features:
             hits = [c for c in changed if matches_any(c, feat.patterns)]
             if hits and feat.path.name not in changed_maps:
-                touched.append({"feature": feat.path.name, "changed_sources": hits[:10]})
-                warnings.append(
-                    f"{feat.path.name}: {len(hits)} source file(s) changed on this branch but the feature "
-                    f"file did not (e.g. {hits[0]}); update it, or say in the PR why the user path is unchanged"
-                )
+                acknowledged = feat.id in allow_unchanged
+                touched.append({"feature": feat.path.name, "changed_sources": hits[:10], "acknowledged": acknowledged})
+                if not acknowledged:
+                    errors.append(
+                        f"{feat.path.name}: {len(hits)} source file(s) changed on this branch but the feature "
+                        f"file did not (e.g. {hits[0]}). Update it, or, if a user reaches, sees and does "
+                        f"everything exactly as before, acknowledge with --allow-unchanged {feat.id} "
+                        f"(CI: a line 'map unchanged: {feat.id} — <reason>' in the PR description)"
+                    )
         uncovered_set = set(uncovered)
         new_uncovered = [a for a in added if a in uncovered_set]
         for route in new_uncovered:
@@ -231,6 +247,7 @@ def check(map_dir: Path, base: str | None) -> dict[str, object]:
         "uncovered_routes": uncovered,
         "new_uncovered_routes": new_uncovered,
         "summary": {
+            "version": VERSION,
             "features": len(features),
             "routes": len(routes),
             "covered_routes": len(routes) - len(uncovered) - len(new_uncovered),
@@ -243,13 +260,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("map_dir", type=Path)
     parser.add_argument("--base", help="git ref to diff against (merge base with HEAD), e.g. origin/develop")
     parser.add_argument("--json", action="store_true", help="print the result as JSON")
-    parser.add_argument("--strict", action="store_true", help="treat warnings as errors")
+    parser.add_argument("--strict", action="store_true", help="treat warnings as errors (use at handover: every route mapped)")
+    parser.add_argument("--allow-unchanged", action="append", default=[], metavar="ID",
+                        help="feature id whose sources changed but whose user path did not (repeatable)")
+    parser.add_argument("--allow-unchanged-from", type=Path, metavar="FILE",
+                        help="read 'map unchanged: <id>' lines from FILE, e.g. the PR description")
+    parser.add_argument("--version", action="version", version=f"feature_map_check {VERSION}")
     args = parser.parse_args(argv)
     if not args.map_dir.is_dir():
         print(f"feature_map_check: {args.map_dir} is not a directory", file=sys.stderr)
         return 2
     try:
-        result = check(args.map_dir, args.base)
+        allow = set(args.allow_unchanged) | read_allowances(args.allow_unchanged_from)
+        result = check(args.map_dir, args.base, allow)
     except subprocess.CalledProcessError as exc:
         print(f"feature_map_check: git failed: {exc.stderr.strip()}", file=sys.stderr)
         return 2
@@ -258,7 +281,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         s = result["summary"]
         if s:
-            print(f"features {s['features']}  routes {s['routes']}  covered {s['covered_routes']}")
+            print(f"feature_map_check {s['version']}  features {s['features']}  routes {s['routes']}  "
+                  f"covered {s['covered_routes']}")
         for e in result["errors"]:
             print(f"ERROR   {e}")
         for w in result["warnings"]:
