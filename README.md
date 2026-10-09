@@ -18,6 +18,24 @@ Use `$conductor-core` in Codex or `/conductor:conductor-core` in Claude Code. Wi
 
 Fan-out follows the enumerated work: no artificial worker cap, token ceiling or fixed Opus-call allowance. Real harness and machine limits still apply, and excess work queues without dropping coverage. The two profiles share the [report and evidence contracts](skills/conductor/SKILL.md#report-design-contract); the Core policy replaces mixed-model routing and mandatory Claude review gates within a Core run. Selecting Core does not migrate scheduled jobs or change the default `$conductor` profile.
 
+## Verification skills and feature maps
+
+Agents verify, record and reproduce faster when the project tells them how: how to start or target
+the app, how to sign in as each persona, where every feature lives and what proves it works. Five
+skills build and keep that knowledge in each product repository, adapted from poteto's pstack
+(MIT):
+
+| Skill | Does |
+|---|---|
+| [`verify-skill-create`](skills/verify-skill-create/SKILL.md) | Generates `.claude/skills/verify-<app>/`: a helper CLI (target/launch, doctor, sign-in, shot, record, stop) and a feature map with one file per user-facing feature. Ships `feature_map_check.py`. |
+| [`feature-map-update`](skills/feature-map-update/SKILL.md) | In every PR that changes a user path: the checker lists the feature files the diff touched and fails on a new unmapped route; the author updates and re-drives them. |
+| [`verify-skill-maintain`](skills/verify-skill-maintain/SKILL.md) | Scheduled pass: one source reader per feature, one live pass over every feature, one PR of proven corrections; regressions are reported, not written into the map. |
+| [`verify-skill-eval`](skills/verify-skill-eval/SKILL.md) | Paired headless trials with and without a guidance change, metrics from transcripts, blind judging. |
+| [`how`](skills/how/SKILL.md) | Explains how a subsystem works (explorers, explainer, optional three-model critique) and moves durable findings into the map or `AGENTS.md`. |
+
+The first project map is `verify-mikono` in IvanOboth/mikono; animatix-lab's `verify-animatix` was
+built by its team on the same pattern.
+
 ## Install
 
 ```
