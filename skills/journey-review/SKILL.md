@@ -130,6 +130,8 @@ publish a report page.
 
 ## Routing
 
+- Lanes return the ledger and findings in their final message when the harness refuses report-like
+  files from subagents; the orchestrator saves them.
 - Walking and judging intuitiveness: Opus 5.5 at `high` (taste and judgment); runtime mechanics on a
   device can go to GPT-6.1 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
 - Design of money or client-facing flows: Fable 5.1 at `high`, or Opus 5.5 `high` plus Fable review.

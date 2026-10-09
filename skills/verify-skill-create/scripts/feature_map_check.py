@@ -342,8 +342,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         s = result["summary"]
         if s:
-            print(f"feature_map_check {s['version']}  features {s['features']}  routes {s['routes']}  "
-                  f"covered {s['covered_routes']}")
+            print(f"feature_map_check {s['version']}  features {s['features']}  journeys {s.get('journeys', 0)}  "
+                  f"routes {s['routes']}  covered {s['covered_routes']}")
         for e in result["errors"]:
             print(f"ERROR   {e}")
         for w in result["warnings"]:
