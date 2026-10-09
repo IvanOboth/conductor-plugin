@@ -153,5 +153,17 @@ class FeatureMapCheckTest(unittest.TestCase):
         self.assertEqual([t['feature'] for t in result['touched_features']], ['journeys/sell-and-restock.md'])
 
 
+    def test_quoted_inline_features_and_id_clash(self):
+        (self.map / 'journeys').mkdir()
+        (self.map / 'journeys/sell-and-restock.md').write_text(self.journey('["sales", \'stock\']'))
+        with (self.map / 'README.md').open('a') as fh:
+            fh.write('- [Sell and restock](./journeys/sell-and-restock.md)\n')
+        self.assertEqual(fmc.check(self.map, None)['errors'], [])
+        (self.map / 'journeys/sales.md').write_text(self.journey().replace('id: sell-and-restock', 'id: sales'))
+        with (self.map / 'README.md').open('a') as fh:
+            fh.write('- [Sales journey](./journeys/sales.md)\n')
+        self.assertTrue(any('same id as sales.md' in e for e in fmc.check(self.map, None)['errors']))
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -35,8 +35,11 @@ not, there is nothing to update; `verify-skill-create` makes one.
    `--allow-unchanged <feature-id>` locally, and put the line
    `map unchanged: <feature-id> — <reason>` in the PR description, which CI reads.
 
-3. **Edit the file.** Targeted edits only. Keep the entry contract (front matter, H1, one
-   paragraph, the four H2s). Add new route files to `sources`. A new route either joins an
+3. **Edit the file.** Targeted edits only. Keep its contract: a feature file has front matter, an
+   H1, one paragraph and four H2s (`Sub-features`, `How to get to it (user POV)`, `Driving it with
+   <harness>`, `Gotchas`); a journey file has front matter with `persona` and `features`, an H1 and
+   five H2s (`Goal and context`, `Steps the user expects`, `Path in the app`, `Driving it with
+   <harness>`, `Gotchas`). Add new route files to `sources`. A new route either joins an
    existing feature or gets its own feature file plus an index line in `features/README.md`.
    Use the accessible names your code renders, not the names you meant.
 

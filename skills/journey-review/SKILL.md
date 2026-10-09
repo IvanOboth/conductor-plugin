@@ -39,6 +39,12 @@ Front matter `id`, `persona`, `surface`, `features` (the feature ids it crosses)
   the feature map does not mark safe.
 - `Gotchas`: what invalidates a walk (demo data, persona gating, offline behaviour).
 
+Give the journey an id no feature file uses. Register it in `features/README.md` under a `## Journeys`
+heading (`- [Title](./journeys/<id>.md) covers …`), and make sure the project's checker understands
+journeys: `python3 <skill>/scripts/feature_map_check.py --version` must report 4 or later; if it is
+older, copy the current one from `verify-skill-create/scripts/` in the same pull request, so CI checks
+the journey too. Then run the checker; it validates the journey's sections and the features it lists.
+
 Write `Steps the user expects` first. If you write it after walking the app, the app's sequence leaks
 into the yardstick and every flow looks intuitive.
 
@@ -127,4 +133,6 @@ publish a report page.
 - Walking and judging intuitiveness: Opus 5.5 at `high` (taste and judgment); runtime mechanics on a
   device can go to GPT-6.1 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
 - Design of money or client-facing flows: Fable 5.1 at `high`, or Opus 5.5 `high` plus Fable review.
-- Implementation: Opus 5.5 at `medium`; review: GPT-6.1 Sol at `high` (`xhigh` for money flows).
+- Implementation: Opus 5.5 at `medium`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
+  money, stock or a client-facing flow is critical: GPT-6.1 Sol at `xhigh` and a Fable 5.1 `high`
+  judgment review of the implementation itself, not only of the design.

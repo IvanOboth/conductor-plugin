@@ -42,7 +42,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-VERSION = "4"
+VERSION = "5"
 REQUIRED_H2 = ["Sub-features", "How to get to it (user POV)", "Driving it with", "Gotchas"]
 JOURNEY_H2 = ["Goal and context", "Steps the user expects", "Path in the app", "Driving it with", "Gotchas"]
 
@@ -181,7 +181,7 @@ def load_journeys(map_dir: Path, harness: str, feature_ids: set[str], errors: li
             errors.append(f"{rel}: front matter needs persona")
         listed = meta.get("features")
         if isinstance(listed, str):
-            listed = [f.strip() for f in listed.strip("[]").split(",") if f.strip()]
+            listed = [f.strip().strip("'\"") for f in listed.strip("[]").split(",") if f.strip().strip("'\"")]
         if not listed:
             errors.append(f"{rel}: front matter needs the features it crosses")
         for fid in listed or []:
@@ -246,6 +246,9 @@ def check(map_dir: Path, base: str | None, allow_unchanged: set[str] | None = No
 
     features = load_features(map_dir, harness, errors)
     journeys = load_journeys(map_dir, harness, {f.id for f in features}, errors)
+    for clash in sorted({j.id for j in journeys} & {f.id for f in features}):
+        errors.append(f"journeys/{clash}.md has the same id as {clash}.md; give the journey its own id "
+                      f"(a map-unchanged acknowledgement must name exactly one file)")
     if readme.exists():
         jlinked = index_links(readme, "journeys/")
         jfiles = sorted(f"journeys/{p.name}" for p in (map_dir / "journeys").glob("*.md"))
