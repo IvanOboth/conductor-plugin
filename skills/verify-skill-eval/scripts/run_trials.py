@@ -50,13 +50,33 @@ def trials(plan: dict) -> list[dict]:
 def identity(plan: dict, trial: dict) -> dict:
     """What makes two runs of a label the same experiment: prompt, model, effort, checkout revision."""
     cwd = plan["arms"][trial["arm"]]["cwd"]
-    rev = subprocess.run(["git", "-C", cwd, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    run = lambda *a: subprocess.run(["git", "-C", cwd, *a], capture_output=True).stdout
+    rev = run("rev-parse", "HEAD").decode().strip()
+    # Uncommitted edits count: the guidance under test is often applied without a commit.
+    dirty = hashlib.sha1(run("diff", "HEAD", "--binary"))
+    for path in sorted(p for p in run("ls-files", "-z", "--others", "--exclude-standard").decode().split("\0") if p):
+        dirty.update(path.encode() + run("hash-object", "--", path))
     return {"prompt_sha": hashlib.sha1(trial["prompt"].encode()).hexdigest()[:12], "model": plan.get("model", "opus"),
-            "effort": plan.get("effort", "medium"), "rev": rev, "deny": plan.get("deny", [])}
+            "effort": plan.get("effort", "medium"), "rev": rev, "worktree": dirty.hexdigest()[:12],
+            "deny": plan.get("deny", [])}
 
 
-def has_result(stream: Path) -> bool:
-    return stream.exists() and any('"type":"result"' in line.replace(" ", "") for line in stream.open(errors="replace"))
+def final_result(stream: Path) -> dict:
+    result: dict = {}
+    if stream.exists():
+        for line in stream.open(errors="replace"):
+            if '"type":"result"' in line.replace(" ", ""):
+                try:
+                    result = json.loads(line)
+                except json.JSONDecodeError:
+                    pass
+    return result
+
+
+def completed(meta: dict, stream: Path) -> bool:
+    """A task attempt that ran to its end. A usage limit, a crash or a timeout is a lost trial, re-run it."""
+    result = final_result(stream)
+    return bool(result) and not result.get("is_error") and meta.get("exit") == 0 and not meta.get("timed_out")
 
 
 def run_one(plan: dict, trial: dict) -> dict:
@@ -67,11 +87,11 @@ def run_one(plan: dict, trial: dict) -> dict:
     if meta_path.exists():
         meta = json.loads(meta_path.read_text())
         # Reuse only a finished trial of the same experiment; re-run timeouts, crashes and changed setups.
-        if has_result(stream) and not meta.get("timed_out") and meta.get("identity", ident) == ident:
+        if completed(meta, stream) and meta.get("identity") == ident:
             return meta
     arm = plan["arms"][trial["arm"]]
     env = {**os.environ, "VERIFY_RUN_ID": trial["label"], **arm.get("env", {})}
-    settings = out / "trial-settings.json"
+    settings = (out / "trial-settings.json").resolve()  # claude runs in the arm's checkout
     settings.write_text(json.dumps({"permissions": {"deny": plan.get("deny", [])}}))
     cmd = ["claude", "-p", trial["prompt"], "--settings", str(settings), "--model", plan.get("model", "opus"),
            "--effort", plan.get("effort", "medium"), "--output-format", "stream-json", "--verbose",
@@ -121,7 +141,7 @@ def parse(plan: dict, meta: dict) -> dict:
     usage = result.get("usage", {})
     return {
         **meta,
-        "finished": bool(result) and not meta["timed_out"],
+        "finished": completed(meta, stream),
         "is_error": result.get("is_error"),
         "duration_s": round(result.get("duration_ms", 0) / 1000, 1) if result else meta["wall_s"],
         "turns": result.get("num_turns"),
@@ -174,6 +194,7 @@ def main() -> int:
         print(__doc__)
         return 2
     plan = json.loads(Path(sys.argv[2]).read_text())
+    plan["out"] = str(Path(plan["out"]).resolve())
     Path(plan["out"]).mkdir(parents=True, exist_ok=True)
     if sys.argv[1] == "run":
         todo = trials(plan)
