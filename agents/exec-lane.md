@@ -1,6 +1,6 @@
 ---
 name: exec-lane
-description: Conductor's default execution lane since 2026-09-22. Use for well-specified implementation, refactors, migrations, terminal/CI/infra work, test authoring and volume writing drafts. Pinned to Opus 5.5 at medium effort, because the plain Agent tool inherits the session's effort (usually high) and cannot set medium itself. Use design-lane for taste-critical surfaces, bulk-lane for mechanical sweeps, and an Opus 5.5 lane at high when the work is hard.
+description: Conductor's default execution lane since 2026-09-22. Use for well-specified implementation, refactors, migrations, terminal/CI/infra work, test authoring and volume writing drafts. Pinned to Opus 5.5 at medium effort, so a dispatch that does not pass `effort` (the Agent tool accepts it since Claude Code 2.1.292) still runs at medium rather than the session's effort. Use design-lane for taste-critical surfaces, bulk-lane for mechanical sweeps, and an Opus 5.5 lane at high when the work is hard.
 model: opus
 effort: medium
 ---
