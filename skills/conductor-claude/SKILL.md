@@ -99,11 +99,11 @@ Use them in this order. The first is the largest lever and it is free.
 
 ### Mechanics: pinning model and effort
 
-The `Agent` tool takes `model:` but has **no effort parameter** — a subagent dispatched through it inherits the session's effort. Three ways to pin both, in order of preference:
+Since Claude Code 2.1.292 the `Agent` tool takes both `model:` and `effort:`; a dispatch that omits `effort` inherits the session's effort. Ways to pin both:
 
 - **A bundled lane agent**, whose frontmatter sets `model:` and `effort:` — `design-lane` (opus/high), `exec-lane` (opus/medium), `bulk-lane` (opus/low), `verify-lane` (fable/high, for critical review). Check what is actually installed before naming one: on the bench `write-lane` is **not** installed, so a high-stakes writing lane is a plain `Agent` with `model: 'fable'` carrying the write-lane rules in its prompt. Read the agent's own frontmatter rather than trusting a routing table's description of it. An older install may still pin `design-lane` to opus/xhigh or `verify-lane` to opus/max; if so, dispatch the lane through a `Workflow` with the model and effort set inline.
 - **A `Workflow` script**, where `agent(prompt, {model: 'fable', effort: 'high'})` sets both inline. This is also where fan-out and pipelining live.
-- **The `Agent` tool with `model:` alone**, accepting the session's effort. Fine when the session is already at the effort the lane wants, which at `high` it usually is for review lanes.
+- **The `Agent` tool with `model:` and `effort:`**, for a one-off lane that has no bundled agent (for example a Fable writing lane where `write-lane` is not installed). Never omit `effort`.
 
 `model: 'opus'` resolves to Opus 5.5 (`claude-opus-5-5`); `model: 'fable'` resolves to Fable 5.1 (`claude-fable-5-1`).
 
