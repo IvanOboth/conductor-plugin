@@ -422,6 +422,8 @@ Use semantic headings, visible keyboard focus, adequate contrast and meaningful 
 
 When available and authorized, close through the **`run-report`** skill: post the run report (what/tests/evidence/decisions/cost) as a comment on the run's issue/PR — include the review HTML's path in that comment — flip `status:*` labels, and append the telemetry ledger. A run without a report is invisible work.
 
+Before closing, file what the run learned about the business (a decision, a meeting outcome, a client fact, a price or a date, including each Codex lane's "For the vault" section) with the `vault-note` skill, and name the vault commit in the run report. Repo how-to lessons go to Claude auto-memory instead.
+
 If `run-report` is unavailable, use `${CLAUDE_PLUGIN_ROOT}/scripts/conductor-report.py` (resolve the installation path as described above) for configured telemetry and the same evidence/report contract. Do not send comments or change labels without authorization. If the run has no GitHub issue and no ledger configured, `run-report` degrades to the in-session summary plus the review HTML — that is a valid close, not a failure.
 
 ## Worked example (shape, not script)
