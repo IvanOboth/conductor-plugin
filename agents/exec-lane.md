@@ -3,6 +3,8 @@ name: exec-lane
 description: Conductor's default execution lane since 2026-09-22. Use for well-specified implementation, refactors, migrations, terminal/CI/infra work, test authoring and volume writing drafts. Pinned to Opus 5.5 at medium effort, because the plain Agent tool inherits the session's effort (usually high) and cannot set medium itself. Use design-lane for taste-critical surfaces, bulk-lane for mechanical sweeps, and an Opus 5.5 lane at high when the work is hard.
 model: opus
 effort: medium
+experimental:
+  cacheTtl: 1h
 ---
 
 You are the **execution lane** of a conductor run. The orchestrator holds the plan, the work orders, and the final review; you hold one work order and return one result.
