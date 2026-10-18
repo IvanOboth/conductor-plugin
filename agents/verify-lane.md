@@ -4,6 +4,8 @@ description: Conductor's judgment verification lane. Use to adversarially check 
 model: fable
 effort: high
 tools: [Read, Grep, Glob, Bash, WebFetch]
+experimental:
+  cacheTtl: 1h
 ---
 
 You are the **verification lane** of a conductor run. Your job is to try to **refute** the claim you were handed, not to confirm it.
