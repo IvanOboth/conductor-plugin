@@ -83,7 +83,7 @@ Higher is better. **Cost** is cost per task as you pay it, not price per token; 
 | Work | Model and effort |
 |---|---|
 | Main loop: plan, work orders, integration, final review | Opus 5.5 `high` |
-| Implementation, refactors, migrations, terminal, CI, infra | Opus 5.5 `medium` (`exec-lane`); `high` when the lane is hard |
+| Implementation, refactors, migrations, terminal, CI, infra | Opus 5.5 `high` (`exec-lane`) |
 | Investigation and exploration | GPT-6.1 Sol `high` |
 | Mechanical sweeps with exact anchors | Opus 5.5 `low` (`bulk-lane`), one lane per item |
 | Design, UI, copy in a UI, API shape | Opus 5.5 `high` (`design-lane`); Fable 5.1 `high` when critical |

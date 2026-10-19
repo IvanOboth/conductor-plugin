@@ -112,7 +112,7 @@ The hook only acts in conductor sessions: one that loaded a conductor skill, or 
 | `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
 | `agents/design-lane` | Opus 5.5 @ `high` — taste-critical surfaces; Fable 5.1 @ `high` when the surface is critical |
 | `agents/bulk-lane` | Opus 5.5 @ `low` — mechanical sweeps, one lane per item; GPT-6.1 Sol at `high` is the overflow |
-| `agents/exec-lane` | Opus 5.5 @ `medium` — implementation, refactors, migrations, terminal and CI work, volume writing |
+| `agents/exec-lane` | Opus 5.5 @ `high` — implementation, refactors, migrations, terminal and CI work (volume writing: an Opus `medium` Agent call) |
 | `agents/verify-lane` | Fable 5.1 @ `high` — adversarial verification of critical Opus-authored changes; routine work gets the GPT-6.1 Sol `high` review |
 | `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents); `--worktree BRANCH` runs a write lane in its own named git worktree; `--resume ID` continues an interrupted session |
