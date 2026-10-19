@@ -182,7 +182,7 @@ gets whichever model its account defaults to, often the superseded `gpt-6-sol`.
 When axes conflict for anything that ships: **the axis the lane is about (reasoning for
 plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 
-Effort: Opus 5.5 at `medium` by default and `high` for hard lanes. `high` is the ceiling
+Effort: Opus 5.5 at `high` for implementation (since 19 Oct 2026), `medium` for volume writing. `high` is the ceiling
 for Opus 5.5; when a lane at `high` falls short, move to Fable 5.1 at `high` or a
 cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go to
 `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never
@@ -190,7 +190,7 @@ cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go
 look something up.
 
 - Implementation, refactors, migrations, terminal, CI and infra → `opus` (Opus 5.5) via
-  `ask-claude`, at `medium` (`high` when the lane is hard). Keep the lane yourself at
+  `ask-claude`, at `high`. Keep the lane yourself at
   `high` when it is ops-, runbook- or business-automation-shaped. When Claude quota is
   tight, dispatch GPT-6.1 Sol at `high` for implementation and mechanical sweeps as Codex
   overflow, and keep design judgment with Claude.
@@ -201,7 +201,7 @@ look something up.
   acts on it.
 - Messy repo-level bug hunts → `opus` at `high`. The second attempt is you at `high`
   (cross-family) or `fable` at `high`. Not Luna: a bug hunt is judgment work.
-- Long-horizon lanes (hours, or across sessions) → `opus` at `medium`/`high`, with the
+- Long-horizon lanes (hours, or across sessions) → `opus` at `high`, with the
   unattended-lane paragraph below in the order. `fable` at `high` for ambiguous
   architecture or deep research, or when Opus 5.5 has fallen short. Documents,
   spreadsheets and decks from a blank page → `opus`, with `fable` as the escalation.

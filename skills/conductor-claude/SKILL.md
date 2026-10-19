@@ -77,9 +77,9 @@ Use them in this order. The first is the largest lever and it is free.
 | Grounding, plan, work orders, integration, final acceptance | orchestrator (Opus 5.5, or Fable 5.1 if it holds the seat) | high — orchestrator judgment |
 | Mechanical edits with exact anchors, one item per lane | opus (`bulk-lane`) | low — established pattern, clear acceptance |
 | Well-specified implementation against a clear contract | opus | high — implementation runs at high (Ivan, 19 Oct 2026) |
-| Terminal, DevOps, infra, CI, migrations, SRE | opus | medium, or high when the lane is hard — state, retries and recovery paths |
+| Terminal, DevOps, infra, CI, migrations, SRE | opus | high — state, retries and recovery paths |
 | Messy repo-level bug hunt, unknown scope | opus | high; on observed failure, Fable 5.1 at high |
-| Long-horizon repo or document work (hours, or across sessions), including documents, sheets and decks from a blank page | opus | medium or high — the order carries the unattended-lane paragraph |
+| Long-horizon repo or document work (hours, or across sessions), including documents, sheets and decks from a blank page | opus | high — the order carries the unattended-lane paragraph |
 | Ambiguous architecture, deep research, or any lane where Opus 5.5 at high has fallen short | fable | high — the escalation step past the Opus ceiling |
 | Design, UI, layout, copy-in-a-UI, API shape | opus (`design-lane`) | high — taste is the acceptance test; the order names the stock patterns to avoid |
 | Design of a critical surface (flagship UI, client-facing deliverable) | fable | high — critical design |
@@ -99,7 +99,7 @@ Use them in this order. The first is the largest lever and it is free.
 
 ### Mechanics: pinning model and effort
 
-The `Agent` tool takes `model:` but has **no effort parameter** — a subagent dispatched through it inherits the session's effort. Three ways to pin both, in order of preference:
+Since Claude Code 2.1.292 the `Agent` tool takes `effort` as well as `model`; a subagent dispatched with neither inherits the session's effort. Ways to pin both, in order of preference:
 
 - **A bundled lane agent**, whose frontmatter sets `model:` and `effort:` — `design-lane` (opus/high), `exec-lane` (opus/high), `bulk-lane` (opus/low), `verify-lane` (fable/high, for critical review). Check what is actually installed before naming one: on the bench `write-lane` is **not** installed, so a high-stakes writing lane is a plain `Agent` with `model: 'fable'` carrying the write-lane rules in its prompt. Read the agent's own frontmatter rather than trusting a routing table's description of it. An older install may still pin `design-lane` to opus/xhigh or `verify-lane` to opus/max; if so, dispatch the lane through a `Workflow` with the model and effort set inline.
 - **A `Workflow` script**, where `agent(prompt, {model: 'fable', effort: 'high'})` sets both inline. This is also where fan-out and pipelining live.
@@ -112,8 +112,8 @@ The `Agent` tool takes `model:` but has **no effort parameter** — a subagent d
 | Was | Now | What the order must add |
 |---|---|---|
 | Mechanical sweep on the Codex overflow lane (GPT-6.1 Sol `high`), one lane per item | `bulk-lane` (opus/low), still one lane per item | Nothing new — use the default mechanical-sweep lane, one item per order. Keep the fan-out wide; cheap lanes are where width belongs. |
-| Terminal / infra / migration; GPT-6.1 Sol `high` when ops-, runbook- or automation-shaped | opus at `medium`, or `high` when the lane is hard | Exact commands, exact paths, what not to touch, and "stop and report if an anchor does not match" instead of improvising. Steerability is Opus 5.5's lowest-rated axis (provisional), and terminal work is where a lane that drifts from the order does the most damage. |
-| Patterned multi-file refactor | opus at `medium`, one lane per file or per module | Name the contract precisely and the files exhaustively. Do not let a lane decide which files are in scope. |
+| Terminal / infra / migration; GPT-6.1 Sol `high` when ops-, runbook- or automation-shaped | opus at `high` | Exact commands, exact paths, what not to touch, and "stop and report if an anchor does not match" instead of improvising. Steerability is Opus 5.5's lowest-rated axis (provisional), and terminal work is where a lane that drifts from the order does the most damage. |
+| Patterned multi-file refactor | opus at `high`, one lane per file or per module | Name the contract precisely and the files exhaustively. Do not let a lane decide which files are in scope. |
 | Runtime verification, `codex-computer-use` | an Opus lane driving `agent-browser` with its own `--session <lane>` | Same steps-and-assertion contract. The evidence gate in the shared source still decides screenshots vs video. Native Android/iOS goes to `mobile-app-testing` with a Claude driver. |
 | Cross-family diff review, `codex-review` (GPT-6.1 Sol `high`; `xhigh` for critical) | the review rows above, under the substitutes | Fresh context, artifact only, one lens per reviewer. Label it honestly. |
 | Volume writing on a Codex lane | opus at `medium` | This is the lane that degrades most. See below. |
@@ -145,7 +145,7 @@ Choose the mode with the shared **Turn-by-turn or Workflow** table; in this prof
   const results = await pipeline(
     ITEMS,
     it => agent(orderFor(it), {label: `build:${it.key}`, phase: 'Build',
-                               model: 'opus', effort: 'medium', schema: BUILD}),
+                               model: 'opus', effort: 'high', schema: BUILD}),
     build => agent(reviewOrder(build), {label: `review:${build.key}`, phase: 'Review',
                                         model: build.critical ? 'fable' : 'opus',
                                         effort: 'high', schema: VERDICT}),
