@@ -135,6 +135,6 @@ publish a report page.
 - Walking and judging intuitiveness: Opus 5.5 at `high` (taste and judgment); runtime mechanics on a
   device can go to GPT-6.1 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
 - Design of money or client-facing flows: Fable 5.1 at `high`, or Opus 5.5 `high` plus Fable review.
-- Implementation: Opus 5.5 at `medium`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
+- Implementation: Opus 5.5 at `high`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
   money, stock or a client-facing flow is critical: GPT-6.1 Sol at `xhigh` and a Fable 5.1 `high`
   judgment review of the implementation itself, not only of the design.

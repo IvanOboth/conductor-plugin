@@ -8,7 +8,7 @@ The main loop stays the orchestrator at `high` effort and never delegates three 
 
 Use `/conductor-claude` in Claude Code when there is no Codex lane to dispatch to: every ChatGPT account is in cooldown, Codex is unreachable on the host, or the work must stay inside one vendor. Check first — `codex-account pick` exiting 3 means every account is cooling down, while a silent `ask-codex` is usually a wrapper or sandbox failure, not a quota failure.
 
-[Claude's policy](skills/conductor-claude/SKILL.md) keeps the shared plan / work-order / final-review contract and routes mechanical work to Opus 5.5 Low, implementation to Medium, terminal and infra work to Medium (High when hard), design work to High, and ambiguity, synthesis, high-stakes writing and review of Opus-authored work to Fable 5.1 High. It replaces the cross-family gate with ranked substitutes — fresh-context artifact-only review first, cross-model Fable/Opus second, one lens per reviewer third, objective gates fourth, effort asymmetry last — and forbids the `cross-family` label, reporting `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only` instead. It adds a quota budget for the single shared pool and the failure modes a single family creates.
+[Claude's policy](skills/conductor-claude/SKILL.md) keeps the shared plan / work-order / final-review contract and routes mechanical work to Opus 5.5 Low, implementation and terminal and infra work to High (since 19 Oct 2026), design work to High, and ambiguity, synthesis, high-stakes writing and review of Opus-authored work to Fable 5.1 High. It replaces the cross-family gate with ranked substitutes — fresh-context artifact-only review first, cross-model Fable/Opus second, one lens per reviewer third, objective gates fourth, effort asymmetry last — and forbids the `cross-family` label, reporting `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only` instead. It adds a quota budget for the single shared pool and the failure modes a single family creates.
 
 ## Conductor Core
 
@@ -112,7 +112,7 @@ The hook only acts in conductor sessions: one that loaded a conductor skill, or 
 | `skills/run-report` | The closing convention — GitHub run report, labels, cost ledger |
 | `agents/design-lane` | Opus 5.5 @ `high` — taste-critical surfaces; Fable 5.1 @ `high` when the surface is critical |
 | `agents/bulk-lane` | Opus 5.5 @ `low` — mechanical sweeps, one lane per item; GPT-6.1 Sol at `high` is the overflow |
-| `agents/exec-lane` | Opus 5.5 @ `medium` — implementation, refactors, migrations, terminal and CI work, volume writing |
+| `agents/exec-lane` | Opus 5.5 @ `high` — implementation, refactors, migrations, terminal and CI work (volume writing: an Opus `medium` Agent call) |
 | `agents/verify-lane` | Fable 5.1 @ `high` — adversarial verification of critical Opus-authored changes; routine work gets the GPT-6.1 Sol `high` review |
 | `agents/write-lane` | Fable 5.1 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents); `--worktree BRANCH` runs a write lane in its own named git worktree; `--resume ID` continues an interrupted session |

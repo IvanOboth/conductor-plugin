@@ -50,7 +50,7 @@ python3 <this skill's directory>/scripts/run_trials.py run plan.json
 ```
 
 `plan.json` (format in the script's docstring) names the arms, the tasks, reps (2 or more; one run
-per arm is an anecdote), the model and effort (Opus 5.5 at `medium` matches a build or verify
+per arm is an anecdote), the model and effort (Opus 5.5 at `high` matches a build lane, `medium` a verify
 lane), concurrency (4 browser-driving trials at once on the bench), a timeout, and `probe` strings
 that show the guidance was used (the helper's name, `features/`), and `deny`: permission rules every
 trial runs under. Trials run unattended with permissions bypassed, and the arm without the guidance

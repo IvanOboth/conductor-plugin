@@ -38,7 +38,7 @@ with `references/explorer-prompt.md` filled in (`{QUESTION}`, `{EXPLORATION_ANGL
 - GPT-6.1 Sol at `high`: `ask-codex -m gpt-6.1-sol --effort high --context <filled-prompt>.md --output <scratch>/explorer-N.md "Follow the prompt; your final message is the findings." </dev/null`
   run in the background, with "Do not edit any file" added to the prompt. Investigation that does
   not change code is its lane.
-- When Codex quota is out, Opus 5.5 at `medium` (`exec-lane`) with the same prompt and an
+- When Codex quota is out, Opus 5.5 at `high` (`exec-lane`) with the same prompt and an
   instruction not to edit files.
 
 Each returns components, flow, files read, boundaries, non-obvious things and open questions.
