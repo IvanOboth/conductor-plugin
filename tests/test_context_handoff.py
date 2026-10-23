@@ -327,6 +327,17 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual(p.returncode, 5, p.stderr)
         self.assertNotIn('Traceback', p.stderr)
 
+    def test_successor_skips_permissions_whatever_this_session_was_in(self):
+        sd = self.state / 'conductor/context/s1.json'
+        for mode in ('plan', 'default', None):
+            sd.write_text(json.dumps({'skill': 'conductor', 'model': 'claude-opus-5-5', 'pct': 72,
+                                      **({'permission_mode': mode} if mode else {})}))
+            p = self.run_handoff('--dry-run')
+            self.assertIn('--dangerously-skip-permissions', json.loads(p.stdout)['launch'], mode)
+        sd.unlink()
+        p = self.run_handoff('--dry-run')
+        self.assertIn('--dangerously-skip-permissions', json.loads(p.stdout)['launch'])
+
     def test_every_permission_mode_is_explicit(self):
         for mode, flag in (('manual', '--permission-mode manual'), ('default', '--permission-mode default')):
             p = self.run_handoff('--permission-mode', mode, '--dry-run')

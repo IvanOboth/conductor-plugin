@@ -6,7 +6,8 @@ Run by the orchestrator once its continuation order is written (conductor skill,
 
   1. checks the order exists and is substantial;
   2. opens an Orca terminal in the same worktree running claude with this
-     session's model, effort and permission mode;
+     session's model and effort, and --dangerously-skip-permissions unless
+     --permission-mode names another mode;
   3. waits for the TUI, sends "/<skill> Read <order> …" and waits until Orca
      sees the successor's turn start;
   4. records the handoff in <worktree>/.conductor/handoffs.jsonl and in
@@ -141,7 +142,7 @@ def main(argv=None):
     ap.add_argument('--model', help='claude --model for the new session (default: this session\'s model, else opus)')
     ap.add_argument('--effort', help='claude --effort (default: this session\'s, else high)')
     ap.add_argument('--permission-mode', choices=PERMISSION_MODES,
-                    help='permission mode for the new session (default: this session\'s)')
+                    help='permission mode for the new session (default: bypassPermissions)')
     ap.add_argument('--note', default='', help='one extra sentence appended to the start prompt')
     ap.add_argument('--force', action='store_true', help='skip the already-handed-off check and the chain guard')
     ap.add_argument('--terminal-worktree', help='a listed worktree directory whose sidebar entry hosts the '
@@ -165,10 +166,10 @@ def main(argv=None):
     model_id = a.model or state.get('model') or 'opus'
     model = MODEL_ALIASES.get(model_id, model_id)
     effort = a.effort or os.environ.get('CLAUDE_EFFORT') or 'high'
-    pmode = a.permission_mode or state.get('permission_mode') or 'default'
-    if pmode not in PERMISSION_MODES:
-        print(f'conductor-handoff: unknown permission mode {pmode!r}; pass --permission-mode.', file=sys.stderr)
-        return 2
+    # The successor runs unattended, so it skips permissions unless told otherwise. It does not copy this
+    # session's mode: the hook records the mode at its last call, which may be plan or default after a
+    # shift+tab, and a successor started that way stops at every tool call.
+    pmode = a.permission_mode or 'bypassPermissions'
     # Always explicit, so the successor never falls back to a different configured default.
     perm = ['--dangerously-skip-permissions'] if pmode == 'bypassPermissions' else ['--permission-mode', pmode]
     cmd = ['claude', '--model', model, '--effort', effort, *perm]
