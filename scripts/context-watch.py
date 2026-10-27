@@ -13,9 +13,14 @@ again at CONDUCTOR_HANDOFF_NOW_PCT (default 85) and every 5 points after. The
 Stop hook blocks one stop per level, so an idle session over the threshold
 still hears it. It goes quiet once conductor-handoff writes <session>.handoff.json.
 
+A session waiting on its own background lanes (Agent, Workflow or Bash run in the background, launched in the
+last CONDUCTOR_LANE_MAX_HOURS, default 12, with no task-notification yet) is not stopped: those lanes report
+to this session, so the Stop block waits for the first stop after they have all landed.
+
 Never fails the session: any error exits 0 with no output.
 CONDUCTOR_CONTEXT_WATCH=off disables it; =all watches every session.
 """
+import calendar
 import fcntl
 import json
 import os
@@ -29,6 +34,8 @@ SKILL_RE = re.compile(
     rb'|"skill":\s*"(?:conductor:)?(conductor(?:-claude|-core)?)"'
 )
 TAIL_CHUNKS = (1 << 20, 8 << 20, 32 << 20)
+NOTE_RE = re.compile(rb'<task-id>([\w.-]+)</task-id>(?:(?!<task-id>).){0,4000}?<status>(\w+)</status>', re.S)
+LIVE_STATUSES = {'running', 'pending', 'started', 'in_progress'}
 
 
 def state_dir():
@@ -68,6 +75,66 @@ def scan_for_skill(transcript, state):
     for m in SKILL_RE.finditer(data):
         found = (m.group(1) or m.group(2)).decode()
     return found
+
+
+def launched_id(raw):
+    """The background task id a tool result started, or None."""
+    try:
+        d = json.loads(raw)
+    except ValueError:
+        return None, None
+    r = d.get('toolUseResult')
+    if not isinstance(r, dict) or d.get('isSidechain'):
+        return None, None
+    tid = None
+    if r.get('status') == 'async_launched':
+        tid = r.get('agentId') or r.get('taskId')
+    elif r.get('backgroundTaskId'):
+        tid = r.get('backgroundTaskId')
+    return (str(tid) if tid else None), d.get('timestamp')
+
+
+def parse_ts(value):
+    try:  # transcript timestamps are UTC
+        return calendar.timegm(time.strptime(value[:19], '%Y-%m-%dT%H:%M:%S'))
+    except (TypeError, ValueError):
+        return time.time()
+
+
+def track_lanes(transcript, state):
+    """Update state['lanes'] {id: launched epoch} from the lines added since the last read; return the live ids."""
+    lanes = state.setdefault('lanes', {})
+    try:
+        size = transcript.stat().st_size
+    except OSError:
+        return []
+    offset = state.get('lanes_offset', 0)
+    if size < offset:  # transcript replaced; start again
+        offset, lanes = 0, {}
+        state['lanes'] = lanes
+    if size > offset:
+        with transcript.open('rb') as fh:
+            fh.seek(offset)
+            data = fh.read(size - offset)
+        end = data.rfind(b'\n') + 1  # whole lines only; a partial last line is read next time
+        for raw in data[:end].split(b'\n'):
+            if b'"toolUseResult"' in raw and (b'async_launched' in raw or b'backgroundTaskId' in raw):
+                tid, ts = launched_id(raw)
+                if tid:
+                    lanes[tid] = parse_ts(ts)
+            if b'<task-notification>' in raw and b'"isSidechain":true' not in raw:
+                for m in NOTE_RE.finditer(raw):
+                    if m.group(2).decode().lower() not in LIVE_STATUSES:
+                        lanes.pop(m.group(1).decode(), None)
+        state['lanes_offset'] = offset + end
+    try:
+        max_age = float(os.environ.get('CONDUCTOR_LANE_MAX_HOURS', 12)) * 3600
+    except ValueError:
+        max_age = 12 * 3600
+    cutoff = time.time() - max_age
+    for tid in [t for t, at in lanes.items() if at < cutoff]:
+        del lanes[tid]  # a lane that never reported (session restarted, lane lost) stops counting
+    return sorted(lanes)
 
 
 def last_usage(transcript):
@@ -123,7 +190,7 @@ def levels(threshold, now):
     return sorted(set(out))
 
 
-def message(pct, tokens, window, now, stopping):
+def message(pct, tokens, window, now, stopping, lanes=0):
     left = max(0, window - tokens)
     head = (f'Context watch (conductor): this session is at {pct}% of its context window '
             f'({tokens:,} of {window:,} tokens; about {left:,} left).')
@@ -136,6 +203,9 @@ def message(pct, tokens, window, now, stopping):
                 'into compaction: finish or checkpoint the step in flight, start no new wave, write the '
                 'continuation order (conductor skill, "Context handoff"), run `conductor-handoff --order <path>`, '
                 'then stand down. If the run will finish within the remaining context, carry on.')
+    if lanes:
+        body += (f' {lanes} background lane(s) still report to this session: let them land before you hand off, '
+                 'and dispatch nothing new.')
     if stopping:
         body += (' You are ending your turn: if work remains and nothing is waiting on Ivan, hand off now. '
                  'If the run is complete, or you are waiting on Ivan or on lanes that report to this session, '
@@ -188,6 +258,7 @@ def watch(data, event, sid, transcript, mode):
         save_state(sid, state)
         return None
 
+    live = track_lanes(transcript, state)
     tokens, model = last_usage(transcript)
     if tokens:
         window = window_size(sid, model, tokens)
@@ -210,7 +281,9 @@ def watch(data, event, sid, transcript, mode):
     if event == 'PostToolUse' and level not in state.get('told', []):
         state.setdefault('told', []).append(level)
         out = {'hookSpecificOutput': {'hookEventName': 'PostToolUse',
-                                      'additionalContext': message(pct, tokens, window, now, False)}}
+                                      'additionalContext': message(pct, tokens, window, now, False, len(live))}}
+    elif event == 'Stop' and live:
+        pass  # waiting on lanes that report here: the block comes at the first stop after they land
     elif event == 'Stop' and not data.get('stop_hook_active') and level not in state.get('stop_blocked', []):
         state.setdefault('stop_blocked', []).append(level)
         state.setdefault('told', []).append(level)

@@ -62,6 +62,20 @@ def assistant(tokens, model='claude-opus-5-5', sidechain=False):
         'input_tokens': 10, 'cache_creation_input_tokens': 0, 'cache_read_input_tokens': tokens - 10}}}
 
 
+def launch(tid, kind='agent', ts='2099-01-01T00:00:00.000Z'):
+    r = ({'isAsync': True, 'status': 'async_launched', 'agentId': tid} if kind == 'agent' else
+         {'status': 'async_launched', 'taskId': tid, 'taskType': 'local_workflow'} if kind == 'workflow' else
+         {'stdout': '', 'backgroundTaskId': tid})
+    return {'type': 'user', 'timestamp': ts, 'message': {'content': [{'type': 'tool_result', 'content': 'launched'}]},
+            'toolUseResult': r}
+
+
+def notify(tid, status='completed'):
+    return {'type': 'user', 'message': {'content': f'<task-notification>\n<task-id>{tid}</task-id>\n'
+            f'<output-file>/tmp/{tid}.output</output-file>\n<status>{status}</status>\n'
+            '<summary>done</summary>\n</task-notification>'}}
+
+
 class ContextWatchTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -86,7 +100,8 @@ class ContextWatchTest(unittest.TestCase):
         payload = {'hook_event_name': event, 'session_id': 's1', 'transcript_path': str(self.transcript),
                    'cwd': str(self.cwd), 'permission_mode': 'bypassPermissions', **extra}
         env = dict(os.environ, XDG_STATE_HOME=str(self.state))
-        for k in ('CONDUCTOR_CONTEXT_WATCH', 'CONDUCTOR_HANDOFF_PCT', 'CONDUCTOR_CONTEXT_WINDOW'):
+        for k in ('CONDUCTOR_CONTEXT_WATCH', 'CONDUCTOR_HANDOFF_PCT', 'CONDUCTOR_HANDOFF_NOW_PCT',
+                  'CONDUCTOR_CONTEXT_WINDOW', 'CONDUCTOR_LANE_MAX_HOURS'):
             env.pop(k, None)
         p = subprocess.run([sys.executable, str(WATCH)], input=json.dumps(payload), capture_output=True,
                            text=True, env=env)
@@ -148,6 +163,31 @@ class ContextWatchTest(unittest.TestCase):
         self.assertIsNone(self.run_hook())
         (self.state / 'conductor/context/s1.window').write_text('200000\n')
         self.assertIn('75%', self.run_hook()['hookSpecificOutput']['additionalContext'])
+
+    def test_stop_waits_while_lanes_report_here_then_blocks_once_they_land(self):
+        self.write(launch('a1'), launch('w1', 'workflow'), launch('b1', 'bash'), assistant(720_000))
+        out = self.run_hook()
+        self.assertIn('3 background lane(s)', out['hookSpecificOutput']['additionalContext'])
+        self.assertIsNone(self.run_hook('Stop'))
+        with self.transcript.open('a') as fh:
+            for row in (notify('a1'), notify('w1', 'failed'), assistant(725_000)):
+                fh.write(json.dumps(row) + '\n')
+        self.assertIsNone(self.run_hook('Stop'))  # b1 still running
+        with self.transcript.open('a') as fh:
+            fh.write(json.dumps(notify('b1', 'killed')) + '\n')
+        out = self.run_hook('Stop')
+        self.assertEqual(out['decision'], 'block')
+        self.assertNotIn('background lane', out['reason'])
+
+    def test_a_lane_that_never_reports_stops_counting_after_the_age_limit(self):
+        self.write(launch('a1', ts='2020-01-01T00:00:00.000Z'), assistant(720_000))
+        self.assertEqual(self.run_hook('Stop')['decision'], 'block')
+
+    def test_sidechain_launches_are_not_this_sessions_lanes(self):
+        row = launch('a1')
+        row['isSidechain'] = True
+        self.write(row, assistant(720_000))
+        self.assertEqual(self.run_hook('Stop')['decision'], 'block')
 
     def test_recorded_handoff_silences_the_watch(self):
         self.write(assistant(900_000))
