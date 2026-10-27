@@ -22,6 +22,7 @@ CONDUCTOR_CONTEXT_WATCH=off disables it; =all watches every session.
 """
 import calendar
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -35,7 +36,9 @@ SKILL_RE = re.compile(
 )
 TAIL_CHUNKS = (1 << 20, 8 << 20, 32 << 20)
 NOTE_RE = re.compile(rb'<task-id>([\w.-]+)</task-id>(?:(?!<task-id>).){0,4000}?<status>(\w+)</status>', re.S)
-LIVE_STATUSES = {'running', 'pending', 'started', 'in_progress'}
+DONE_STATUSES = {'completed', 'failed', 'killed', 'stopped', 'cancelled', 'canceled', 'error', 'errored',
+                 'timeout', 'timed_out'}
+HEAD_BYTES = 4096
 
 
 def state_dir():
@@ -101,6 +104,30 @@ def parse_ts(value):
         return time.time()
 
 
+def notification_text(raw):
+    """The text of a main-chain user message (string or text blocks), or '' — never tool inputs or results."""
+    try:
+        d = json.loads(raw)
+    except ValueError:
+        return ''
+    if d.get('type') != 'user' or d.get('isSidechain'):
+        return ''
+    c = (d.get('message') or {}).get('content')
+    if isinstance(c, str):
+        return c
+    if isinstance(c, list):
+        return '\n'.join(b.get('text') or '' for b in c if isinstance(b, dict) and b.get('type') == 'text')
+    return ''
+
+
+def head_hash(transcript):
+    try:
+        with transcript.open('rb') as fh:
+            return hashlib.sha1(fh.read(HEAD_BYTES)).hexdigest()
+    except OSError:
+        return None
+
+
 def track_lanes(transcript, state):
     """Update state['lanes'] {id: launched epoch} from the lines added since the last read; return the live ids."""
     lanes = state.setdefault('lanes', {})
@@ -109,9 +136,9 @@ def track_lanes(transcript, state):
     except OSError:
         return []
     offset = state.get('lanes_offset', 0)
-    if size < offset:  # transcript replaced; start again
-        offset, lanes = 0, {}
-        state['lanes'] = lanes
+    head = head_hash(transcript)
+    if size < offset or (offset >= HEAD_BYTES and head != state.get('lanes_head')):
+        offset = 0  # transcript replaced: read it again from the start, keeping lanes already known
     if size > offset:
         with transcript.open('rb') as fh:
             fh.seek(offset)
@@ -122,11 +149,12 @@ def track_lanes(transcript, state):
                 tid, ts = launched_id(raw)
                 if tid:
                     lanes[tid] = parse_ts(ts)
-            if b'<task-notification>' in raw and b'"isSidechain":true' not in raw:
-                for m in NOTE_RE.finditer(raw):
-                    if m.group(2).decode().lower() not in LIVE_STATUSES:
+            if b'<task-notification>' in raw:
+                for m in NOTE_RE.finditer(notification_text(raw).encode()):
+                    if m.group(2).decode().lower() in DONE_STATUSES:
                         lanes.pop(m.group(1).decode(), None)
         state['lanes_offset'] = offset + end
+    state['lanes_head'] = head
     try:
         max_age = float(os.environ.get('CONDUCTOR_LANE_MAX_HOURS', 12)) * 3600
     except ValueError:

@@ -183,6 +183,25 @@ class ContextWatchTest(unittest.TestCase):
         self.write(launch('a1', ts='2020-01-01T00:00:00.000Z'), assistant(720_000))
         self.assertEqual(self.run_hook('Stop')['decision'], 'block')
 
+    def test_interim_status_keeps_the_lane_live(self):
+        self.write(launch('a1'), notify('a1', 'blocked'), assistant(720_000))
+        self.assertIsNone(self.run_hook('Stop'))
+
+    def test_quoted_notification_in_a_launch_does_not_finish_the_lane(self):
+        row = launch('a1')
+        row['toolUseResult']['prompt'] = '<task-notification><task-id>a1</task-id><status>completed</status>'
+        row['message']['content'][0]['content'] = '<task-id>a1</task-id> <status>completed</status>'
+        self.write(row, assistant(720_000))
+        self.assertIsNone(self.run_hook('Stop'))
+
+    def test_replaced_transcript_is_read_again_and_keeps_known_lanes(self):
+        self.write(launch('a1'), *[assistant(100_000)] * 40)
+        self.assertIsNone(self.run_hook())
+        self.write(launch('b1', 'bash'), *[assistant(100_000)] * 40, notify('a1'), assistant(720_000))
+        self.assertIsNone(self.run_hook('Stop'))  # b1 sits at the start of the replacement
+        self.write(notify('b1'), assistant(720_000))  # shorter replacement; a1 was finished above
+        self.assertEqual(self.run_hook('Stop')['decision'], 'block')
+
     def test_sidechain_launches_are_not_this_sessions_lanes(self):
         row = launch('a1')
         row['isSidechain'] = True
