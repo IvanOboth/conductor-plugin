@@ -97,7 +97,7 @@ the row count matched). You are not the judge of whether it **looks** right.
 Since 29 Sep 2026, the cross-family review of Claude-authored work, routine and critical,
 goes to `gpt-6.1-sol` (via `codex-review`: `ask-codex -m gpt-6.1-sol --effort high`).
 Critical changes (see **Critical** above) run at `xhigh` (`ask-codex -m gpt-6.1-sol
---effort xhigh`) beside Fable 5.1's judgment review, and so does the retry when a `high`
+--effort xhigh`) beside an Opus 5.5 fresh-context judgment review, and so does the retry when a `high`
 review came back thin. You do not judge design. The reviewer is always a different model
 from the author; if you authored the work, say so and decline the review. The one
 exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
@@ -183,7 +183,7 @@ When axes conflict for anything that ships: **the axis the lane is about (reason
 plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 
 Effort: Opus 5.5 at `high` for implementation (since 19 Oct 2026), `medium` for volume writing. `high` is the ceiling
-for Opus 5.5; when a lane at `high` falls short, move to Fable 5.1 at `high` or a
+for Opus 5.5 except review lanes (`xhigh` allowed); when another lane at `high` falls short, move to Fable 5.1 at `high` or a
 cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go to
 `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never
 `max` by default. Fable 5.1 runs at `high`, and never at `low` for anything that must
@@ -220,7 +220,8 @@ look something up.
 - Reviews → always a different model from the author (29 Sep 2026):
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
-  - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Fable 5.1 `high` (`verify-lane`).
+  - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
+    (`high`; `xhigh` for money, auth, personal data, migrations, production data; 31 Oct 2026).
   - Fable-authored → `opus` at `high`.
   - GPT-6.1 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
     fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`,
