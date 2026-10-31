@@ -84,7 +84,7 @@ Run when the asker wants problems or improvements, not only understanding.
    |---|---|
    | A | Opus 5.5 at `high` |
    | B | GPT-6.1 Sol at `high` (`ask-codex`) |
-   | C | Fable 5.1 at `high` (`verify-lane`), only when the area is critical (money, auth, data migrations, production) or the architecture is genuinely ambiguous; otherwise run A and B |
+   | C | Fable 5.1 at `high` (`Agent` with `model: "fable"`; `verify-lane` is Opus since 31 Oct 2026), only when the area is critical (money, auth, data migrations, production) or the architecture is genuinely ambiguous; otherwise run A and B |
 
    Critics from two families mean agreement carries signal and blind spots differ.
 3. Judge as a pragmatic lead, not an aggregator. Sort findings into **Act on** (worth fixing now),
