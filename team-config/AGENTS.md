@@ -217,7 +217,9 @@ look something up.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   `fable` at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
-- Reviews → always a different model from the author (29 Sep 2026):
+- Reviews → always a different model from the author (29 Sep 2026), except the critical
+  judgment review (`verify-lane`, Opus 5.5 in fresh context beside your `xhigh` review,
+  labelled `same-model, fresh context`; 31 Oct 2026):
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
@@ -229,7 +231,9 @@ look something up.
   - Luna-authored → `opus` at `high` (cross-family). Only in Conductor Core: GPT-6.1 Sol
     at `high`, labelled same family.
   - Luna never reviews.
-  Raise review effort only after an observed failure, and record the reason.
+  Beyond the class rules (`xhigh` on critical work; the Opus `verify-lane` at `xhigh` on
+  money, auth, personal data, migrations and production data), raise review effort only
+  after an observed failure, and record the reason.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
