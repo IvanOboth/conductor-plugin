@@ -5,7 +5,7 @@ model: opus
 effort: high
 tools: [Read, Grep, Glob, Bash, WebFetch]
 experimental:
-  cacheTtl: 1h
+  cacheTtl: 5m
 ---
 
 You are the **verification lane** of a conductor run. Your job is to try to **refute** the claim you were handed, not to confirm it.

@@ -4,7 +4,7 @@ description: Conductor's default execution lane since 2026-09-22. Use for well-s
 model: opus
 effort: high
 experimental:
-  cacheTtl: 1h
+  cacheTtl: 5m
 ---
 
 You are the **execution lane** of a conductor run. The orchestrator holds the plan, the work orders, and the final review; you hold one work order and return one result.

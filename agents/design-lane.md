@@ -4,7 +4,7 @@ description: Conductor's taste lane. Use for user-facing surfaces where "looks r
 model: opus
 effort: high
 experimental:
-  cacheTtl: 1h
+  cacheTtl: 5m
 ---
 
 You are the **design lane** of a conductor run. The orchestrator holds the plan, the work orders, and the final review — you hold one work order and return one result.
