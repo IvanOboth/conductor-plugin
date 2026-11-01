@@ -75,6 +75,17 @@ Decided 17 Sep 2026, measured on the live bench. Tokens are the same either way 
 - **Lifecycle rule for every Orca lane:** the terminal closes when its lane-report is written (`orca terminal close --terminal "$ORCA_TERMINAL_HANDLE" --json` as the lane's last command; the poller does this itself since #94, `POLLER_KEEP_TERMINAL=1` to keep one open); the worktree is removed after its PR merges (`orca worktree rm --worktree path:<path> --run-hooks --json`, never `--force` on a dirty tree); an evidence page is produced (`tools/evidence-page.py`).
 - The idle reaper closes what slips through (terminals idle > 24 h) and the dashboard shows the terminal budget. Acceptance: a week after install the terminal count stays flat while the night shift runs, and every lane in the Orca sidebar is live or closed within an hour of its report.
 
+## An epic is one run
+
+When the work is an epic whose sub-items depend on each other, give the whole epic to **one** Conductor run. Do not split it into separately queued issues for an automatic builder. A per-issue builder builds each item in isolation, with no view of the dependency order. Parallel builds then land on code that does not exist yet, and nobody owns the integration. The run owns the plan: it reads the epic, writes the work-list file, dispatches lanes wave by wave in dependency order, reviews and merges each slice behind the gates, and comments progress on the epic at each wave boundary. Items that wait on a person or a third party are recorded on the epic as waiting, with what unblocks them, and are not built. File separate issues only for items that are independent and each fit a single build.
+
+Practicalities:
+- When the run must outlive the session that started it, launch it as an Orca lane, as in the next section. Give it a worktree from the base, the order at `.conductor/work-orders/`, and `/conductor` as the prompt.
+- A session can stop on a usage limit without saying so. Check the lane at least daily. The work-list file and the epic's comments are what let a new session resume.
+- Two runs that share a backend (for example one dev database) must not wipe each other's deployed code. Each pushes only from a checkout that contains the latest base.
+
+Ivan set this pattern on 2 October 2026, after a 27-slice API epic was split into labelled issues and the builder started a slice whose dependencies did not yet exist. The split was undone within the hour, and one run took the epic.
+
 ## When to invoke (on-demand, not always)
 
 Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs writing vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
