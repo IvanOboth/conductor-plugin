@@ -63,6 +63,7 @@ def save_active(d):
 PRICES = {
     "claude-opus-5-5":  (4.00, 20.00, 0.20, 5.00),
     "claude-opus-5":    (5.00, 25.00, 0.50, 6.25),
+    "claude-fable-5-2": (8.00, 40.00, 0.20, 10.00),   # 10 Nov 2026; replaces 5.1 in routing
     "claude-fable-5-1": (10.00, 50.00, 0.25, 12.50),
     "gpt-6.1-sol":      (2.00, 10.00, 0.10, 2.50),   # 29 Sep 2026; replaces the two rows below in routing
     "gpt-6-astra":      (10.00, 50.00, 1.00, 12.50),

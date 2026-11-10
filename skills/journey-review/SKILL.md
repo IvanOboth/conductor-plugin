@@ -98,7 +98,7 @@ and pick one with the reason. Write the chosen flow as a target ledger: the same
 overhead steps. For non-trivial UI, produce a `flow-wireframe` in the project's design language.
 
 Money, stock and anything a client sees is a critical design surface: the design pass runs on
-Fable 5.1 at `high`, or Opus 5.5 at `high` with a Fable review.
+Fable 5.2 at `high`, or Opus 5.5 at `high` with a Fable review.
 
 ## 6. Fix or file
 
@@ -134,7 +134,7 @@ publish a report page.
   files from subagents; the orchestrator saves them.
 - Walking and judging intuitiveness: Opus 5.5 at `high` (taste and judgment); runtime mechanics on a
   device can go to GPT-6.1 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
-- Design of money or client-facing flows: Fable 5.1 at `high`, or Opus 5.5 `high` plus Fable review.
+- Design of money or client-facing flows: Fable 5.2 at `high`, or Opus 5.5 `high` plus Fable review.
 - Implementation: Opus 5.5 at `high`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
   money, stock or a client-facing flow is critical: GPT-6.1 Sol at `xhigh` and an Opus 5.5 `verify-lane`
   judgment review in fresh context (`xhigh` for money and stock) of the implementation itself, not only of the design.

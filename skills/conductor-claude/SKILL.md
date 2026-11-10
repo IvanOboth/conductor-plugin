@@ -1,16 +1,18 @@
 ---
 name: conductor-claude
-description: Orchestrate a full Conductor run inside the Claude family only — Opus 5.5 and Fable 5.1 lanes, effort as the dial, context-independent adversarial review in place of the cross-family gate. Use when the Codex/ChatGPT quota is spent, Codex is unreachable, or the work must not leave the Claude family. Use for Conductor Claude, /conductor-claude, "no codex", "codex is out of credit", "Claude-only orchestration", "single-family run".
+description: Orchestrate a full Conductor run inside the Claude family only — Opus 5.5 and Fable 5.2 lanes, effort as the dial, context-independent adversarial review in place of the cross-family gate. Use when the Codex/ChatGPT quota is spent, Codex is unreachable, or the work must not leave the Claude family. Use for Conductor Claude, /conductor-claude, "no codex", "codex is out of credit", "Claude-only orchestration", "single-family run".
 effort: high
 ---
 
 # Conductor Claude
 
-Run the full Conductor workflow with no Codex lane. Opus 5.5 and Fable 5.1 carry every role. Opus 5.5 is the default for almost every lane, including design and the routine review of Opus-authored work. Fable 5.1 at `high` reviews and designs **critical** work, writes the high-stakes prose, takes ambiguous architecture and takes over when Opus 5.5 at `high` falls short. Effort is the first setting to change, and `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh` (31 Oct 2026).
+Run the full Conductor workflow with no Codex lane. Opus 5.5 and Fable 5.2 carry every role. Opus 5.5 is the default for almost every lane, including design and the routine review of Opus-authored work. Fable 5.2 at `high` reviews and designs **critical** work, writes the high-stakes prose, takes ambiguous architecture, runs the plan gate and the epic close on an epic, and takes over when Opus 5.5 at `high` falls short; at `medium` it runs research and synthesis lanes and answers adviser questions. Effort is the first setting to change, and `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh` (31 Oct 2026).
 
 Changed 22 Sep 2026: Opus 5.5 replaced Opus 5 in every row, and no Opus lane runs above `high` (since 31 Oct 2026 a review lane may run at `xhigh`).
 
 Changed 27 Sep 2026: Fable 5.1 review and Fable 5.1 design are for critical work only. Routine Opus-authored work is reviewed by a separate Opus 5.5 `high` lane in fresh context, labelled `same-model, fresh context`.
+
+Changed 10 Nov 2026: Fable 5.2 (`claude-fable-5-2`) replaced Fable 5.1 in every Fable row, and Fable 5.1 left routing. New Fable 5.2 rows: the plan gate and the epic close at `high`, research and synthesis at `medium`, and the adviser at `medium`. The routing contract is in the shared conductor skill (**Model selection contract — 10 November 2026**).
 
 **Critical** means any of: it deploys to production or changes production data; auth, payments, money or personal data; a schema or data migration; anything hard to reverse; a client-facing deliverable (proposal, deck, flagship UI surface); or the routing and agent configuration itself. Everything else is routine. Decide it per order when you write the order, and write it into the order.
 
@@ -63,7 +65,7 @@ The loss matters because author and reviewer now share a monoculture. Concretely
 Use them in this order. The first is the largest lever and it is free.
 
 1. **Fresh context, artifact only.** Give the reviewer the requirements and the diff or artifact — never the author's rationale, never the author's verdict, never the author's report. Most of what "independent review" buys is *not having already believed the author's reasoning*. This survives intact in a single-family run and it is the substitute that does the most work.
-2. **Different model in-family, on critical work.** Fable 5.1 at `high` reviews critical Opus 5.5 work; Opus 5.5 at `high` reviews all Fable 5.1 work. Different post-training, measurably different failure modes. Not another family, but not nothing. Routine Opus 5.5 work does not get this substitute: its reviewer is a second Opus 5.5 lane at `high` in fresh context, which is substitute 1 alone and is labelled as same-model.
+2. **Different model in-family, on critical work.** Fable 5.2 at `high` reviews critical Opus 5.5 work; Opus 5.5 at `high` reviews all Fable 5.2 work. Different post-training, measurably different failure modes. Not another family, but not nothing. Routine Opus 5.5 work does not get this substitute: its reviewer is a second Opus 5.5 lane at `high` in fresh context, which is substitute 1 alone and is labelled as same-model.
 3. **Distinct lenses, not more reviewers.** Three reviewers told "review this diff" return the same review three times. Three reviewers each given one failure mode to hunt — "find the case where this returns stale data", "find the input that makes this throw", "find what the order asked for that is missing" — return three different reviews. In this profile, always split the lens.
 4. **Objective gates the orchestrator runs.** Tests, typecheck, a runtime assertion on real state, a screenshot you read yourself. These are model-independent, so they carry more weight here than in a mixed run. Push more of the acceptance burden onto them.
 5. **Effort asymmetry.** Opus 5.5 at `high` reviewing Opus 5.5 at `medium`. The weakest substitute — same priors, more of them. Never the only one.
@@ -74,13 +76,17 @@ Use them in this order. The first is the largest lever and it is free.
 
 | Work | Model | Effort and reason |
 |---|---|---|
-| Grounding, plan, work orders, integration, final acceptance | orchestrator (Opus 5.5, or Fable 5.1 if it holds the seat) | high — orchestrator judgment |
+| Grounding, plan, work orders, integration, final acceptance | orchestrator (Opus 5.5, or Fable 5.2 if it holds the seat) | high — orchestrator judgment |
 | Mechanical edits with exact anchors, one item per lane | opus (`bulk-lane`) | low — established pattern, clear acceptance |
 | Well-specified implementation against a clear contract | opus | high — implementation runs at high (Ivan, 19 Oct 2026) |
 | Terminal, DevOps, infra, CI, migrations, SRE | opus | high — state, retries and recovery paths |
-| Messy repo-level bug hunt, unknown scope | opus | high; on observed failure, Fable 5.1 at high |
-| Long-horizon repo or document work (hours, or across sessions), including documents, sheets and decks from a blank page | opus | high — the order carries the unattended-lane paragraph |
-| Ambiguous architecture, deep research, or any lane where Opus 5.5 at high has fallen short | fable | high — the escalation step past the Opus ceiling |
+| Messy repo-level bug hunt, unknown scope | opus | high; on observed failure, Fable 5.2 at high |
+| Long-horizon repo or document work (hours, or across sessions), including routine and internal documents, sheets and decks from a blank page | opus | high — the order carries the unattended-lane paragraph; Fable 5.2 at high is the first escalation, and starts client-facing deliverables |
+| Plan gate before wave 1 of an epic (three or more dependent slices, or any critical epic), fresh context | fable | high — returns the structural risks, the missing contracts and a corrected slice order; the orchestrator still owns the plan |
+| Epic close: one judgment pass over the integrated diff against the epic's acceptance | fable | high — before the run reports done; slice-level review is unchanged |
+| Ambiguous architecture, or any lane where Opus 5.5 at high has fallen short | fable | high — the escalation step past the Opus ceiling |
+| Research, agentic search and synthesis across many sources | fable | medium — never `low` for anything that must look something up |
+| Adviser: one question from a stuck lane or the orchestrator, with the evidence | fable — the native adviser where `advisorModel` is set (when enabled), otherwise `Agent` with `model: 'fable'`, `effort: 'medium'` | medium — it answers; it does not take over the work |
 | Design, UI, layout, copy-in-a-UI, API shape | opus (`design-lane`) | high — taste is the acceptance test; the order names the stock patterns to avoid |
 | Design of a critical surface (flagship UI, client-facing deliverable) | fable | high — critical design |
 | Writing, high stakes (counterparty, proposal, board) | fable (`write-lane` where installed) | high — voice is the deliverable |
@@ -91,7 +97,7 @@ Use them in this order. The first is the largest lever and it is free.
 | Adversarial review of critical Opus work | fable, a plain `Agent` with `model: 'fable'` (`verify-lane` pins opus/high since 31 Oct 2026, so it is not the lane here) | high — a different model from the author; with no GPT-6.1 Sol review in this profile, Fable stays the critical reviewer |
 | Adversarial review of Fable work | opus | high — a different model from the author |
 
-**Increase Opus effort before changing models, stopping at `high`.** Opus 5.5 uses `low` for mechanical sweeps, `high` for implementation (since 19 Oct 2026), `medium` for execution mechanics and investigation, and `high` for the main loop, design, bug hunts and review. `high` is the ceiling except on review lanes, which may run at `xhigh` (Ivan, 31 Oct 2026): `xhigh` buys about two points for double the cost and `max` scores lower than `xhigh`. Before moving a lane opus → fable, re-run it at the next effort up to `high` (`xhigh` for a review lane); past that, change the model instead. Before dropping a lane for cost, drop effort. Opus 5.5 thinks more per effort level than Opus 5 did, so set effort explicitly on every lane and do not carry old `xhigh` settings forward. Fable 5.1 runs at `high`. The standing exception is unchanged: never run Fable at `low` for anything that must look something up — at `low` it answers from memory instead of searching.
+**Increase Opus effort before changing models, stopping at `high`.** Opus 5.5 uses `low` for mechanical sweeps, `high` for implementation (since 19 Oct 2026), `medium` for execution mechanics and investigation, and `high` for the main loop, design, bug hunts and review. `high` is the ceiling except on review lanes, which may run at `xhigh` (Ivan, 31 Oct 2026): `xhigh` buys about two points for double the cost and `max` scores lower than `xhigh`. Before moving a lane opus → fable, re-run it at the next effort up to `high` (`xhigh` for a review lane); past that, change the model instead. Before dropping a lane for cost, drop effort. Opus 5.5 thinks more per effort level than Opus 5 did, so set effort explicitly on every lane and do not carry old `xhigh` settings forward. Fable 5.2 runs at `high` by default, at `medium` for research, agentic search and synthesis and for adviser calls, and never at `xhigh` or `max` by default. The standing exception is unchanged: never run Fable at `low` for anything that must look something up — at `low` it answered from memory instead of searching (observed on Fable 5.1; not yet checked on 5.2).
 
 **When Fable is unavailable** (its own limit, or a shared allowance already spent), the Fable rows fall back to Opus 5.5 at `high` in fresh context, and the review label drops from `cross-model` to `same-model, fresh context`. A review lane may run Opus at `xhigh` (Ivan, 31 Oct 2026); other lanes stay at `high`. Say so in the report. A Fable-specific limit does not establish Opus availability and switching models does not bypass an exhausted shared allowance.
 
@@ -105,7 +111,7 @@ Since Claude Code 2.1.292 the `Agent` tool takes `effort` as well as `model`; a 
 - **A `Workflow` script**, where `agent(prompt, {model: 'fable', effort: 'high'})` sets both inline. This is also where fan-out and pipelining live.
 - **The `Agent` tool with `model:` alone**, accepting the session's effort. Fine when the session is already at the effort the lane wants, which at `high` it usually is for review lanes.
 
-`model: 'opus'` resolves to Opus 5.5 (`claude-opus-5-5`); `model: 'fable'` resolves to Fable 5.1 (`claude-fable-5-1`).
+`model: 'opus'` resolves to Opus 5.5 (`claude-opus-5-5`); `model: 'fable'` resolves to Fable 5.2 (`claude-fable-5-2`) on Claude Code 2.1.322 (10 Nov 2026).
 
 ## Lanes that used to be Codex's
 
@@ -157,7 +163,7 @@ Choose the mode with the shared **Turn-by-turn or Workflow** table; in this prof
 - **Writers get isolation.** `isolation: "worktree"` on any lane that edits files, auto-cleaned when unchanged. **No two write lanes share a file.** If two orders must touch the same file, serialize them or give the file to one lane and a follow-up order to the other.
 - **Do not poll.** Background agents are harness-tracked: you are re-invoked automatically when one finishes. A wait loop, a sleep, or a repeated file-existence check costs tokens and buys nothing. Dispatch, then do something independent or end the turn. A lane that has gone quiet past its expected span is dead, not slow — read its transcript rather than waiting longer.
 
-**3. Cross-verify — the substitutes, applied.** Every lane's output is checked by something that did not write it. In this profile that means, in order: a reviewer in fresh context, given the requirements and the diff and nothing else — Fable 5.1 for critical Opus work, a separate Opus 5.5 lane for routine Opus work, Opus 5.5 for Fable work; one failure-mode lens per reviewer where a finding can fail in more than one way; and at least one objective gate — typecheck, tests, a runtime assertion on real state, or a screenshot.
+**3. Cross-verify — the substitutes, applied.** Every lane's output is checked by something that did not write it. In this profile that means, in order: a reviewer in fresh context, given the requirements and the diff and nothing else — Fable 5.2 for critical Opus work, a separate Opus 5.5 lane for routine Opus work, Opus 5.5 for Fable work; one failure-mode lens per reviewer where a finding can fail in more than one way; and at least one objective gate — typecheck, tests, a runtime assertion on real state, or a screenshot.
 
 You read the screenshots yourself. No lane certifies its own design quality, and in a single-family run no lane certifies another's either — a clean review here is weaker evidence than it would be from the other family, so spend the objective gate as well.
 
@@ -183,7 +189,7 @@ The shared **Long-horizon runs** section governs: the work-list is a file rather
 Two things are sharper in this profile, and both argue for *more* structure on a long run, not less ambition:
 
 - **The interruption you should plan for is the usage limit**, and it arrives without an error — a lane simply stops, with no report and no commit. On a multi-hour run this is the single most likely failure. Wave boundaries, committed lanes and an on-disk work-list are what turn that from a lost run into a resumed one.
-- **The whole run draws on one pool**, so the phase plan is also the budget plan. Decide before wave 1 roughly what each wave costs in lanes × effort, and put the expensive judgment (Opus 5.5 or Fable 5.1 at `high`) in the narrow waves — contract design, integration review — while the wide waves stay at `low`/`medium`. A run that spends its window on wave 1 has not been ambitious; it has been unplanned.
+- **The whole run draws on one pool**, so the phase plan is also the budget plan. Decide before wave 1 roughly what each wave costs in lanes × effort, and put the expensive judgment (Opus 5.5 or Fable 5.2 at `high`) in the narrow waves — contract design, integration review — while the wide waves stay at `low`/`medium`. A run that spends its window on wave 1 has not been ambitious; it has been unplanned.
 
 
 ## Fan-out and the quota budget
@@ -193,7 +199,7 @@ The shared **What earns an agent** and **Sizing the fan-out** sections still gov
 What changes is that every lane now draws on one pool. Budget before dispatching, not after:
 
 - **Count lanes × effort before the first dispatch.** A twelve-lane `high` fan-out and a twelve-lane `low` fan-out are not the same run. If the work-list will not fit, cut coverage deliberately at the top — take the top-N items, drop retries, sample — and `log()` what you dropped so a partial sweep never reads as a complete one. Discovering the ceiling half-way through leaves a run nobody can finish or trust.
-- **Default to Opus 5.5 on price.** Opus 5.5 costs $4/$20 per Mtok with cache reads at $0.20; Fable 5.1 costs $10/$50 with cache reads at $0.25. Opus 5.5 is cheaper on input, output and cache reads, so spend Fable only on the rows the routing table gives it: review and design of critical work, high-stakes writing, ambiguous architecture and the escalation past `high`. Without Codex, effort and the Opus/Fable split are the cost levers you have left.
+- **Default to Opus 5.5 on price.** Opus 5.5 costs $4/$20 per Mtok with cache reads at $0.20; Fable 5.2 costs $8/$40 with cache reads at $0.20 (10 Nov 2026). Opus 5.5 is cheaper on input and output and the same on cache reads, and no published measure shows Fable 5.2 cheaper per task than an Opus 5.5 `high` lane, so spend Fable only on the rows the routing table gives it: review and design of critical work, high-stakes writing, ambiguous architecture, the plan gate and the epic close, research and adviser calls at `medium`, and the escalation past `high`. Without Codex, effort and the Opus/Fable split are the cost levers you have left.
 - **Wide and cheap beats few and long.** On resume, cached results stop at the first unfinished lane and everything after it re-runs. Many small lanes preserve more progress. That matters more here, because the thing most likely to interrupt a run is the limit itself.
 - **Tighter orders are cheaper than bigger models.** The ten minutes of grounding that makes a `low` lane succeed is the cheapest token you will spend all run.
 
@@ -201,7 +207,8 @@ What changes is that every lane now draws on one pool. Budget before dispatching
 
 - **A Claude lane dies silently on the session limit.** No report, no commit, no error you will see — only the lane's own transcript says so. A lane that has gone quiet past its expected span is dead, not slow: read its transcript rather than waiting. Counter it in the order: have write lanes commit or write their artifact incrementally rather than holding everything for a final message.
 - **Opus 5.5's behaviours.** Unattended lanes can end a turn after a progress update, so every order carries the unattended-lane paragraph, and a lane's text-only ending is a report, not proof the work is done: check its work-list and name the open items when you send it back. It thinks more per effort level than Opus 5 did, so set effort explicitly, never above `high`, and lower effort rather than prompting for less thinking; the order-writing rules in step 1 cover the rest. It gets to work quickly, so on tasks spread across mail, documents, sheets or records, tell it to look through the relevant sources before it changes anything. On design with no direction it falls back on the stock patterns listed in step 1. With no other-family reviewer, and with routine work reviewed by the same model, your diff read is the gate that catches a lane that stopped early. Read the diff, not the summary.
-- **Fable's four behaviours.** Say "issue independent reads in one turn" (it batches less than Fable 5 did); say "targeted edits only" (it rewrites whole files for small changes); never dispatch it at `low` for research or verification; ask for paragraph breaks explicitly in writing orders.
+- **Fable orders state the outcome.** A Fable 5.2 order states the outcome, the audience, the sources to read and the finish line, not a step list. Slice the work only where the slices are independent.
+- **Fable's four behaviours (observed on Fable 5.1; not yet checked on 5.2).** Say "issue independent reads in one turn" (Fable 5.1 batched less than Fable 5 did); say "targeted edits only" (it rewrote whole files for small changes); never dispatch it at `low` for research or verification; ask for paragraph breaks explicitly in writing orders.
 - **Reviewer agreement is not evidence.** In a single family, two lanes agreeing is weaker evidence than it feels. When a review comes back clean on something that ships, spend one objective gate on it anyway — a test, an assertion, a screenshot you read.
 - **Label drift.** The word `cross-family` must not appear in a Conductor Claude report. Different effort levels are not different families; different Claude models are not different families.
 
@@ -213,7 +220,7 @@ Use exactly these coverage labels in the report:
 
 | Label | Means |
 |---|---|
-| `cross-model, fresh context` | Fable 5.1 reviewed critical Opus 5.5 work, or Opus 5.5 reviewed Fable 5.1 work, from requirements + artifact only |
+| `cross-model, fresh context` | Fable 5.2 reviewed critical Opus 5.5 work, or Opus 5.5 reviewed Fable 5.2 work, from requirements + artifact only |
 | `same-model, fresh context` | A separate Opus 5.5 lane at `high` reviewed Opus 5.5 work from requirements + artifact only, without the author's rationale. The standard review for routine work, and the fallback for critical work when Fable was unavailable (say which) |
 | `objective-gate` | Tests, typecheck, runtime assertion or a screenshot the orchestrator read |
 | `orchestrator-only` | Inline work with no separate reviewer |

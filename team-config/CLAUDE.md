@@ -9,7 +9,7 @@ When the user selects `conductor-core`, follow its installed canonical skill for
 <!-- conductor-claude-profile -->
 ## Conductor Claude opt-in
 
-When the user selects `conductor-claude`, follow its installed canonical skill for model routing, fan-out, quota budgeting and review acceptance. Within that run it replaces the mixed-model assignments and every required Codex lane or cross-family gate elsewhere in these instructions: Opus 5.5 and Fable 5.1 carry all roles and effort is the dial. Independence comes from the ranked substitutes in that skill — fresh-context artifact-only review first — and review coverage is reported as `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only`. Never label a Conductor Claude run `cross-family`. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
+When the user selects `conductor-claude`, follow its installed canonical skill for model routing, fan-out, quota budgeting and review acceptance. Within that run it replaces the mixed-model assignments and every required Codex lane or cross-family gate elsewhere in these instructions: Opus 5.5 and Fable 5.2 carry all roles and effort is the dial. Independence comes from the ranked substitutes in that skill — fresh-context artifact-only review first — and review coverage is reported as `cross-model, fresh context`, `same-model, fresh context`, `objective-gate` or `orchestrator-only`. Never label a Conductor Claude run `cross-family`. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
 <!-- /conductor-claude-profile -->
 
 Global agent config. Install to `~/.claude/CLAUDE.md` — it applies to every project.
@@ -72,13 +72,13 @@ Run the main loop on **Opus 5.5 at `high`**. Reach for `Agent`/`Workflow` when a
 | model | cost/task | reasoning | autonomy | steerability | taste | writing |
 |---|---|---|---|---|---|---|
 | opus-5.5 | 9 | 9.3 | 9.3 | 7.5 † | 9 † | 8.5 † |
-| fable-5.1 | 5 | 9.2 | 8.8 | 8.5 | 9 | 9 |
+| fable-5.2 ¶ | 6 | 9.6 | 9.5 | 8.5 | 9 | 9 |
 | gpt-6.1-sol | 9.5 | 8.9 § | 9.1 § | 9 § | 5.5 § | 6.5 § |
 | gpt-6-luna | 10 | 7.2 ‡ | 7.4 ‡ | 8.5 ‡ | 4 ‡ | 6 ‡ |
 
-Higher is better. **Cost** is cost per task as you pay it, not price per token; on a ChatGPT subscription a Codex lane spends quota rather than dollars. **Reasoning** covers plans, reviews and judgment calls; **autonomy** is how far a model gets unsupervised; **steerability** is whether it does what the order said, no more and no less; **taste** covers UI, code quality, API design and copy in a UI; **writing** is prose a human reads and judges the author by. † Provisional from vendor evidence (22 Sep 2026); re-rate by 6 Oct. ‡ Provisional internal estimates (23 Sep 2026); re-rate by 7 Oct. § Provisional from vendor and Vellum evidence (29 Sep 2026); re-rate by 13 Oct. The `opus` alias resolves to Opus 5.5 (`claude-opus-5-5`) and `fable` to Fable 5.1 (`claude-fable-5-1`).
+Higher is better. **Cost** is cost per task as you pay it, not price per token; on a ChatGPT subscription a Codex lane spends quota rather than dollars. **Reasoning** covers plans, reviews and judgment calls; **autonomy** is how far a model gets unsupervised; **steerability** is whether it does what the order said, no more and no less; **taste** covers UI, code quality, API design and copy in a UI; **writing** is prose a human reads and judges the author by. † Provisional from vendor evidence (22 Sep 2026). ‡ Provisional internal estimates (23 Sep 2026). § Provisional from vendor and Vellum evidence (29 Sep 2026). The †, ‡ and § rows were due for re-rating by 6, 7 and 13 Oct and are past those dates; re-rate them by 24 Nov 2026. ¶ Provisional from vendor evidence only (10 Nov 2026); steerability, taste and writing are carried over from Fable 5.1, unmeasured; re-rate by 24 Nov 2026 from `bench-factory/tools/model-evals`. Fable 5.2 replaces the Fable 5.1 row. The `opus` alias resolves to Opus 5.5 (`claude-opus-5-5`) and `fable` to Fable 5.2 (`claude-fable-5-2`).
 
-**Who does what (29 Sep 2026).** Opus 5.5 is the predominant model and writes the code. GPT-6.1 Sol is the only GPT model for review, exploration and computer use: `high` by default, `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default. Fable is used where it is needed, and not held back when it is.
+**Who does what (29 Sep 2026).** Opus 5.5 is the predominant model and writes the code. GPT-6.1 Sol is the only GPT model for review, exploration and computer use: `high` by default, `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default. Fable is used where it is needed, and not held back when it is. Since 10 Nov 2026 Fable means Fable 5.2 (`claude-fable-5-2`, the `fable` alias); Fable 5.1 has left routing.
 
 | Work | Model and effort |
 |---|---|
@@ -86,26 +86,33 @@ Higher is better. **Cost** is cost per task as you pay it, not price per token; 
 | Implementation, refactors, migrations, terminal, CI, infra | Opus 5.5 `high` (`exec-lane`) |
 | Investigation and exploration | GPT-6.1 Sol `high` |
 | Mechanical sweeps with exact anchors | Opus 5.5 `low` (`bulk-lane`), one lane per item |
-| Design, UI, copy in a UI, API shape | Opus 5.5 `high` (`design-lane`); Fable 5.1 `high` when critical |
-| Bug hunts of unknown scope | Opus 5.5 `high`; second attempt GPT-6.1 Sol `high` (cross-family) or Fable 5.1 `high` |
+| Plan gate on an epic (three or more dependent slices, or any critical epic), before wave 1 | Fable 5.2 `high` in fresh context, given the plan, the shared contract and the slice list; it returns structural risks, missing contracts and a corrected slice order. The orchestrator still owns the plan and writes the work orders |
+| Design, UI, copy in a UI, API shape | Opus 5.5 `high` (`design-lane`); Fable 5.2 `high` when critical |
+| Bug hunts of unknown scope | Opus 5.5 `high`; second attempt GPT-6.1 Sol `high` (cross-family); Fable 5.2 `high` when both have missed |
 | Cross-family review of Claude-authored work | GPT-6.1 Sol `high` via `codex-review`; `xhigh` when the change is critical or a `high` pass came back thin |
-| Judgment review of Opus-authored work | Opus 5.5 `high` in fresh context (`verify-lane`), critical work only; `xhigh` for money, auth, personal data, migrations and production data (31 Oct 2026). Fable 5.1 `high` only when GPT-6.1 Sol cannot run |
+| Judgment review of Opus-authored work | Opus 5.5 `high` in fresh context (`verify-lane`), critical work only; `xhigh` for money, auth, personal data, migrations and production data (31 Oct 2026). Fable 5.2 `high` only when GPT-6.1 Sol cannot run. Unchanged for now; decide by 24 Nov 2026 from the head-to-head in `bench-factory/tools/model-evals` |
 | Review of Fable-, GPT-6.1 Sol- or Luna-authored work | Opus 5.5 `high` |
 | Runtime and computer-use verification | GPT-6.1 Sol `high` via `codex-computer-use` or `mobile-app-testing`; Claude judges the pixels |
 | Ops, runbooks, business-workflow automation | GPT-6.1 Sol `high` |
 | Codex overflow when Claude quota is tight | GPT-6.1 Sol `high` |
 | Bounded high-volume items (intake packets, classify, extract) | Luna `high`; a stronger model reads the output |
-| Ambiguous architecture, deep research, Opus 5.5 has missed | Fable 5.1 `high` |
-| High-stakes writing (counterparty mail, proposals, board documents) | Fable 5.1 `high` (`write-lane`) |
+| Epic close, before the run reports done | One Fable 5.2 `high` judgment pass over the integrated diff against the epic's acceptance; slice-level review is unchanged |
+| Ambiguous architecture, or Opus 5.5 and GPT-6.1 Sol have both missed | Fable 5.2 `high` |
+| Research and synthesis (deep research, agentic search, reading many sources into one finding) | Fable 5.2 `medium` |
+| Adviser: a lane or the orchestrator is stuck on one question (a design choice, a failing approach after one retry, a diagnosis) | Fable 5.2 `medium`, asked that one question with the evidence before the whole lane is escalated: the native adviser where the session has `advisorModel` set (when enabled), otherwise an `Agent` call with `model: "fable"`, `effort: "medium"` and the question. It answers; it does not take over the work |
+| Long knowledge work from a blank page (documents, spreadsheets, decks, proposals, pricing papers) | Opus 5.5 starts routine and internal work, with Fable 5.2 `high` as the first escalation; Fable 5.2 `high` starts client-facing deliverables |
+| High-stakes writing (counterparty mail, proposals, board documents) | Fable 5.2 `high` (`write-lane`) |
 | Volume writing (film blocks, storyboards, internal docs, drafts) | Opus 5.5 `medium` |
 
 **Critical** means: it deploys to production or changes production data; it touches auth, payments, money or personal data; it is a schema or data migration or otherwise hard to reverse; it is a client-facing deliverable (proposal, deck, flagship UI surface); or it changes this routing and agent configuration. Critical work gets GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane`: the cross-family review at `xhigh` and a fresh-context Opus judgment review beside it (`xhigh` for money, auth, personal data, migrations and production data). Everything else is routine: GPT-6.1 Sol `high` cross-family review plus your own read of the diff.
+
+**Why Fable 5.2 (10 Nov 2026).** It costs $8/$40 per Mtok (Fable 5.1 was $10/$50; Opus 5.5 is $4/$20). Anthropic's launch table (9 Nov 2026, vendor-reported) puts it ahead of Opus 5.5 on every row except one unlabelled Elo row (1800 vs 1785). Its cost-per-task claims compare with Opus 5.5 at its best-scoring effort, not at `high`, so they do not show it is cheaper per task than our Opus `high` lanes. Anthropic still recommends starting with Opus 5.5 for most coding and knowledge work, so Opus 5.5 stays the main loop and writes the code. The 31 Oct reason for the Opus `verify-lane` (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against Fable 5.2; the head-to-head on past critical diffs runs in `bench-factory/tools/model-evals`.
 
 **Why GPT-6.1 Sol (29 Sep 2026).** It replaces GPT-6 Astra and GPT-6 Sol, which are out of routing. On OpenAI's 29 Sep charts (via Vellum, vendor-reported), GPT-6.1 Sol at `high` scores 75.2% on DeepSWE v1.1 at about $1.50 per task, against Astra `high` 74.8% at about $7.70 and GPT-6 Sol `max` 68.8%. On OSWorld 2.0 it reaches 71.4% at `max` for about $1.30 per task, against Astra `max` 73.5% at about $9.30; the `high` figure is not published. It matches Astra on GDP.pdf (32.0% vs 32.2%) at a fifth of the cost. Astra still leads on AutomationBench (41.4% vs 35–36%). Its weak spot is writing code, so implementation stays on Opus 5.5.
 
 **Rules:**
 - The reviewer is always a different model from the author. The exceptions are the critical judgment review (`verify-lane`), a fresh-context Opus 5.5 lane labelled `same-model, fresh context` that always runs beside the GPT-6.1 Sol `xhigh` cross-family review; a Conductor Claude run (no Codex available), where routine Opus work gets a fresh-context Opus 5.5 reviewer labelled same-model (critical work still goes to Fable), and a Conductor Core run, where GPT-6.1 Sol work gets a fresh-context GPT-6.1 Sol reviewer at `xhigh` labelled `same-model, fresh context`. GPT-6.1 Sol reviews diffs, explores and verifies runtime mechanics; it does not judge design, and it implements only as Codex overflow or in Conductor Core. Luna never reviews.
-- **Effort is the control.** Set it on every lane. `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh`; past it, change the model. GPT-6.1 Sol, Luna and Fable run at `high`; GPT-6.1 Sol goes to `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default; Fable never at `low` for anything that must look something up. Beyond the class rules (GPT-6.1 Sol `xhigh` on critical work; the Opus `verify-lane` at `xhigh` on money, auth, personal data, migrations and production data), raise review effort only after an observed failure, with the reason recorded.
+- **Effort is the control.** Set it on every lane. `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh`; past it, change the model. GPT-6.1 Sol and Luna run at `high`; GPT-6.1 Sol goes to `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never `max` by default. Fable 5.2 runs at `high` by default and at `medium` for research, agentic search, synthesis and adviser calls; never at `low` for anything that must look something up (observed on Fable 5.1; not yet checked on 5.2); never at `xhigh` or `max` by default. Beyond the class rules (GPT-6.1 Sol `xhigh` on critical work; the Opus `verify-lane` at `xhigh` on money, auth, personal data, migrations and production data), raise review effort only after an observed failure, with the reason recorded.
 - These are defaults, not limits. If a lane's output falls short, re-run it on the next effort or another model without asking. When axes conflict for anything that ships: the lane's own axis > steerability > taste > cost.
 - **Always pass the Codex model and effort:** `ask-codex -m gpt-6.1-sol --effort high --context order.md --output report.md "…" </dev/null`. Account homes can default to different models, including the superseded `gpt-6-sol`, so an omitted `-m` gets the wrong model. GPT-6.1 Sol requires Codex CLI 0.159.0 or later; older versions are rejected by the server under a ChatGPT login. Codex windows are 272K under the ChatGPT login; raise it with `codex exec -c model_context_window=…` (in `ask-codex`, `-c` means `--context`) or split the order at about 200K. Use `--readonly` only for lanes that never write.
 - Never Haiku or Sonnet for judgment work. Never Fast mode on a dispatched lane; it is for interactive work the user is watching.
@@ -128,7 +135,7 @@ The orchestrator never delegates three things: the plan, the work orders and the
 
 A lane that ends its turn with text only has reported, not finished. Check its work-list and send it back naming the open items; stop after two or three continuations and review a lane that is still stuck.
 
-**Fable 5.1 orders** also say "request every independent item in one response" and "targeted edits only".
+**Fable 5.2 orders** state the outcome, the audience, the sources to read and the finish line, not a step list; slice the work only where slices are independent. They also say "request every independent item in one response" and "targeted edits only" (observed on Fable 5.1; not yet checked on 5.2).
 
 ## What earns an agent
 
