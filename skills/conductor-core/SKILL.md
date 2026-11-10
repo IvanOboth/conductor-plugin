@@ -33,7 +33,7 @@ Use the harness's real concurrency and completion mechanisms. Only the Claude ha
 |---|---|---|
 | Grounding, plan, work orders, integration, final acceptance | gpt-6.1-sol | high — default; the parent seat |
 | Architecture, investigation, ambiguity and sustained synthesis | gpt-6.1-sol | high — default |
-| Implementation of every kind: stateful work, recovery, refactors, ordinary fixes, routine execution | gpt-6.1-sol | high — DeepSWE v1.1 75.2% at high for about $1.50 per task |
+| Implementation of every kind: stateful work, recovery, refactors, ordinary fixes, routine execution | gpt-6.1-sol | high — DeepSWE v1.1 75.2% at high for about \$1.50 per task |
 | Runtime replay, screen-dependent runtime testing and computer use | gpt-6.1-sol | high — default; OSWorld 2.0 71.4% at max (the high figure is not published) |
 | Ops, runbooks and business-workflow automation | gpt-6.1-sol | high — default |
 | Diff review of GPT-6.1 Sol-authored work | gpt-6.1-sol, separate fresh-context reviewer | xhigh — labelled `same-model, fresh context`; optional Opus 5.5 at high is the cross-family review |
