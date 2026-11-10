@@ -216,21 +216,28 @@ something up; never at `xhigh` or `max` by default.
   `model_context_window` raised for the lane (272K by default under a ChatGPT login).
 - Research and synthesis (deep research, agentic search, reading many sources into one
   finding) → Fable 5.2 at `medium`.
-- Plan gate on a `sev:1` or `sev:2` epic → before wave 1, send the plan, the shared
-  contract and the slice list to a fresh-context reviewer: Fable 5.2 at `high` for a
-  `sev:2` epic; Opus 5.5 at `high` for a `sev:1` epic, whose plan Fable 5.2 wrote as
-  orchestrator. It returns the structural risks, the missing contracts and a corrected
-  slice order; the orchestrator still owns the plan and writes the work orders. `sev:3`
-  and `sev:4` epics get no plan gate.
-- Epic close on a `sev:1` or `sev:2` epic → one judgment pass over the integrated diff
-  against the epic's acceptance before the run reports done: Fable 5.2 at `high` for
-  `sev:2`; Opus 5.5 at `high` in fresh context beside GPT-6.1 Sol at `xhigh` for `sev:1`.
-  Slice-level review is unchanged.
+- Plan gate on a `sev:1` or `sev:2` epic, or any critical-class epic → before wave 1,
+  send the plan, the shared contract and the slice list to a fresh-context reviewer that
+  is not the model that wrote the plan: Fable 5.2 at `high` when Opus 5.5 orchestrates;
+  Opus 5.5 at `high` when Fable 5.2 orchestrates (a `sev:1` epic). When Opus wrote the
+  plan and Fable cannot be used at all, GPT-6.1 Sol at `xhigh` does the whole check (the
+  one case where Sol judges a plan). It returns the structural
+  risks, the missing contracts and a corrected slice order; the orchestrator still owns
+  the plan and writes the work orders. Other epics get no plan gate.
+- Epic close on a `sev:1` or `sev:2` epic, or any critical-class epic → one judgment
+  pass over the integrated diff against the epic's acceptance before the run reports
+  done, by a model other than the orchestrator's: Fable 5.2 at `high` when Opus 5.5
+  orchestrated; Opus 5.5 at `high` in fresh context beside GPT-6.1 Sol at `xhigh` when
+  Fable 5.2 orchestrated; GPT-6.1 Sol at `xhigh` alone when Opus orchestrated and Fable
+  cannot be used. Slice-level review is unchanged. Other epics
+  close on the orchestrator's own read.
 - Severity (10 Nov 2026) → every issue and epic carries one label, `sev:1` to `sev:4`,
   the worse of its impact and its risk (definitions in `~/.claude/CLAUDE.md`, "Severity").
   It sets the queue, who orchestrates (Fable 5.2 for `sev:1` epics, Opus 5.5 otherwise)
-  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review; severity
-  never lowers review depth.
+  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review with the
+  Opus `verify-lane` at `xhigh`; severity never lowers review depth. Older labels set a
+  floor: `priority:critical`, `priority:p0`, `urgent` → at least `sev:1`; `priority:high`,
+  `priority:p1`, `priority:blocking`, `revenue` → at least `sev:2`.
 - Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
   approach after one retry, a diagnosis) asks Fable 5.2 that one question with the
   evidence before the whole lane is escalated. On the Claude side that is the native
