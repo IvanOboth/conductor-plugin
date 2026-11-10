@@ -121,7 +121,7 @@ Sizing answers *how many*. This answers *whether* — and it runs first. Getting
 
 **Fan out over a work-list you already have — never to produce one.** Discovery is one cheap step you run yourself (`grep -rl`, `git diff --name-only`); the fan-out is what happens *to the items it returns*. Spawning agents to find the items inverts that and pays the most for the least.
 
-Three questions before any dispatch:
+Four questions before any dispatch:
 
 1. **Could a shell command answer this?** → Run the command.
 2. **What artifact does this agent return?** → No answer means no dispatch.
@@ -323,7 +323,7 @@ The work order names the artifact/build, backend/tenant, authentication referenc
 Opus 5.5 behaviours to counter in the orders you write:
 
 - **Unattended lanes can end a turn after a progress update.** Put the unattended-lane paragraph (see **The loop**, step 2) at the end of every dispatched order. Treat a lane's text-only ending as a report, not proof the work is done: check its work-list, and name the open items when you send it back.
-- **It thinks more per effort level than Opus 5 did.** Set effort explicitly on every lane, never above `high`, and lower effort rather than prompting for less thinking. Remove "think carefully" instructions; effort is the control.
+- **It thinks more per effort level than Opus 5 did.** Set effort explicitly on every lane, never above `high` except on review lanes, which may run at `xhigh` (Ivan, 31 Oct 2026), and lower effort rather than prompting for less thinking. Remove "think carefully" instructions; effort is the control.
 - **It gets to work quickly.** On tasks spread across mail, documents, sheets or records, tell it to look through the relevant sources before it changes anything.
 - **It paces itself to elapsed time.** For a fan-out, put a time budget in each order ("aim to finish within 20 minutes") and set it somewhat above what you want spent. The budget is advisory, so keep your own timeout.
 - **Delete self-verification scaffolding.** "Double-check your output", "add a final verification step" or "spawn a verifier" in a work order produces over-verification, not more rigour. Your own cross-family gate (§3) is the verification that matters, and it stays.
@@ -383,7 +383,7 @@ If a lane hangs, that's a lane to stop and re-dispatch, not a lane to poll harde
 
 **4. Review + integrate (orchestrator).** Read every lane's report and the actual diffs (`git diff --stat` then the files that matter). Rejected work goes back as a *revised work order* — say what was wrong and what correct looks like, don't re-explain the whole task. You run the final checks applicable to the requested change and authorized by the task. Skill/report edits do not imply application builds, device rental or release publication; source changes use their project gates. Verify actual output rather than accepting a lane summary.
 
-**5. Publish the review HTML (orchestrator).** Create or update the run's HTML review file (see *Run review HTML* below) with what happened / what's proposed, decision diagrams, and the verification screenshots + recordings, then hand it to the user: on a desktop host `open` it; on a headless host (the bench — `~/reports` exists, no display) run `~/bin/sync-reports.sh` and give the **hub URL** `https://bench.tailb5d047.ts.net/reports/<repo>/<file>` — never a disk path, never `xdg-open`.
+**5. Publish the review HTML (orchestrator).** Create or update the run's HTML review file (see *Run review HTML* below) with what happened / what's proposed, decision diagrams, and the verification screenshots + recordings, then hand it to the user: on a desktop host `open` it; on a headless host (the bench — `~/reports` exists, no display) publish and verify with `~/bin/report-link.py <report-path>` and give the checked **hub URL** `https://bench.tailb5d047.ts.net/reports/<repo>/<file>` — never a disk path, never `xdg-open`.
 
 ## Codex CLI facts
 

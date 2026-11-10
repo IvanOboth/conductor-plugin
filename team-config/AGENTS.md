@@ -125,7 +125,7 @@ Claude pass before it ships — do not self-certify voice.
 
 ## Sandboxes
 
-`read-only` for investigation and review — always. `workspace-write` to execute.
+On the bench, do not run review or investigation in `read-only`: a read-only lane can succeed while reviewing only the prompt instead of the files (a 5 Nov 2026 review was void for this, and Codex on the bench works only in `danger-full-access`), so use a write-capable mode and do not edit. `workspace-write` to execute.
 `danger-full-access` only when the job genuinely must act outside the working tree, and
 say so in the report when you used it.
 
