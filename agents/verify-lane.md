@@ -6,7 +6,7 @@ description: >-
   green console. Since 27 Sep 2026 it runs on critical changes only: anything that deploys to
   production or changes production data; auth, payments, money or personal data; a schema or data
   migration; anything hard to reverse; a client-facing deliverable; or the routing and agent
-  configuration itself. Routine Opus-authored work gets the GPT-6.1 Sol high cross-family review via
+  configuration itself; and on every `sev:1` item (10 Nov 2026). Routine Opus-authored work gets the GPT-6.1 Sol high cross-family review via
   codex-review plus the orchestrator's own read of the diff. Pinned to Opus 5.5 at high effort since
   31 Oct 2026 (Ivan; it was Fable 5.1): on 31 Oct 2026 Opus 5.5 matched or beat Fable 5.1 on every
   published benchmark at about 40% of the cost for the same tokens. That reason does not hold

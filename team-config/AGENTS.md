@@ -219,7 +219,8 @@ something up; never at `xhigh` or `max` by default.
 - Plan gate on a `sev:1` or `sev:2` epic, or any critical-class epic → before wave 1,
   send the plan, the shared contract and the slice list to a fresh-context reviewer that
   is not the model that wrote the plan: Fable 5.2 at `high` when Opus 5.5 orchestrates;
-  Opus 5.5 at `high` when Fable 5.2 orchestrates (a `sev:1` epic). When Opus wrote the
+  Opus 5.5 at `high` whenever Fable 5.2 wrote the plan (a `sev:1` epic, or any epic
+  started on Fable). When Opus wrote the
   plan and Fable cannot be used at all, GPT-6.1 Sol at `xhigh` does the whole check (the
   one case where Sol judges a plan). It returns the structural
   risks, the missing contracts and a corrected slice order; the orchestrator still owns
@@ -261,7 +262,8 @@ something up; never at `xhigh` or `max` by default.
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
-    (`high`; `xhigh` for money, auth, personal data, migrations, production data; 31 Oct 2026).
+    (`high`; `xhigh` for money, auth, personal data, migrations, production data and every
+    `sev:1` item; 31 Oct 2026).
     Fable 5.2 at `high` only when GPT-6.1 Sol cannot run. Unchanged for now: the 31 Oct
     reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
     Fable 5.2, so a head-to-head on past critical diffs runs in
@@ -274,7 +276,7 @@ something up; never at `xhigh` or `max` by default.
     at `high`, labelled same family.
   - Luna never reviews.
   Beyond the class rules (`xhigh` on critical work; the Opus `verify-lane` at `xhigh` on
-  money, auth, personal data, migrations and production data), raise review effort only
+  money, auth, personal data, migrations, production data and every `sev:1` item), raise review effort only
   after an observed failure, and record the reason.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right. Luna does not
