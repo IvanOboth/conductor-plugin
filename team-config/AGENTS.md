@@ -191,7 +191,8 @@ for Opus 5.5 except review lanes (`xhigh` allowed); when another lane at `high` 
 cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go to
 `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never
 `max` by default. Fable 5.2 runs at `high` by default and at `medium` for research,
-agentic search, synthesis and adviser calls; never at `low` for anything that must look
+agentic search, synthesis and adviser questions sent as an `Agent` call (the native
+adviser's effort is not documented); never at `low` for anything that must look
 something up; never at `xhigh` or `max` by default.
 
 - Implementation, refactors, migrations, terminal, CI and infra → `opus` (Opus 5.5) via
@@ -223,11 +224,12 @@ something up; never at `xhigh` or `max` by default.
 - Epic close → one Fable 5.2 `high` judgment pass over the integrated diff against the
   epic's acceptance before the run reports done. Slice-level review is unchanged.
 - Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
-  approach after one retry, a diagnosis) asks Fable 5.2 at `medium` that one question with
-  the evidence before the whole lane is escalated. On the Claude side that is the native
-  adviser where the session has `advisorModel` set (when enabled), otherwise an `Agent`
-  call with `model: "fable"`, `effort: "medium"`. From Codex, `ask-claude -m fable` with
-  the question. The adviser answers; it does not take over the work.
+  approach after one retry, a diagnosis) asks Fable 5.2 that one question with the
+  evidence before the whole lane is escalated. On the Claude side that is the native
+  adviser where the session has `advisorModel` set (when enabled; effort not documented),
+  otherwise an `Agent` call with `model: "fable"`, `effort: "medium"`. From Codex, `ask-claude -m fable` with
+  the question (`ask-claude` sets no effort, so the call runs at Claude Code's default for
+  Fable 5.2, which is `medium`). The adviser answers; it does not take over the work.
 - Anything user-facing (UI, copy in a UI, API design) → `opus` at `high`; Fable 5.2 at
   `high` when the surface is critical. The order names the stock patterns to avoid (a
   cream or off-white background, italic accent words in headings, numbered "01 / 02 / 03"

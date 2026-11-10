@@ -1,6 +1,11 @@
 ---
 name: exec-lane
-description: Conductor's default execution lane since 2026-09-22. Use for well-specified implementation, refactors, migrations, terminal/CI/infra work, and test authoring. Pinned to Opus 5.5 at high effort (Ivan, 19 Oct 2026: implementation runs at high, not medium). Use design-lane for taste-critical surfaces, bulk-lane for mechanical sweeps, and an Agent or Workflow lane with effort medium for volume writing.
+description: >-
+  Conductor's default execution lane since 2026-09-22. Use for well-specified implementation,
+  refactors, migrations, terminal/CI/infra work, and test authoring. Pinned to Opus 5.5 at high
+  effort (Ivan, 19 Oct 2026: implementation runs at high, not medium). Use design-lane for
+  taste-critical surfaces, bulk-lane for mechanical sweeps, and an Agent or Workflow lane with
+  effort medium for volume writing.
 model: opus
 effort: high
 experimental:
