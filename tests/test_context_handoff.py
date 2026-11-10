@@ -242,7 +242,8 @@ class HandoffTest(unittest.TestCase):
         env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log),
                    ORCA_SEND=str(self.dir / 'send-mode'),
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', CLAUDE_EFFORT='high',
-                   ORCA_TERMINAL_HANDLE='term_old', ORCA_WT=str(self.wt.resolve()), **env_extra)
+                   ORCA_TERMINAL_HANDLE='term_old', ORCA_WT=str(self.wt.resolve()))
+        env.update(env_extra)
         return subprocess.run([sys.executable, str(HANDOFF), '--order', str(self.order), *args],
                               capture_output=True, text=True, env=env, cwd=self.wt)
 
@@ -396,6 +397,20 @@ class HandoffTest(unittest.TestCase):
         sd.unlink()
         p = self.run_handoff('--dry-run')
         self.assertIn('--dangerously-skip-permissions', json.loads(p.stdout)['launch'])
+
+    def test_successor_effort_is_high_whatever_the_ambient_effort(self):
+        p = self.run_handoff('--dry-run', CLAUDE_EFFORT='medium')
+        self.assertIn('--effort high', json.loads(p.stdout)['launch'])
+
+    def test_explicit_effort_still_wins(self):
+        p = self.run_handoff('--effort', 'xhigh', '--dry-run', CLAUDE_EFFORT='medium')
+        self.assertIn('--effort xhigh', json.loads(p.stdout)['launch'])
+
+    def test_fable_session_hands_off_to_fable_with_opus_fallback(self):
+        (self.state / 'conductor/context/s1.json').write_text(json.dumps(
+            {'skill': 'conductor', 'model': 'claude-fable-5-2', 'pct': 72}))
+        launch = json.loads(self.run_handoff('--dry-run').stdout)['launch']
+        self.assertIn('claude --model fable --fallback-model opus --effort high', launch)
 
     def test_every_permission_mode_is_explicit(self):
         for mode, flag in (('manual', '--permission-mode manual'), ('default', '--permission-mode default')):

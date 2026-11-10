@@ -3,7 +3,7 @@
 <!-- conductor-core-profile -->
 ## Conductor Core opt-in
 
-When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Since 29 Sep 2026: GPT-6.1 Sol at `high` owns the workflow and is the worker for implementation, refactors and routine execution; Luna at `high` takes bounded high-volume items. GPT-6.1 Sol-authored work gets a separate fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`, or Opus 5.5 at `high` as the optional cross-family review. Luna-authored work is reviewed by GPT-6.1 Sol at `high` (same family, labelled so). Fable is never selected. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
+When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Since 29 Sep 2026: GPT-6.1 Sol at `high` owns the workflow and is the worker for implementation, refactors and routine execution; Luna at `high` takes bounded high-volume items. GPT-6.1 Sol-authored work gets a separate fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`, or Opus 5.5 at `high` as the optional cross-family review. Luna-authored work is reviewed by GPT-6.1 Sol at `high` (same family, labelled so). Fable is never selected. A `sev:1` epic under Core is still orchestrated by GPT-6.1 Sol, as before. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
 <!-- /conductor-core-profile -->
 
 You are usually invoked as a **lane** inside a larger orchestration run, not as the
@@ -216,12 +216,29 @@ something up; never at `xhigh` or `max` by default.
   `model_context_window` raised for the lane (272K by default under a ChatGPT login).
 - Research and synthesis (deep research, agentic search, reading many sources into one
   finding) → Fable 5.2 at `medium`.
-- Plan gate on an epic (three or more dependent slices, or any critical epic) → before
-  wave 1, send the plan, the shared contract and the slice list to Fable 5.2 at `high` in
-  fresh context. It returns the structural risks, the missing contracts and a corrected
-  slice order; you still own the plan and write the work orders.
-- Epic close → one Fable 5.2 `high` judgment pass over the integrated diff against the
-  epic's acceptance before the run reports done. Slice-level review is unchanged.
+- Plan gate on a `sev:1` or `sev:2` epic, or any critical-class epic → before wave 1,
+  send the plan, the shared contract and the slice list to a fresh-context reviewer that
+  is not the model that wrote the plan: Fable 5.2 at `high` when Opus 5.5 orchestrates;
+  Opus 5.5 at `high` whenever Fable 5.2 wrote the plan (a `sev:1` epic, or any epic
+  started on Fable). When Opus wrote the
+  plan and Fable cannot be used at all, GPT-6.1 Sol at `xhigh` does the whole check (the
+  one case where Sol judges a plan). It returns the structural
+  risks, the missing contracts and a corrected slice order; the orchestrator still owns
+  the plan and writes the work orders. Other epics get no plan gate.
+- Epic close on a `sev:1` or `sev:2` epic, or any critical-class epic → one judgment
+  pass over the integrated diff against the epic's acceptance before the run reports
+  done, by a model other than the orchestrator's: Fable 5.2 at `high` when Opus 5.5
+  orchestrated; Opus 5.5 at `high` in fresh context beside GPT-6.1 Sol at `xhigh` when
+  Fable 5.2 orchestrated; GPT-6.1 Sol at `xhigh` alone when Opus orchestrated and Fable
+  cannot be used. Slice-level review is unchanged. Other epics
+  close on the orchestrator's own read.
+- Severity (10 Nov 2026) → every issue and epic carries one label, `sev:1` to `sev:4`,
+  the worse of its impact and its risk (definitions in `~/.claude/CLAUDE.md`, "Severity").
+  It sets the queue, who orchestrates (Fable 5.2 for `sev:1` epics, Opus 5.5 otherwise)
+  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review with the
+  Opus `verify-lane` at `xhigh`; severity never lowers review depth. Older labels set a
+  floor: `priority:critical`, `priority:p0`, `urgent` → at least `sev:1`; `priority:high`,
+  `priority:p1`, `priority:blocking`, `revenue` → at least `sev:2`.
 - Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
   approach after one retry, a diagnosis) asks Fable 5.2 that one question with the
   evidence before the whole lane is escalated. On the Claude side that is the native
@@ -245,7 +262,8 @@ something up; never at `xhigh` or `max` by default.
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
-    (`high`; `xhigh` for money, auth, personal data, migrations, production data; 31 Oct 2026).
+    (`high`; `xhigh` for money, auth, personal data, migrations, production data and every
+    `sev:1` item; 31 Oct 2026).
     Fable 5.2 at `high` only when GPT-6.1 Sol cannot run. Unchanged for now: the 31 Oct
     reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
     Fable 5.2, so a head-to-head on past critical diffs runs in
@@ -258,7 +276,7 @@ something up; never at `xhigh` or `max` by default.
     at `high`, labelled same family.
   - Luna never reviews.
   Beyond the class rules (`xhigh` on critical work; the Opus `verify-lane` at `xhigh` on
-  money, auth, personal data, migrations and production data), raise review effort only
+  money, auth, personal data, migrations, production data and every `sev:1` item), raise review effort only
   after an observed failure, and record the reason.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right. Luna does not
