@@ -50,7 +50,7 @@ MIN_ORDER_BYTES = 400
 CHAIN_LIMIT, CHAIN_WINDOW = 3, 2 * 3600
 PERMISSION_MODES = ('default', 'acceptEdits', 'plan', 'manual', 'dontAsk', 'auto', 'bypassPermissions')
 GONE_CODES = ('terminal_handle_stale', 'terminal_not_found')
-MODEL_ALIASES = {'claude-opus-5-5': 'opus', 'claude-fable-5-1': 'fable'}
+MODEL_ALIASES = {'claude-opus-5-5': 'opus', 'claude-fable-5-2': 'fable', 'claude-fable-5-1': 'fable'}
 
 
 def state_dir():

@@ -152,17 +152,21 @@ human reads and judges the author by.
 | model       | cost/task | reasoning | autonomy | steerability | taste | writing |
 |-------------|-----------|-----------|----------|--------------|-------|---------|
 | opus-5.5    | 9         | 9.3       | 9.3      | 7.5 †        | 9 †   | 8.5 †   |
-| fable-5.1   | 5         | 9.2       | 8.8      | 8.5          | 9     | 9       |
+| fable-5.2 ¶ | 6         | 9.6       | 9.5      | 8.5          | 9     | 9       |
 | gpt-6.1-sol | 9.5       | 8.9 §     | 9.1 §    | 9 §          | 5.5 § | 6.5 §   |
 | gpt-6-luna  | 10        | 7.2 ‡     | 7.4 ‡    | 8.5 ‡        | 4 ‡   | 6 ‡     |
 
 † Provisional (22 Sep 2026): the only evidence so far is Anthropic's own and early-tester
 quotes. Re-rate by 6 Oct 2026 from two weeks of lanes. The `opus` alias resolves to Opus 5.5
-(`claude-opus-5-5`); `fable` resolves to Fable 5.1 (`claude-fable-5-1`).
+(`claude-opus-5-5`); `fable` resolves to Fable 5.2 (`claude-fable-5-2`).
 
 ‡ Provisional (23 Sep 2026): GPT-6 Luna was released on 22 Sep 2026. These ratings are provisional internal routing estimates, not vendor or Artificial Analysis scores; steerability, taste and writing are unmeasured. Re-rate by 7 Oct 2026.
 
 § Provisional (29 Sep 2026): vendor and Vellum evidence for GPT-6.1 Sol. Re-rate by 13 Oct 2026.
+
+The †, ‡ and § ratings are past their re-rate dates (6, 7 and 13 Oct 2026); re-rate them by 24 Nov 2026.
+
+¶ Provisional (10 Nov 2026), vendor evidence only: Anthropic's 9 Nov launch table puts Fable 5.2 (`claude-fable-5-2`, the `fable` alias) ahead of Opus 5.5 on every row except one unlabelled Elo row. Steerability, taste and writing are carried over from Fable 5.1, unmeasured. Re-rate by 24 Nov 2026 from `bench-factory/tools/model-evals`. It replaces the Fable 5.1 row; Fable 5.1 has left routing. It costs $8/$40 per Mtok (Opus 5.5 $4/$20). Its cost-per-task claims compare with Opus 5.5 at its best-scoring effort, not at `high`, so they do not show it is cheaper per task than Opus 5.5 `high` lanes.
 
 The orchestrator instructions in this section apply to GPT-6.1 Sol; Luna follows its
 worker role and hands anything needing judgment back to the parent. Your taste is a
@@ -183,11 +187,13 @@ When axes conflict for anything that ships: **the axis the lane is about (reason
 plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 
 Effort: Opus 5.5 at `high` for implementation (since 19 Oct 2026), `medium` for volume writing. `high` is the ceiling
-for Opus 5.5 except review lanes (`xhigh` allowed); when another lane at `high` falls short, move to Fable 5.1 at `high` or a
+for Opus 5.5 except review lanes (`xhigh` allowed); when another lane at `high` falls short, move to Fable 5.2 at `high` or a
 cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go to
 `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never
-`max` by default. Fable 5.1 runs at `high`, and never at `low` for anything that must
-look something up.
+`max` by default. Fable 5.2 runs at `high` by default and at `medium` for research,
+agentic search, synthesis and adviser questions sent as an `Agent` call (the native
+adviser's effort is not documented); never at `low` for anything that must look
+something up; never at `xhigh` or `max` by default.
 
 - Implementation, refactors, migrations, terminal, CI and infra → `opus` (Opus 5.5) via
   `ask-claude`, at `high`. Keep the lane yourself at
@@ -200,14 +206,31 @@ look something up.
   first-pass checks) → Luna at `high`. A stronger model reads its output before anything
   acts on it.
 - Messy repo-level bug hunts → `opus` at `high`. The second attempt is you at `high`
-  (cross-family) or `fable` at `high`. Not Luna: a bug hunt is judgment work.
+  (cross-family); Fable 5.2 at `high` when both have missed. Not Luna: a bug hunt is judgment work.
 - Long-horizon lanes (hours, or across sessions) → `opus` at `high`, with the
-  unattended-lane paragraph below in the order. `fable` at `high` for ambiguous
-  architecture or deep research, or when Opus 5.5 has fallen short. Documents,
-  spreadsheets and decks from a blank page → `opus`, with `fable` as the escalation.
+  unattended-lane paragraph below in the order. Fable 5.2 at `high` for ambiguous
+  architecture, or when Opus 5.5 has fallen short. Documents, spreadsheets, decks,
+  proposals and pricing papers from a blank page → `opus` for routine and internal work,
+  with Fable 5.2 at `high` as the first escalation; Fable 5.2 at `high` starts
+  client-facing deliverables.
   Browser-, ops- or automation-shaped long lanes can stay with you, with
   `model_context_window` raised for the lane (272K by default under a ChatGPT login).
-- Anything user-facing (UI, copy in a UI, API design) → `opus` at `high`; `fable` at
+- Research and synthesis (deep research, agentic search, reading many sources into one
+  finding) → Fable 5.2 at `medium`.
+- Plan gate on an epic (three or more dependent slices, or any critical epic) → before
+  wave 1, send the plan, the shared contract and the slice list to Fable 5.2 at `high` in
+  fresh context. It returns the structural risks, the missing contracts and a corrected
+  slice order; you still own the plan and write the work orders.
+- Epic close → one Fable 5.2 `high` judgment pass over the integrated diff against the
+  epic's acceptance before the run reports done. Slice-level review is unchanged.
+- Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
+  approach after one retry, a diagnosis) asks Fable 5.2 that one question with the
+  evidence before the whole lane is escalated. On the Claude side that is the native
+  adviser where the session has `advisorModel` set (when enabled; effort not documented),
+  otherwise an `Agent` call with `model: "fable"`, `effort: "medium"`. From Codex, `ask-claude -m fable` with
+  the question (`ask-claude` sets no effort, so the call runs at Claude Code's default for
+  Fable 5.2, which is `medium`). The adviser answers; it does not take over the work.
+- Anything user-facing (UI, copy in a UI, API design) → `opus` at `high`; Fable 5.2 at
   `high` when the surface is critical. The order names the stock patterns to avoid (a
   cream or off-white background, italic accent words in headings, numbered "01 / 02 / 03"
   section labels, monospace labels, pill-shaped buttons). **Your taste rating is a provisional
@@ -215,7 +238,7 @@ look something up.
 - Writing, volume or structured → `opus` at `medium`, with the no-mannered-prose rule in
   the order.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
-  `fable` at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
+  Fable 5.2 at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
 - Reviews → always a different model from the author (29 Sep 2026), except the critical
   judgment review (`verify-lane`, Opus 5.5 in fresh context beside your `xhigh` review,
@@ -224,6 +247,10 @@ look something up.
     orchestrator's own read of the diff.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
     (`high`; `xhigh` for money, auth, personal data, migrations, production data; 31 Oct 2026).
+    Fable 5.2 at `high` only when GPT-6.1 Sol cannot run. Unchanged for now: the 31 Oct
+    reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
+    Fable 5.2, so a head-to-head on past critical diffs runs in
+    `bench-factory/tools/model-evals`; decide by 24 Nov 2026.
   - Fable-authored → `opus` at `high`.
   - GPT-6.1 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
     fresh-context GPT-6.1 Sol reviewer at `xhigh`, labelled `same-model, fresh context`,
@@ -253,8 +280,10 @@ within 20 minutes"), set somewhat above what you want spent, and keep your own t
 also give a fan-out cap. Treat a text-only ending as a report, not proof the work is done:
 check its work-list and name the open items when you send it back.
 
-**Fable 5.1 orders** also say "request every independent item in one response" and
-"targeted edits only"; at `low` it answers from memory.
+**Fable 5.2 orders** state the outcome, the audience, the sources to read and the finish
+line, not a step list. Slice the work only where slices are independent. They also say
+"request every independent item in one response" and "targeted edits only"; at `low` it
+answers from memory (observed on Fable 5.1; not yet checked on 5.2).
 
 **Unattended-lane paragraph.** This is Anthropic's wording from the Opus 5.5 prompting
 guide. Put it at the end of every order you dispatch to an Opus 5.5 lane.

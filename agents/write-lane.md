@@ -1,6 +1,6 @@
 ---
 name: write-lane
-description: Conductor's high-stakes writing lane. Use for prose a human will read and judge the author by — a counterparty email, a proposal, an investor or board document, a script or narration, the final edit of a draft another lane produced. Pinned to Fable 5.1 at high effort so voice-critical work does not silently inherit a low session effort or a cheaper model. Volume writing (prompt packages, generated-video blocks, storyboards, internal docs, first drafts) goes to an Opus 5.5 lane at medium, not here.
+description: Conductor's high-stakes writing lane. Use for prose a human will read and judge the author by — a counterparty email, a proposal, an investor or board document, a script or narration, the final edit of a draft another lane produced. Pinned to `fable` at high effort (Fable 5.2 since 10 Nov 2026) so voice-critical work does not silently inherit a low session effort or a cheaper model. Volume writing (prompt packages, generated-video blocks, storyboards, internal docs, first drafts) goes to an Opus 5.5 lane at medium, not here.
 model: fable
 effort: high
 ---

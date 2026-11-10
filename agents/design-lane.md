@@ -1,6 +1,6 @@
 ---
 name: design-lane
-description: Conductor's taste lane. Use for user-facing surfaces where "looks right" is the acceptance test — components, layout, visual grammar, copy, API shape. Pinned to Opus 5.5 at high effort (its ceiling in Conductor routing) so taste-critical work does not silently inherit a low session effort. For a critical surface (a client-facing deliverable or a flagship UI surface), dispatch Fable 5.1 at high instead (27 Sep 2026).
+description: Conductor's taste lane. Use for user-facing surfaces where "looks right" is the acceptance test — components, layout, visual grammar, copy, API shape. Pinned to Opus 5.5 at high effort (its ceiling in Conductor routing) so taste-critical work does not silently inherit a low session effort. For a critical surface (a client-facing deliverable or a flagship UI surface), dispatch Fable 5.2 at high instead (27 Sep 2026; Fable 5.2 replaced Fable 5.1 on 10 Nov 2026).
 model: opus
 effort: high
 experimental:
