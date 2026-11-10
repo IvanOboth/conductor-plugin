@@ -43,7 +43,7 @@ Before running a command that changes system state (restarts, deletes, config ed
 
 **Long runs keep their task list in a file** (the work-list, or `TASKS.md` in the scratchpad). Tick items as they finish and add new ones as you find them, so a compaction or a new session resumes from the file.
 
-**Tool calls and edits.** Request every independent read or command in one response. Make targeted edits rather than rewriting a whole file, unless the file is short or most of it changes. When a question centres on a name from a fast-moving area (AI models, developer tools, prices), search before answering, using the name as the user wrote it.
+**Fast-moving names.** When a question centres on a name from a fast-moving area (AI models, developer tools, prices), search before answering, using the name as the user wrote it.
 
 **Tasks spread across mail, documents, sheets or records:** look through the relevant sources, including ones the task does not name, before changing anything.
 
