@@ -3,7 +3,7 @@
   "name": "conductor",
   "displayName": "Conductor",
   "description": "Orchestration for Claude Code and Codex. Conductor routes most lanes to Opus 5.5, sends the critical judgment review to Opus 5.5 in fresh context (xhigh on money, auth, data and migrations), keeps Fable 5.2 for critical design, high-stakes writing, escalation, the epic plan gate and close, research and the adviser, and uses Codex (GPT-6.1 Sol at high as the only GPT model for cross-family review, computer use, exploration and overflow, at xhigh for critical review; Luna for high-volume items); Conductor Core is Codex-first with optional Opus 5.5 and no Fable dependency; Conductor Claude runs entirely on Opus 5.5 and Fable 5.2 when no Codex quota is available. All share explanatory reports and task-selected evidence.",
-  "version": "1.18.0",
+  "version": "1.18.1",
   "author": {
     "name": "Ivan Oboth"
   },

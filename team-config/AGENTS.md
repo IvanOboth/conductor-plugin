@@ -228,8 +228,8 @@ something up; never at `xhigh` or `max` by default.
   evidence before the whole lane is escalated. On the Claude side that is the native
   adviser where the session has `advisorModel` set (when enabled; effort not documented),
   otherwise an `Agent` call with `model: "fable"`, `effort: "medium"`. From Codex, `ask-claude -m fable` with
-  the question (`ask-claude` sets no effort, so the call runs at Claude Code's default for
-  Fable 5.2, which is `medium`). The adviser answers; it does not take over the work.
+  the question (`ask-claude` has no effort option, so the call runs at the home's
+  `effortLevel`, which is `high` on the bench). The adviser answers; it does not take over the work.
 - Anything user-facing (UI, copy in a UI, API design) → `opus` at `high`; Fable 5.2 at
   `high` when the surface is critical. The order names the stock patterns to avoid (a
   cream or off-white background, italic accent words in headings, numbered "01 / 02 / 03"
