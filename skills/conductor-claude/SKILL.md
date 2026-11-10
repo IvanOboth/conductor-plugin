@@ -6,7 +6,7 @@ effort: high
 
 # Conductor Claude
 
-Run the full Conductor workflow with no Codex lane. Opus 5.5 and Fable 5.2 carry every role. Opus 5.5 is the default for almost every lane, including design and the routine review of Opus-authored work. Fable 5.2 at `high` reviews and designs **critical** work, writes the high-stakes prose, takes ambiguous architecture, runs the plan gate and the epic close on an epic, and takes over when Opus 5.5 at `high` falls short; at `medium` it runs research and synthesis lanes and answers adviser questions sent as an `Agent` call. Effort is the first setting to change, and `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh` (31 Oct 2026).
+Run the full Conductor workflow with no Codex lane. Opus 5.5 and Fable 5.2 carry every role. Opus 5.5 is the default for almost every lane, including design and the routine review of Opus-authored work. Fable 5.2 at `high` reviews and designs **critical** work, writes the high-stakes prose, takes ambiguous architecture, orchestrates a `sev:1` epic (whose plan gate and epic close then go to Opus 5.5 in fresh context), runs the plan gate and the epic close on a `sev:2` epic, and takes over when Opus 5.5 at `high` falls short; at `medium` it runs research and synthesis lanes and answers adviser questions sent as an `Agent` call. Effort is the first setting to change, and `high` is the ceiling for Opus 5.5, except review lanes, which may run at `xhigh` (31 Oct 2026).
 
 Changed 22 Sep 2026: Opus 5.5 replaced Opus 5 in every row, and no Opus lane runs above `high` (since 31 Oct 2026 a review lane may run at `xhigh`).
 
@@ -15,6 +15,8 @@ Changed 27 Sep 2026: Fable 5.1 review and Fable 5.1 design are for critical work
 Changed 10 Nov 2026: Fable 5.2 (`claude-fable-5-2`) replaced Fable 5.1 in every Fable row, and Fable 5.1 left routing. New Fable 5.2 rows: the plan gate and the epic close at `high`, research and synthesis at `medium`, and the adviser (`medium` for the `Agent` call; the native adviser's effort is not documented). The routing contract is in the shared conductor skill (**Model selection contract — 10 November 2026**).
 
 **Critical** means any of: it deploys to production or changes production data; auth, payments, money or personal data; a schema or data migration; anything hard to reverse; a client-facing deliverable (proposal, deck, flagship UI surface); or the routing and agent configuration itself. Everything else is routine. Decide it per order when you write the order, and write it into the order.
+
+**Severity** (10 Nov 2026): every issue and epic carries one label, `sev:1` to `sev:4`, the worse of its impact and its risk; in this profile a `sev:1` epic is orchestrated by Fable 5.2 with its plan gate and epic close by Opus 5.5 in fresh context, a `sev:2` epic gets both gates from Fable 5.2, and `sev:3` and `sev:4` epics get neither (definitions in the "Severity" paragraph of `~/.claude/CLAUDE.md`). A `sev:1` item always gets the critical review; severity never lowers review depth.
 
 **The purpose is unchanged from the mixed profile: finish ambitious work.** A migration across a repository, a feature with design and data and copy strands, an epic that spans sessions, a long document or research build. Losing the Codex lane changes who does the work and how it is checked; it does not change how much work a run should attempt. Do not read this profile as a reason to scale the ambition down — read it as the routing and review policy that lets the same ambition proceed on one family.
 
@@ -76,14 +78,16 @@ Use them in this order. The first is the largest lever and it is free.
 
 | Work | Model | Effort and reason |
 |---|---|---|
-| Grounding, plan, work orders, integration, final acceptance | orchestrator (Opus 5.5, or Fable 5.2 if it holds the seat) | high — orchestrator judgment |
+| Grounding, plan, work orders, integration, final acceptance | orchestrator (Opus 5.5, or Fable 5.2 if it holds the seat; Fable 5.2 orchestrates a `sev:1` epic, Opus 5.5 when the account cannot use Fable) | high — orchestrator judgment |
 | Mechanical edits with exact anchors, one item per lane | opus (`bulk-lane`) | low — established pattern, clear acceptance |
 | Well-specified implementation against a clear contract | opus | high — implementation runs at high (Ivan, 19 Oct 2026) |
 | Terminal, DevOps, infra, CI, migrations, SRE | opus | high — state, retries and recovery paths |
 | Messy repo-level bug hunt, unknown scope | opus | high; on observed failure, Fable 5.2 at high |
 | Long-horizon repo or document work (hours, or across sessions), including routine and internal documents, sheets and decks from a blank page | opus | high — the order carries the unattended-lane paragraph; Fable 5.2 at high is the first escalation, and starts client-facing deliverables |
-| Plan gate before wave 1 of an epic (three or more dependent slices, or any critical epic), fresh context | fable | high — returns the structural risks, the missing contracts and a corrected slice order; the orchestrator still owns the plan |
-| Epic close: one judgment pass over the integrated diff against the epic's acceptance | fable | high — before the run reports done; slice-level review is unchanged |
+| Plan gate before wave 1 of a `sev:2` epic, fresh context | fable | high — returns the structural risks, the missing contracts and a corrected slice order; the orchestrator still owns the plan |
+| Plan gate before wave 1 of a `sev:1` epic (Fable 5.2 wrote the plan), fresh context | opus | high — the same check by a different model from the plan's author |
+| Epic close on a `sev:2` epic: one judgment pass over the integrated diff against the epic's acceptance | fable | high — before the run reports done; slice-level review is unchanged |
+| Epic close on a `sev:1` epic (Fable 5.2 orchestrated), fresh context | opus | high — the same pass by a different model from the orchestrator; `sev:3` and `sev:4` epics get no plan gate or close |
 | Ambiguous architecture, or any lane where Opus 5.5 at high has fallen short | fable | high — the escalation step past the Opus ceiling |
 | Research, agentic search and synthesis across many sources | fable | medium — never `low` for anything that must look something up |
 | Adviser: one question from a stuck lane or the orchestrator, with the evidence | fable — the native adviser where `advisorModel` is set (when enabled; see **Where Fable 5.2 fits** in the shared conductor skill), otherwise `Agent` with `model: 'fable'`, `effort: 'medium'` | `medium` for the `Agent` call; not documented for the native adviser — it answers; it does not take over the work |
@@ -199,7 +203,7 @@ The shared **What earns an agent** and **Sizing the fan-out** sections still gov
 What changes is that every lane now draws on one pool. Budget before dispatching, not after:
 
 - **Count lanes × effort before the first dispatch.** A twelve-lane `high` fan-out and a twelve-lane `low` fan-out are not the same run. If the work-list will not fit, cut coverage deliberately at the top — take the top-N items, drop retries, sample — and `log()` what you dropped so a partial sweep never reads as a complete one. Discovering the ceiling half-way through leaves a run nobody can finish or trust.
-- **Default to Opus 5.5 on price.** Opus 5.5 costs $4/$20 per Mtok with cache reads at $0.20; Fable 5.2 costs $8/$40 with cache reads at $0.20 (10 Nov 2026). Opus 5.5 is cheaper on input and output and the same on cache reads, and no published measure shows Fable 5.2 cheaper per task than an Opus 5.5 `high` lane, so spend Fable only on the rows the routing table gives it: review and design of critical work, high-stakes writing, ambiguous architecture, the plan gate and the epic close, research and adviser `Agent` calls at `medium`, and the escalation past `high`. Without Codex, effort and the Opus/Fable split are the cost levers you have left.
+- **Default to Opus 5.5 on price.** Opus 5.5 costs $4/$20 per Mtok with cache reads at $0.20; Fable 5.2 costs $8/$40 with cache reads at $0.20 (10 Nov 2026). Opus 5.5 is cheaper on input and output and the same on cache reads, and no published measure shows Fable 5.2 cheaper per task than an Opus 5.5 `high` lane, so spend Fable only on the rows the routing table gives it: review and design of critical work, high-stakes writing, ambiguous architecture, the main loop of a `sev:1` epic, the plan gate and the epic close on a `sev:2` epic, research and adviser `Agent` calls at `medium`, and the escalation past `high`. Without Codex, effort and the Opus/Fable split are the cost levers you have left.
 - **Wide and cheap beats few and long.** On resume, cached results stop at the first unfinished lane and everything after it re-runs. Many small lanes preserve more progress. That matters more here, because the thing most likely to interrupt a run is the limit itself.
 - **Tighter orders are cheaper than bigger models.** The ten minutes of grounding that makes a `low` lane succeed is the cheapest token you will spend all run.
 

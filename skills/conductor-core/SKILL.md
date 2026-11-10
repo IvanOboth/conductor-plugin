@@ -5,7 +5,7 @@ description: Orchestrate Codex-first work with GPT-6.1 Sol owning the run, GPT-6
 
 # Conductor Core
 
-Run the full Conductor workflow on Codex, with GPT-6.1 Sol as the owner. GPT-6.1 Sol and Luna take the worker lanes named in the routing table. Opus is an optional contributor; Fable is never selected. Core is a routing profile in the Conductor plugin, not a reduced-capability mode. Since 22 Sep 2026 the default mixed-model `conductor` profile routes most execution to Opus 5.5, so choose Core when Claude quota is unavailable or the user wants a Codex-first run.
+Run the full Conductor workflow on Codex, with GPT-6.1 Sol as the owner. GPT-6.1 Sol and Luna take the worker lanes named in the routing table. Opus is an optional contributor; Fable is never selected. A `sev:1` epic under Core is still orchestrated by GPT-6.1 Sol, as before. Core is a routing profile in the Conductor plugin, not a reduced-capability mode. Since 22 Sep 2026 the default mixed-model `conductor` profile routes most execution to Opus 5.5, so choose Core when Claude quota is unavailable or the user wants a Codex-first run.
 
 **Core exists to finish ambitious work, not to economise on it.** Long-running migrations, ops and automation lanes, multi-module features, epics that span sessions. Review and verification are part of that machinery, not its point. Core has no artificial worker cap for exactly this reason: the run is sized by the work.
 
@@ -45,6 +45,8 @@ Use the harness's real concurrency and completion mechanisms. Only the Claude ha
 **GPT-6.1 Sol owns the run and is the primary worker** (29 Sep 2026; it replaced GPT-6 Astra and GPT-6 Sol, which are no longer in routing). Writing code is its weak spot (Ivan's judgment), so every GPT-6.1 Sol diff gets the separate review below. Luna is a worker tier only and never reviews. A Luna lane whose work turns out ambiguous or stateful goes back to the parent for re-routing to GPT-6.1 Sol. GPT-6.1 Sol figures are provisional vendor figures (re-rate by 13 Oct 2026); Luna figures are provisional (re-rate by 7 Oct 2026).
 
 **Critical** means any of: it deploys to production or changes production data; auth, payments, money or personal data; a schema or data migration; anything hard to reverse; a client-facing deliverable (proposal, deck, flagship UI surface); or the routing or agent configuration itself. Everything else is routine.
+
+**Severity** (10 Nov 2026): every issue and epic carries one label, `sev:1` to `sev:4`, the worse of its impact and its risk; it sets the queue, and under Core it moves no lane to Fable (definitions in the "Severity" paragraph of `~/.claude/CLAUDE.md`). A `sev:1` item always gets the critical review; severity never lowers review depth.
 
 **GPT-6.1 Sol and Luna default to `high`.** GPT-6.1 Sol runs at `xhigh` for the fresh-context review of GPT-6.1 Sol work, for critical reviews, and as the retry when a `high` pass came back thin; never `max` by default. Select another effort only for an explicit user request or a concrete task-specific reason recorded in the work order; role names and duration alone do not raise effort. This policy overrides conflicting effort defaults in supporting skills. A skill cannot change the effort of an already-running parent or worker.
 
