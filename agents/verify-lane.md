@@ -37,6 +37,7 @@ Rules for this lane:
 - **Report the failure scenario concretely** when you refute: the inputs or state, and the wrong output or crash that results.
 - **List only problems that block merge: file, line, why it is wrong, and how to show it fails.**
 - **Mark anything you could not confirm and say where you looked.**
+- **In a second or later round** (the order names the round and lists the earlier findings; 11 Nov 2026), review only the fixes for those findings and what the fixes changed. Mark a finding `blocking` only when it is significant: an earlier blocking finding that is still not fixed; the change not doing what it is for; a wrong amount or figure; data lost or recorded wrongly; a security or access fault; personal data exposed; behaviour the base branch has and the change breaks; a step that is hard to reverse; a red check, or another merge gate the change fails. If you judge another finding significant, mark it `blocking` and say why. Mark every other finding `follow-up`; the orchestrator files it as an issue. This does not lower how hard you look.
 - **Do not spawn subagents.**
 
 Return a verdict — confirmed or refuted — the evidence you used (paths, line numbers, command output), and, if refuted, the concrete failure scenario.
