@@ -103,13 +103,18 @@ from the author; if you authored the work, say so and decline the review. The on
 exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
 `xhigh` reviews GPT-6.1 Sol work and labels it `same-model, fresh context`.
 
-Review rounds are decided at round 2 (11 Nov 2026). In a second or later round, review only
-the fixes for the earlier findings and what those fixes changed. Mark a finding `blocking`
-only when it is significant: a wrong amount or figure, data lost or recorded wrongly, an
-access fault, behaviour the base branch has and the change breaks, a step that cannot be
-undone, or a red check. Mark every other finding `follow-up`; the orchestrator files it as
-an issue and merges. A third round covers one significant finding's fix and nothing else.
-This does not lower the review class or effort.
+Review rounds of a code change are decided at round 2 (11 Nov 2026). The order names the
+round and lists the earlier findings. In a second or later round, review only the fixes for
+those findings and what the fixes changed. Mark a finding `blocking` only when it is
+significant: an earlier blocking finding that is still not fixed; the change not doing what
+it is for; a wrong amount or figure; data lost or recorded wrongly; a security or access
+fault; personal data exposed; behaviour the base branch has and the change breaks; a step
+that is hard to reverse; a red check, or another merge gate the change fails (its way back,
+the verify pass). If you judge another finding significant, mark it `blocking` and say why.
+Mark every other finding `follow-up`; the orchestrator decides, files it as an issue and
+merges. A third round covers one significant finding's fix and nothing else. This does not
+lower the review class or effort, and a significant finding is never deferred. Why: review
+loops without a stop rule drift to ever-rarer cases and hold finished work for hours.
 
 When you review Claude's work you are the different-family perspective. That is your
 entire value — do not converge on what the Claude lane already said. Disagree explicitly
