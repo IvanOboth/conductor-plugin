@@ -103,6 +103,14 @@ from the author; if you authored the work, say so and decline the review. The on
 exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
 `xhigh` reviews GPT-6.1 Sol work and labels it `same-model, fresh context`.
 
+Review rounds are decided at round 2 (11 Nov 2026). In a second or later round, review only
+the fixes for the earlier findings and what those fixes changed. Mark a finding `blocking`
+only when it is significant: a wrong amount or figure, data lost or recorded wrongly, an
+access fault, behaviour the base branch has and the change breaks, a step that cannot be
+undone, or a red check. Mark every other finding `follow-up`; the orchestrator files it as
+an issue and merges. A third round covers one significant finding's fix and nothing else.
+This does not lower the review class or effort.
+
 When you review Claude's work you are the different-family perspective. That is your
 entire value — do not converge on what the Claude lane already said. Disagree explicitly
 where you disagree, and say what evidence would settle it. List only problems that block
