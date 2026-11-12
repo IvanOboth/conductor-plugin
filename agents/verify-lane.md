@@ -11,9 +11,9 @@ description: >-
   31 Oct 2026 (Ivan; it was Fable 5.1): on 31 Oct 2026 Opus 5.5 matched or beat Fable 5.1 on every
   published benchmark at about 40% of the cost for the same tokens. That reason does not hold
   against Fable 5.2 (10 Nov 2026); the pin stays for now while a head-to-head on past critical diffs
-  runs in bench-factory/tools/model-evals, with a decision by 24 Nov 2026. Dispatch it with effort
-  xhigh when the change touches money, auth, personal data, a migration or production data, or
-  the item is `sev:1`. On
+  runs in bench-factory/tools/model-evals, with a decision by 24 Nov 2026. Dispatch it at high in every
+  case, money, auth, personal data, migrations, production data and `sev:1` items included
+  (Ivan, 12 Nov 2026: Opus reviews at xhigh are unnecessary, high is good enough). On
   Opus-authored work it is a same-model reviewer in fresh context, so give it the requirements and
   the diff, not the author's rationale, and label its verdict `same-model, fresh context`; the
   cross-family check is GPT-6.1 Sol at xhigh via codex-review, which always runs beside it on
