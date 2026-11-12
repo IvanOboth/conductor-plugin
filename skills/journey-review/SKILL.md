@@ -137,4 +137,4 @@ publish a report page.
 - Design of money or client-facing flows: Fable 5.2 at `high`, or Opus 5.5 `high` plus Fable review.
 - Implementation: Opus 5.5 at `high`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
   money, stock or a client-facing flow is critical: GPT-6.1 Sol at `xhigh` and an Opus 5.5 `verify-lane`
-  judgment review in fresh context (`xhigh` for money and stock) of the implementation itself, not only of the design.
+  judgment review at `high` in fresh context of the implementation itself, not only of the design.

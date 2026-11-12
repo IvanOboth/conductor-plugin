@@ -97,7 +97,7 @@ the row count matched). You are not the judge of whether it **looks** right.
 Since 29 Sep 2026, the cross-family review of Claude-authored work, routine and critical,
 goes to `gpt-6.1-sol` (via `codex-review`: `ask-codex -m gpt-6.1-sol --effort high`).
 Critical changes (see **Critical** above) run at `xhigh` (`ask-codex -m gpt-6.1-sol
---effort xhigh`) beside an Opus 5.5 fresh-context judgment review, and so does the retry when a `high`
+--effort xhigh`) beside an Opus 5.5 fresh-context judgment review at `high`, and so does the retry when a `high`
 review came back thin. You do not judge design. The reviewer is always a different model
 from the author; if you authored the work, say so and decline the review. The one
 exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
@@ -199,7 +199,7 @@ When axes conflict for anything that ships: **the axis the lane is about (reason
 plans and reviews, autonomy for execution) > steerability > taste > cost per task.**
 
 Effort: Opus 5.5 at `high` for implementation (since 19 Oct 2026), `medium` for volume writing. `high` is the ceiling
-for Opus 5.5 except review lanes (`xhigh` allowed); when another lane at `high` falls short, move to Fable 5.2 at `high` or a
+for Opus 5.5, review lanes included (Ivan, 12 Nov 2026); when a lane at `high` falls short, move to Fable 5.2 at `high` or a
 cross-family attempt, never `xhigh` or `max`. You and Luna run at `high`; you go to
 `xhigh` for critical reviews and as the retry when a `high` pass came back thin, never
 `max` by default. Fable 5.2 runs at `high` by default and at `medium` for research,
@@ -248,8 +248,8 @@ something up; never at `xhigh` or `max` by default.
 - Severity (10 Nov 2026) → every issue and epic carries one label, `sev:1` to `sev:4`,
   the worse of its impact and its risk (definitions in `~/.claude/CLAUDE.md`, "Severity").
   It sets the queue, who orchestrates (Fable 5.2 for `sev:1` epics, Opus 5.5 otherwise)
-  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review with the
-  Opus `verify-lane` at `xhigh`; severity never lowers review depth. Older labels set a
+  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review (you at
+  `xhigh`, the Opus `verify-lane` at `high`); severity never lowers review depth. Older labels set a
   floor: `priority:critical`, `priority:p0`, `urgent` → at least `sev:1`; `priority:high`,
   `priority:p1`, `priority:blocking`, `revenue` → at least `sev:2`.
 - Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
@@ -275,8 +275,8 @@ something up; never at `xhigh` or `max` by default.
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
-    (`high`; `xhigh` for money, auth, personal data, migrations, production data and every
-    `sev:1` item; 31 Oct 2026).
+    (`high`, money, auth, personal data, migrations, production data and every `sev:1`
+    item included; 31 Oct 2026, `high` throughout since 12 Nov 2026).
     Fable 5.2 at `high` only when GPT-6.1 Sol cannot run. Unchanged for now: the 31 Oct
     reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
     Fable 5.2, so a head-to-head on past critical diffs runs in
@@ -288,9 +288,9 @@ something up; never at `xhigh` or `max` by default.
   - Luna-authored → `opus` at `high` (cross-family). Only in Conductor Core: GPT-6.1 Sol
     at `high`, labelled same family.
   - Luna never reviews.
-  Beyond the class rules (`xhigh` on critical work; the Opus `verify-lane` at `xhigh` on
-  money, auth, personal data, migrations, production data and every `sev:1` item), raise review effort only
-  after an observed failure, and record the reason.
+  Beyond the class rule (`xhigh` on critical work), raise your review effort only after an
+  observed failure, and record the reason. An Opus review stays at `high`; when it falls
+  short, move to another model.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
