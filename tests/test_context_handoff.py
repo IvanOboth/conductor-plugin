@@ -11,6 +11,29 @@ WATCH = ROOT / 'scripts/context-watch.py'
 HANDOFF = ROOT / 'bin/conductor-handoff'
 INSTALL = ROOT / 'scripts/install-context-hook.py'
 
+FAKE_T3 = '''#!/usr/bin/env python3
+import json, os, sys
+stdin = sys.stdin.read() if '-' in sys.argv[1:] else ''
+open(os.environ['T3_LOG'], 'a').write(json.dumps({'argv': sys.argv[1:], 'stdin': stdin}) + '\\n')
+cmd = sys.argv[1:3]
+mode = os.environ.get('T3_MODE', '')
+if cmd == ['project', 'add']:
+    if mode == 'exists':
+        sys.stderr.write("ERROR: ProjectAlreadyExistsError: An active project already exists\\n    at x (y)\\n"); sys.exit(1)
+elif cmd == ['thread', 'start']:
+    if mode == 'lost':
+        sys.stderr.write('connection reset\\n'); sys.exit(1)
+    print(json.dumps({'threadId': 'mcp:new', 'runId': 'run:1', 'status': 'running', 'reply': None, 'error': None}))
+elif cmd == ['thread', 'show']:
+    tid = sys.argv[3]
+    title = 'Old conductor run' if tid == 'thr-old' else 'x'
+    print(json.dumps({'thread': {'threadId': tid, 'title': title, 'archived': False,
+                                 'link': 'https://app.t3.codes/threads/env/' + tid}, 'messages': []}))
+elif cmd == ['thread', 'list']:
+    rows = [{'threadId': 'mcp:found', 'title': os.environ.get('T3_LIST_TITLE', ''), 'createdAt': '2099-01-01T00:00:00.000Z'}]
+    print(json.dumps(rows if os.environ.get('T3_LIST_TITLE') else []))
+'''
+
 FAKE_ORCA = '''#!/usr/bin/env python3
 import json, os, sys
 open(os.environ['ORCA_LOG'], 'a').write(json.dumps(sys.argv[1:]) + '\\n')
@@ -228,6 +251,9 @@ class HandoffTest(unittest.TestCase):
         self.bin.mkdir()
         (self.bin / 'orca').write_text(FAKE_ORCA)
         (self.bin / 'orca').chmod(0o755)
+        # The real t3 must never be reached from a test: a run inside T3 Code once started a real thread here.
+        (self.bin / 't3').write_text('#!/bin/sh\necho "test used the t3 stand-in without t3_env()" >&2\nexit 99\n')
+        (self.bin / 't3').chmod(0o755)
         self.log = self.dir / 'orca.log'
         self.state = self.dir / 'state'
         sd = self.state / 'conductor/context'
@@ -243,12 +269,75 @@ class HandoffTest(unittest.TestCase):
                    ORCA_SEND=str(self.dir / 'send-mode'),
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', CLAUDE_EFFORT='high',
                    ORCA_TERMINAL_HANDLE='term_old', ORCA_WT=str(self.wt.resolve()))
+        env.pop('T3CODE_THREAD_ID', None)  # a test run from inside T3 Code must not switch these tests to T3
         env.update(env_extra)
         return subprocess.run([sys.executable, str(HANDOFF), '--order', str(self.order), *args],
                               capture_output=True, text=True, env=env, cwd=self.wt)
 
     def calls(self):
         return [json.loads(l) for l in self.log.read_text().splitlines()] if self.log.exists() else []
+
+    def t3_env(self, **extra):
+        (self.bin / 't3').write_text(FAKE_T3)
+        (self.bin / 't3').chmod(0o755)
+        self.t3_log = self.dir / 't3.log'
+        return dict(T3CODE_THREAD_ID='thr-old', T3_LOG=str(self.t3_log), ORCA_TERMINAL_HANDLE='', **extra)
+
+    def t3_calls(self):
+        return [json.loads(l) for l in self.t3_log.read_text().splitlines()] if self.t3_log.exists() else []
+
+    def test_in_t3_the_successor_is_a_t3_thread(self):
+        p = self.run_handoff(**self.t3_env())
+        self.assertEqual(p.returncode, 0, p.stderr)
+        calls = self.t3_calls()
+        self.assertEqual(calls[0]['argv'][:3], ['thread', 'show', 'thr-old'])  # the title comes from this thread
+        add = next(c['argv'] for c in calls if c['argv'][:2] == ['project', 'add'])
+        self.assertEqual(add[2], str(self.wt.resolve()))
+        start = next(c for c in calls if c['argv'][:2] == ['thread', 'start'])
+        argv = start['argv']
+        self.assertEqual(argv[2:4], [str(self.wt.resolve()), '-'])
+        self.assertEqual(argv[argv.index('--model') + 1], 'claude-opus-5-5')
+        self.assertEqual(argv[argv.index('--provider') + 1], 'claudeAgent')
+        self.assertEqual(argv[argv.index('--title') + 1], 'Old conductor run (cont.)')
+        self.assertTrue(start['stdin'].startswith('/conductor-claude Read '))
+        self.assertIn('(T3 thread thr-old)', start['stdin'])
+        self.assertIn('cd there before anything else', start['stdin'])
+        self.assertFalse(self.calls())  # Orca is never called
+        self.assertIn('T3 sidebar', p.stdout)
+        self.assertIn('t3 thread send mcp:new', p.stdout)
+        marker = json.loads((self.state / 'conductor/context/s1.handoff.json').read_text())
+        self.assertEqual((marker['status'], marker['via'], marker['to_thread']), ('done', 't3', 'mcp:new'))
+        rows = [json.loads(l) for l in (self.wt / '.conductor/handoffs.jsonl').read_text().splitlines()]
+        self.assertEqual([r['status'] for r in rows], ['created', 'done'])
+        again = self.run_handoff(**self.t3_env())
+        self.assertEqual(again.returncode, 4)  # already handed off
+
+    def test_existing_t3_project_is_fine(self):
+        p = self.run_handoff(**self.t3_env(T3_MODE='exists'))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertTrue(any(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()))
+
+    def test_lost_t3_start_is_found_by_title_and_never_started_twice(self):
+        p = self.run_handoff(**self.t3_env(T3_MODE='lost'))
+        self.assertEqual(p.returncode, 5)
+        self.assertIn('cannot start a second one', p.stderr)
+        p2 = self.run_handoff(**self.t3_env(T3_LIST_TITLE='Old conductor run (cont.)'))
+        self.assertEqual(p2.returncode, 0, p2.stderr)
+        self.assertEqual(sum(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()), 1)
+        self.assertIn('mcp:found', p2.stdout)
+
+    def test_lost_t3_start_with_no_thread_found_stops(self):
+        self.run_handoff(**self.t3_env(T3_MODE='lost'))
+        p = self.run_handoff(**self.t3_env())
+        self.assertEqual(p.returncode, 5)
+        self.assertIn('Look in the T3 sidebar', p.stderr)
+        self.assertEqual(sum(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()), 1)
+
+    def test_via_orca_overrides_t3_detection(self):
+        p = self.run_handoff('--via', 'orca', **dict(self.t3_env(), ORCA_TERMINAL_HANDLE='term_old'))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertTrue(any(c[:2] == ['terminal', 'create'] for c in self.calls()))
+        self.assertFalse(any(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()))
 
     def test_hands_off_with_this_sessions_settings(self):
         p = self.run_handoff()
@@ -357,6 +446,7 @@ class HandoffTest(unittest.TestCase):
         env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', ORCA_LOG=str(self.log), ORCA_SLOW='1',
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', ORCA_TERMINAL_HANDLE='term_old',
                    ORCA_WT=str(self.wt.resolve()))
+        env.pop('T3CODE_THREAD_ID', None)
         procs = [subprocess.Popen([sys.executable, str(HANDOFF), '--order', str(self.order)], env=env, cwd=self.wt,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for _ in range(2)]
         self.assertEqual(sorted(p.wait() for p in procs), [0, 4])
