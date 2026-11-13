@@ -28,6 +28,14 @@ else the worktree of this session's own tab — and the launch command still cds
 into the target. If no listed worktree is available the handoff is refused,
 unless --allow-unlisted is passed.
 
+In T3 Code (the session's environment has T3CODE_THREAD_ID, or --via t3), the successor is a new T3 thread
+instead: `t3 project add <worktree>` (an existing project is fine), then `t3 thread start <worktree> - --provider
+claudeAgent --model <model> --title <title> --json` with the prompt on stdin. T3 threads take their effort from
+T3's default for the model (high on the bench) and have no fallback model, so --effort and a Fable fallback do not
+apply there, and the output says so. The thread id is recorded like a terminal handle; a rerun after a start whose
+answer was lost looks for a thread with the same title started since, and never starts a second one. Ivan sees the
+successor in the T3 sidebar, under the worktree's project.
+
 Exit codes: 0 handed off · 2 bad order or arguments · 3 Orca unavailable (the
 manual command is printed) · 4 already handed off, or chain guard (3 successors
 in 2 hours; --force overrides) · 5 Orca refused the terminal or the prompt, or
@@ -52,6 +60,7 @@ CHAIN_LIMIT, CHAIN_WINDOW = 3, 2 * 3600
 PERMISSION_MODES = ('default', 'acceptEdits', 'plan', 'manual', 'dontAsk', 'auto', 'bypassPermissions')
 GONE_CODES = ('terminal_handle_stale', 'terminal_not_found')
 MODEL_ALIASES = {'claude-opus-5-5': 'opus', 'claude-fable-5-2': 'fable', 'claude-fable-5-1': 'fable'}
+T3_MODELS = {'opus': 'claude-opus-5-5', 'fable': 'claude-fable-5-2'}
 
 
 def state_dir():
@@ -88,6 +97,131 @@ def orca(*args, timeout=60):
     if d.get('result'):
         return False, d['result']
     return False, {'error': d.get('error') or {'message': str(d)[:400]}}
+
+
+def t3(*args, stdin=None, timeout=120):
+    """Run a t3 CLI command: (ok, parsed JSON or text on success, error text on failure)."""
+    try:
+        p = subprocess.run([os.environ.get('CONDUCTOR_T3', 't3'), *args], input=stdin, capture_output=True,
+                           text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f'{type(exc).__name__}: {exc}'
+    if p.returncode:
+        lines = [l for l in (p.stderr + p.stdout).splitlines() if l.strip() and not l.lstrip().startswith('at ')]
+        return False, ' '.join(lines)[-400:]
+    try:
+        return True, json.loads(p.stdout) if p.stdout.strip() else {}
+    except ValueError:
+        return True, p.stdout.strip()
+
+
+def t3_thread(thread_id):
+    """(ok, thread dict or None): None when T3 says the thread is gone."""
+    ok, res = t3('thread', 'show', thread_id, '--json', timeout=30)
+    if ok and isinstance(res, dict):
+        return True, res.get('thread') or None
+    return (False, res) if 'no longer available' not in str(res) else (True, None)
+
+
+def t3_find_started(worktree, title, since):
+    """The id of a thread in the worktree's project with this title created at or after `since`, or None."""
+    ok, res = t3('thread', 'list', '--project', str(worktree), '--json', timeout=30)
+    rows = res if isinstance(res, list) else (res.get('threads') or []) if isinstance(res, dict) else []
+    for row in rows if ok else []:
+        # T3 writes ...T17:02:21.164Z and the marker ...T17:02:21+00:00: compare to the second.
+        if row.get('title') == title and (row.get('createdAt') or '')[:19] >= since[:19]:
+            return row.get('threadId')
+    return None
+
+
+def handoff_t3(a, worktree, title, model, effort, prompt, row, marker, marker_path, ledger):
+    """Start the successor as a T3 Code thread. Returns the exit code."""
+    slug = T3_MODELS.get(model, model)
+    if marker.get('status') == 'pending' and marker.get('via') == 't3':
+        found = marker.get('to_thread') or t3_find_started(worktree, marker.get('title', title), marker['at'])
+        if found:
+            ok, thread = t3_thread(found)
+            if not ok:
+                print(f'conductor-handoff: could not check pending successor thread {found}: {thread}\n'
+                      'Rerun when T3 answers; no second thread is started until it can.', file=sys.stderr)
+                return 5
+            if thread and not thread.get('archived'):
+                # T3 creates the thread before it dispatches the first message, so a failed start can leave an
+                # empty thread (review round 1 of conductor-plugin#45). It counts only once a run exists.
+                if not (thread.get('runCount') or thread.get('latestRunId')):
+                    marker['to_thread'] = found
+                    write_json(marker_path, marker)
+                    sent, res = t3('thread', 'send', found, '-', stdin=marker.get('prompt') or prompt, timeout=120)
+                    if not sent:
+                        print(f'conductor-handoff: pending successor thread {found} has no run and the prompt could '
+                              f'not be sent: {res}\nRerun to retry; no second thread is started.', file=sys.stderr)
+                        return 5
+                    ok, thread = t3_thread(found)
+                    if not ok or not thread or not (thread.get('runCount') or thread.get('latestRunId')):
+                        print(f'conductor-handoff: the prompt was sent to {found} but no run is seen yet. Rerun to '
+                              'check it; no second thread is started.', file=sys.stderr)
+                        return 5
+                return t3_done(a, worktree, marker.get('title', title), found, thread, row, marker, marker_path, ledger,
+                               effort, model)
+        elif not a.force:
+            print('conductor-handoff: a T3 successor start is on record without a thread id, and no thread with its '
+                  f'title "{marker.get("title", title)}" was found since {marker["at"]}. Look in the T3 sidebar; '
+                  'rerun with --force to start one.', file=sys.stderr)
+            return 5
+    ok, res = t3('project', 'add', str(worktree), '--title', worktree.name, timeout=60)
+    if not ok and 'AlreadyExists' not in str(res):
+        print(f'conductor-handoff: t3 project add {worktree} failed: {res}\nNo successor was started. Start one '
+              f'by hand in T3 in {worktree} with this message:\n  {prompt}', file=sys.stderr)
+        return 3
+    marker = dict(row, status='pending', via='t3', title=title, attempts=marker.get('attempts', 0) + 1, prompt=prompt)
+    write_json(marker_path, marker)
+    ok, res = t3('thread', 'start', str(worktree), '-', '--provider', 'claudeAgent', '--model', slug,
+                 '--title', title, '--json', stdin=prompt, timeout=120)
+    thread_id = res.get('threadId') if ok and isinstance(res, dict) else None
+    if thread_id and not res.get('runId'):
+        # A thread without a run did not get the prompt: keep it pending; a rerun sends the prompt to it.
+        marker['to_thread'] = thread_id
+        write_json(marker_path, marker)
+        print(f'conductor-handoff: T3 created thread {thread_id} but started no run. Rerun conductor-handoff with the '
+              'same order: it sends the prompt to that thread and starts no second one.', file=sys.stderr)
+        return 5
+    if not thread_id:
+        print(f'conductor-handoff: t3 thread start failed or gave no thread id: {res}\nRerun conductor-handoff with '
+              'the same order: it looks for a thread with this title first, so it cannot start a second one.',
+              file=sys.stderr)
+        return 5
+    marker['to_thread'] = thread_id
+    write_json(marker_path, marker)
+    append(ledger, dict(row, via='t3', to_thread=thread_id, status='created'))
+    ok, thread = t3_thread(thread_id)
+    return t3_done(a, worktree, title, thread_id, thread if ok else None, row, marker, marker_path, ledger,
+                   effort, model)
+
+
+def t3_done(a, worktree, title, thread_id, thread, row, marker, marker_path, ledger, effort, model):
+    marker.update(status='done', via='t3', to_thread=thread_id, to_terminal=thread_id,
+                  at=datetime.now(timezone.utc).isoformat(timespec='seconds'))
+    write_json(marker_path, marker)
+    append(ledger, dict(row, via='t3', to_thread=thread_id, status='done'))
+    link = (thread or {}).get('link') or ''
+    notes = []
+    if a.effort and a.effort != 'high':
+        notes.append(f'--effort {effort} does not apply: T3 threads run at T3\'s default effort for the model')
+    if model == 'fable':
+        notes.append('T3 has no fallback model, so this Fable successor has no Opus fallback')
+    print(f'Handed off: new orchestrator in T3 Code thread {thread_id} ("{title}"), worktree {worktree}.\n'
+          f'Where to find it: the T3 sidebar, project "{worktree.name}", thread "{title}"'
+          + (f' ({link})' if link else '') + '.\n'
+          + ''.join(f'Note: {n}.\n' for n in notes)
+          + f'Recorded in {ledger}.\n\n'
+          'Stand down now:\n'
+          '- No merges, pushes, deploys, issue or comment edits, or lane dispatches from this session.\n'
+          '- If the successor messages you, answer its questions from what you know, then stop.\n'
+          '- If a lane of yours reports after this point, forward its result and do nothing else with it:\n'
+          f'    t3 thread send {thread_id} "<result or report path>"\n'
+          '- Tell Ivan in two lines: handed off at what context %, where to find the successor (the T3 project and '
+          'thread named above), which order file.')
+    return 0
 
 
 def worktree_of(path):
@@ -150,6 +284,9 @@ def main(argv=None):
                     'successor\'s tab when the target worktree is not listed (default: this session\'s worktree)')
     ap.add_argument('--allow-unlisted', action='store_true',
                     help='hand off into a worktree Orca does not list (the successor will not show in the sidebar)')
+    ap.add_argument('--via', choices=('auto', 'orca', 't3'), default='auto',
+                    help='where the successor runs: auto is t3 when this session runs in T3 Code (T3CODE_THREAD_ID '
+                         'is set), else orca')
     ap.add_argument('--dry-run', action='store_true', help='print what would happen; change nothing')
     a = ap.parse_args(argv)
 
@@ -181,24 +318,36 @@ def main(argv=None):
     cmd = ['claude', '--model', model, *fallback, '--effort', effort, *perm]
     launch = f'cd {shlex.quote(str(worktree))} && {shlex.join(cmd)}'
     pct = state.get('pct')
-    old_handle = os.environ.get('ORCA_TERMINAL_HANDLE', '')
+    via = a.via if a.via != 'auto' else ('t3' if os.environ.get('T3CODE_THREAD_ID') else 'orca')
+    old_handle = os.environ.get('ORCA_TERMINAL_HANDLE', '') if via == 'orca' else ''
+    old_thread = os.environ.get('T3CODE_THREAD_ID', '') if via == 't3' else ''
     prompt = (f'/{skill} Read {order} and execute it in full as the orchestrator. You are taking over this '
               f'run from session {sid or "unknown"}' + (f' (Orca terminal {old_handle})' if old_handle else '')
+              + (f' (T3 thread {old_thread})' if old_thread else '')
               + (f', which handed off at {pct}% context and has stood down' if pct is not None
                  else ', which has stood down')
-              + f'. You are in {worktree}. Start now.' + (f' {a.note}' if a.note else ''))
+              + (f'. You are in {worktree}.' if via == 'orca' else f'. Work in {worktree}: cd there before anything else.')
+              + ' Start now.' + (f' {a.note}' if a.note else ''))
 
     base_title = a.title
     if not base_title and old_handle:
         ok, res = orca('terminal', 'show', '--terminal', old_handle, timeout=20)
         if ok:
             base_title = (res.get('terminal') or {}).get('title')
+    if not base_title and old_thread:
+        ok, res = t3_thread(old_thread)
+        base_title = (res or {}).get('title') if ok else None
     # Claude Code prefixes its tab title with a status glyph ("◑ ", "✳ "); keep only the name.
     base_title = re.sub(r'^[^\w#(\[]+', '', base_title or '').replace(' (handed off)', '').strip()
     base_title = base_title or f'{worktree.name} conductor'
     title = a.title or (base_title if base_title.endswith('(cont.)') else f'{base_title} (cont.)')
 
     ledger = worktree / '.conductor/handoffs.jsonl'
+    if a.dry_run and via == 't3':
+        print(json.dumps({'via': 't3', 'worktree': str(worktree), 'title': title, 'model': T3_MODELS.get(model, model),
+                          'prompt': prompt, 'recent_successors': len(recent_successors(ledger)),
+                          'marker': load_json(marker_path)}, indent=1))
+        return 0
     if a.dry_run:
         ok, entry = listed_worktree(worktree)
         print(json.dumps({'worktree': str(worktree), 'title': title, 'launch': launch, 'prompt': prompt,
@@ -216,6 +365,27 @@ def main(argv=None):
         print(f'conductor-handoff: this session already handed off at {marker.get("at")} to '
               f'{marker.get("to_terminal")}. Stand down; --force starts another successor.', file=sys.stderr)
         return 4
+    if marker.get('status') == 'pending' and (marker.get('via') or 'orca') != via and not a.force:
+        # Review round 1 of conductor-plugin#45: a rerun on the other transport skipped the pending attempt's
+        # recovery and could start a second successor.
+        print(f'conductor-handoff: a successor start via {marker.get("via") or "orca"} is pending '
+              f'({marker.get("to_thread") or marker.get("to_terminal") or "no id recorded"}). Rerun with '
+              f'--via {marker.get("via") or "orca"} to finish it, or --force to start another.', file=sys.stderr)
+        return 5
+    if via == 't3':
+        pending_t3 = marker.get('status') == 'pending' and marker.get('via') == 't3'
+        if not pending_t3:
+            chain = recent_successors(ledger)
+            if len(chain) >= CHAIN_LIMIT and not a.force:
+                print(f'conductor-handoff: {len(chain)} successors started in this worktree in the last 2 hours. A '
+                      'run that keeps handing off is not converging; stop and tell Ivan (or pass --force).',
+                      file=sys.stderr)
+                return 4
+        now = datetime.now(timezone.utc)
+        row = {'at': now.isoformat(timespec='seconds'), 'epoch': int(now.timestamp()), 'from_session': sid,
+               'from_thread': old_thread, 'order': str(order), 'pct': pct, 'model': model, 'effort': effort,
+               'permission_mode': pmode, 'skill': skill}
+        return handoff_t3(a, worktree, title, model, effort, prompt, row, marker, marker_path, ledger)
     reuse = reuse_path = None
     if marker.get('status') == 'pending' and marker.get('to_terminal'):
         ok, res = orca('terminal', 'show', '--terminal', marker['to_terminal'], timeout=20)
