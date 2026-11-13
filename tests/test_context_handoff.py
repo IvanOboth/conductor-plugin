@@ -27,8 +27,12 @@ elif cmd == ['thread', 'start']:
 elif cmd == ['thread', 'show']:
     tid = sys.argv[3]
     title = 'Old conductor run' if tid == 'thr-old' else 'x'
-    print(json.dumps({'thread': {'threadId': tid, 'title': title, 'archived': False,
+    runs = 0 if tid in os.environ.get('T3_EMPTY', '').split(',') and not os.path.exists(os.environ['T3_LOG'] + '.sent') else 1
+    print(json.dumps({'thread': {'threadId': tid, 'title': title, 'archived': False, 'runCount': runs,
+                                 'latestRunId': 'run:1' if runs else None,
                                  'link': 'https://app.t3.codes/threads/env/' + tid}, 'messages': []}))
+elif cmd == ['thread', 'send']:
+    open(os.environ['T3_LOG'] + '.sent', 'w').write(stdin)
 elif cmd == ['thread', 'list']:
     rows = [{'threadId': 'mcp:found', 'title': os.environ.get('T3_LIST_TITLE', ''), 'createdAt': '2099-01-01T00:00:00.000Z'}]
     print(json.dumps(rows if os.environ.get('T3_LIST_TITLE') else []))
@@ -270,6 +274,7 @@ class HandoffTest(unittest.TestCase):
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', CLAUDE_EFFORT='high',
                    ORCA_TERMINAL_HANDLE='term_old', ORCA_WT=str(self.wt.resolve()))
         env.pop('T3CODE_THREAD_ID', None)  # a test run from inside T3 Code must not switch these tests to T3
+        env['CONDUCTOR_T3'] = str(self.bin / 't3')  # never an inherited override (review round 1 of #45)
         env.update(env_extra)
         return subprocess.run([sys.executable, str(HANDOFF), '--order', str(self.order), *args],
                               capture_output=True, text=True, env=env, cwd=self.wt)
@@ -325,6 +330,35 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual(p2.returncode, 0, p2.stderr)
         self.assertEqual(sum(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()), 1)
         self.assertIn('mcp:found', p2.stdout)
+
+    def test_recovered_empty_thread_gets_the_prompt_before_it_counts(self):
+        self.run_handoff(**self.t3_env(T3_MODE='lost'))
+        p = self.run_handoff(**self.t3_env(T3_LIST_TITLE='Old conductor run (cont.)', T3_EMPTY='mcp:found'))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        send = next(c for c in self.t3_calls() if c['argv'][:2] == ['thread', 'send'])
+        self.assertEqual(send['argv'][2:4], ['mcp:found', '-'])
+        self.assertTrue(send['stdin'].startswith('/conductor-claude Read '))
+        self.assertEqual(sum(c['argv'][:2] == ['thread', 'start'] for c in self.t3_calls()), 1)
+
+    def test_switching_transport_while_a_t3_start_is_pending_is_refused(self):
+        self.run_handoff(**self.t3_env(T3_MODE='lost'))
+        p = self.run_handoff('--via', 'orca', **dict(self.t3_env(T3_LIST_TITLE='Old conductor run (cont.)'),
+                                                     ORCA_TERMINAL_HANDLE='term_old'))
+        self.assertEqual(p.returncode, 5)
+        self.assertIn('--via t3 to finish it', p.stderr)
+        self.assertFalse(any(c[:2] == ['terminal', 'create'] for c in self.calls()))
+
+    def test_inherited_conductor_t3_is_not_used(self):
+        outside = self.dir / 'outside-t3'
+        outside.write_text('#!/bin/sh\necho ran > "$0.ran"\nexit 1\n')
+        outside.chmod(0o755)
+        os.environ['CONDUCTOR_T3'] = str(outside)
+        try:
+            p = self.run_handoff(**self.t3_env())
+        finally:
+            del os.environ['CONDUCTOR_T3']
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertFalse((self.dir / 'outside-t3.ran').exists())
 
     def test_lost_t3_start_with_no_thread_found_stops(self):
         self.run_handoff(**self.t3_env(T3_MODE='lost'))
@@ -447,6 +481,7 @@ class HandoffTest(unittest.TestCase):
                    XDG_STATE_HOME=str(self.state), CLAUDE_CODE_SESSION_ID='s1', ORCA_TERMINAL_HANDLE='term_old',
                    ORCA_WT=str(self.wt.resolve()))
         env.pop('T3CODE_THREAD_ID', None)
+        env['CONDUCTOR_T3'] = str(self.bin / 't3')
         procs = [subprocess.Popen([sys.executable, str(HANDOFF), '--order', str(self.order)], env=env, cwd=self.wt,
                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) for _ in range(2)]
         self.assertEqual(sorted(p.wait() for p in procs), [0, 4])

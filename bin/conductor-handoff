@@ -146,6 +146,21 @@ def handoff_t3(a, worktree, title, model, effort, prompt, row, marker, marker_pa
                       'Rerun when T3 answers; no second thread is started until it can.', file=sys.stderr)
                 return 5
             if thread and not thread.get('archived'):
+                # T3 creates the thread before it dispatches the first message, so a failed start can leave an
+                # empty thread (review round 1 of conductor-plugin#45). It counts only once a run exists.
+                if not (thread.get('runCount') or thread.get('latestRunId')):
+                    marker['to_thread'] = found
+                    write_json(marker_path, marker)
+                    sent, res = t3('thread', 'send', found, '-', stdin=marker.get('prompt') or prompt, timeout=120)
+                    if not sent:
+                        print(f'conductor-handoff: pending successor thread {found} has no run and the prompt could '
+                              f'not be sent: {res}\nRerun to retry; no second thread is started.', file=sys.stderr)
+                        return 5
+                    ok, thread = t3_thread(found)
+                    if not ok or not thread or not (thread.get('runCount') or thread.get('latestRunId')):
+                        print(f'conductor-handoff: the prompt was sent to {found} but no run is seen yet. Rerun to '
+                              'check it; no second thread is started.', file=sys.stderr)
+                        return 5
                 return t3_done(a, worktree, marker.get('title', title), found, thread, row, marker, marker_path, ledger,
                                effort, model)
         elif not a.force:
@@ -163,6 +178,13 @@ def handoff_t3(a, worktree, title, model, effort, prompt, row, marker, marker_pa
     ok, res = t3('thread', 'start', str(worktree), '-', '--provider', 'claudeAgent', '--model', slug,
                  '--title', title, '--json', stdin=prompt, timeout=120)
     thread_id = res.get('threadId') if ok and isinstance(res, dict) else None
+    if thread_id and not res.get('runId'):
+        # A thread without a run did not get the prompt: keep it pending; a rerun sends the prompt to it.
+        marker['to_thread'] = thread_id
+        write_json(marker_path, marker)
+        print(f'conductor-handoff: T3 created thread {thread_id} but started no run. Rerun conductor-handoff with the '
+              'same order: it sends the prompt to that thread and starts no second one.', file=sys.stderr)
+        return 5
     if not thread_id:
         print(f'conductor-handoff: t3 thread start failed or gave no thread id: {res}\nRerun conductor-handoff with '
               'the same order: it looks for a thread with this title first, so it cannot start a second one.',
@@ -343,6 +365,13 @@ def main(argv=None):
         print(f'conductor-handoff: this session already handed off at {marker.get("at")} to '
               f'{marker.get("to_terminal")}. Stand down; --force starts another successor.', file=sys.stderr)
         return 4
+    if marker.get('status') == 'pending' and (marker.get('via') or 'orca') != via and not a.force:
+        # Review round 1 of conductor-plugin#45: a rerun on the other transport skipped the pending attempt's
+        # recovery and could start a second successor.
+        print(f'conductor-handoff: a successor start via {marker.get("via") or "orca"} is pending '
+              f'({marker.get("to_thread") or marker.get("to_terminal") or "no id recorded"}). Rerun with '
+              f'--via {marker.get("via") or "orca"} to finish it, or --force to start another.', file=sys.stderr)
+        return 5
     if via == 't3':
         pending_t3 = marker.get('status') == 'pending' and marker.get('via') == 't3'
         if not pending_t3:
