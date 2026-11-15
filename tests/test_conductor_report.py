@@ -134,6 +134,21 @@ class RolloutCountingTests(unittest.TestCase):
         self.close_run('run-b', self.now - timedelta(minutes=150))
         self.assertEqual(self.counted(), {'run-a': {FIRST: 1000}, 'run-b': {SECOND: 500}})
 
+    def test_rows_from_before_the_rollout_field_count_by_agent_name(self):
+        # The script before this change wrote Codex lanes with only the display name in "agent".
+        self.write_rollout(FIRST, 1_000_000, self.now - timedelta(hours=1))
+        self.ledger.parent.mkdir(parents=True)
+        old_row = {'run_id': 'run-old', 'lanes': [
+            {'agent': 'orchestrator', 'family': 'anthropic', 'model': 'claude-opus-5-5',
+             'in': 10, 'out': 5, 'cr': 0, 'cw': 0},
+            {'agent': FIRST.replace('.jsonl', '')[:40], 'family': 'openai', 'model': 'gpt-6.1-sol',
+             'in': 1_000_000, 'out': 0, 'cr': 0, 'cw': 0}]}
+        self.ledger.write_text(json.dumps(old_row) + '\n')
+        self.close_run('run-b', self.now - timedelta(minutes=150))
+        self.write_rollout(FIRST, 3_000_000, self.now - timedelta(minutes=30))
+        self.close_run('run-c', self.now - timedelta(minutes=90))
+        self.assertEqual(self.counted(), {'run-old': {}, 'run-b': {}, 'run-c': {FIRST: 2_000_000}})
+
     def test_an_abandoned_active_entry_changes_nothing(self):
         self.write_rollout(FIRST, 1000, self.now - timedelta(hours=1))
         active = self.home / '.claude' / 'telemetry' / 'active-runs.json'

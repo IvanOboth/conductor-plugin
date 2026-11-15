@@ -215,8 +215,9 @@ def ledger_lock(ledger_path):
 
 
 def counted_rollouts(ledger_path):
-    """Tokens already counted for each rollout (by full file name), summed over every run in the ledger."""
-    counted = {}
+    """Tokens already counted, summed over every run in the ledger: {"rollout": by full file name,
+    "agent": by display name, for rows written before lanes carried "rollout"}."""
+    counted = {"rollout": {}, "agent": {}}
     try:
         with open(ledger_path, "r", encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -225,10 +226,15 @@ def counted_rollouts(ledger_path):
                 except json.JSONDecodeError:
                     continue
                 for lane in (rec.get("lanes") or []) if isinstance(rec, dict) else []:
-                    name = lane.get("rollout") if isinstance(lane, dict) else None
+                    if not isinstance(lane, dict):
+                        continue
+                    if "rollout" in lane:
+                        kind, name = "rollout", lane.get("rollout")
+                    else:
+                        kind, name = "agent", lane.get("agent")
                     if not name:
                         continue
-                    seen = counted.setdefault(name, {"in": 0, "out": 0, "cr": 0})
+                    seen = counted[kind].setdefault(name, {"in": 0, "out": 0, "cr": 0})
                     for key in seen:
                         seen[key] += lane.get(key, 0) or 0
     except OSError:
@@ -240,9 +246,14 @@ def rollout_remainders(rollouts, counted):
     """Reduce each rollout to the tokens no run has counted yet; split off those with nothing left."""
     kept, done = [], []
     for lane in rollouts:
-        seen = counted.get(lane["rollout"], {})
+        seen = counted["rollout"].get(lane["rollout"], {})
+        # A row written before lanes carried "rollout" names its rollout only by the display name
+        # (the first 40 characters, as codex_lanes() sets "agent"). Such a row counts toward every
+        # current rollout with that display name, so it can merge two rollouts sharing a 40-character
+        # prefix; this applies only to rows written before this change.
+        legacy = counted["agent"].get(lane["agent"], {})
         for key in ("in", "out", "cr"):
-            lane[key] = max(0, lane[key] - (seen.get(key, 0) or 0))
+            lane[key] = max(0, lane[key] - (seen.get(key, 0) or 0) - (legacy.get(key, 0) or 0))
         (kept if lane["in"] or lane["out"] or lane["cr"] else done).append(lane)
     return kept, done
 
