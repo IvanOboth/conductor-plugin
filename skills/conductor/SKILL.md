@@ -87,6 +87,26 @@ Decided 17 Sep 2026, measured on the live bench. Tokens are the same either way 
 - **Lifecycle rule for every Orca lane:** the terminal closes when its lane-report is written (`orca terminal close --terminal "$ORCA_TERMINAL_HANDLE" --json` as the lane's last command; the poller does this itself since #94, `POLLER_KEEP_TERMINAL=1` to keep one open); the worktree is removed after its PR merges (`orca worktree rm --worktree path:<path> --run-hooks --json`, never `--force` on a dirty tree); an evidence page is produced (`tools/evidence-page.py`).
 - The idle reaper closes what slips through (terminals idle > 24 h) and the dashboard shows the terminal budget. Acceptance: a week after install the terminal count stays flat while the night shift runs, and every lane in the Orca sidebar is live or closed within an hour of its report.
 
+## Execution slices on a CI box or boat (Bench only)
+
+Added 15 Nov 2026 (bench-factory#651). On Ivan's Bench, an orchestrator can send one execution slice to a CI box or a boat sandbox instead of running it as an in-process lane: `conductor-box-lane run --order <file> --branch <epic-N-slug> --epic <N>` places it through `bench-agent-run`, waits for it and collects its lane report and pushed branch. On 14 Nov 2026 epic and Conductor runs were 64% of the Claude use recorded on the bench, and the bench reached a load of 55 to 69 on 16 cores while the boxes and boat had room. The orchestrator keeps the plan, the work orders, the reviews, the pull requests, the merges and every key on the bench. Other hosts have no such tool and ignore this section.
+
+**A slice goes out only when all of these hold:**
+- It is an execution slice (implementation, refactor, tests, a mechanical sweep) that one Opus 5.5 lane can finish and push on one branch.
+- It is independent: no other running lane writes its files, and it builds on the default branch as it is on GitHub. A slice that needs unmerged work waits until that work is merged, or continues a pushed branch with `--continue`.
+- Its order stands alone. The lane gets a clean checkout and the order text only: no `.conductor/` files, no lane presets, no bench paths outside the repository, no development backend unless `bench-agent-run` sends that repository's env files, no signed-in browser, no device, no production key, no vault, no `gh` call other than `gh issue view` (boat refuses those orders).
+- It needs no judgment the orchestrator must watch, and no GPT-6.1 Sol: Codex does not run there.
+
+**A slice stays on the bench** when it fails any of these: design and taste lanes, reviews (`codex-review`, `verify-lane`), runtime and device verification, anything that needs a dev server, a browser session, a phone, a production or client key, or the vault.
+
+**How:**
+1. Run `conductor-box-lane list` first in a new or resumed session. A lane that is still `out` belongs to this run: `wait`, `collect` or `stop` it; never start a second lane for its branch (`start` refuses it).
+2. Write the order as for an `exec-lane`, ending with the unattended-lane paragraph, and run `conductor-box-lane run ... ` with `run_in_background: true`. The harness wakes the session when it ends; do not poll.
+3. Exit 0: the branch is on GitHub and its report is at the printed path; read the diff and send it to review as any lane's work. Exit 75 (no room, the switch is off, or the cap is full) or 2 (refused): run the slice in-process as an `exec-lane`. Exit 3 (needs the bench): run it in-process. Exit 4 (timed out) or 5 (usage limit): read the note, then resume or run it in-process.
+4. Its review, pull request, merge and verification follow the same gates as every other lane.
+
+The way back is the switch file `~/.config/conductor-box-lane/switch`; without it every slice runs in-process. The commands, exit codes and ledger are in bench-factory `domains/career-craft/bench/ci-runner/README.md`, "Conductor slices on a box".
+
 ## When to invoke (on-demand, not always)
 
 Reach for conductor's fan-out when the work has **separable lanes** — design vs mechanical vs writing vs verification — or a **work-list to pipeline** over, or a **finding that needs independent verification** before it ships. For a single-file edit, a lookup, or tightly-coupled work where lanes would thrash the same files, skip it and work inline (or use plain all-Claude `Workflow` for tightly-coupled fan-out). Don't force a task to split that doesn't want to.
