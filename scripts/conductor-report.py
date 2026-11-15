@@ -29,6 +29,10 @@ Data sources (verified 2026-07-11):
                                                  isSidechain flags subagent turns
   ~/.claude/projects/<proj>/<session>/subagents/agent-*.jsonl   per-subagent lanes
   ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl   cumulative token_count events
+
+Each Codex rollout is counted in one run only (bench-factory#686): a run already in the
+ledger whose lanes name the rollout keeps it; otherwise the closing run keeps it unless
+a run still registered as active overlaps it for longer (that run counts it when it closes).
 """
 import argparse
 import glob
@@ -40,6 +44,8 @@ from datetime import datetime, timedelta, timezone
 HOME = os.path.expanduser("~")
 LEDGER_DEFAULT = os.path.join(HOME, ".claude", "telemetry", "conductor-runs.jsonl")
 ACTIVE_RUNS = os.path.join(HOME, ".claude", "telemetry", "active-runs.json")
+# An active entry older than this is treated as a run that never closed: it cannot claim rollouts.
+ACTIVE_MAX_AGE = timedelta(hours=48)
 
 
 def load_active():
@@ -164,12 +170,20 @@ def codex_lanes(since, until):
                            f"{day.year:04d}", f"{day.month:02d}", f"{day.day:02d}", "*.jsonl")
         for path in glob.glob(pat):
             mt = datetime.fromtimestamp(os.path.getmtime(path), tz=timezone.utc)
-            if mt < since or datetime.fromtimestamp(os.path.getctime(path), tz=timezone.utc) > until:
+            ct = datetime.fromtimestamp(os.path.getctime(path), tz=timezone.utc)
+            if mt < since or ct > until:
                 continue
-            totals, model = None, None
+            totals, model, started = None, None, None
             try:
                 with open(path, "r", encoding="utf-8", errors="replace") as fh:
                     for line in fh:
+                        if started is None:
+                            try:
+                                started = parse_ts(json.loads(line).get("timestamp")) or False
+                                if started and started.tzinfo is None:
+                                    started = False
+                            except (json.JSONDecodeError, AttributeError):
+                                started = False
                         if '"token_count"' not in line and '"model"' not in line:
                             continue
                         try:
@@ -190,8 +204,54 @@ def codex_lanes(since, until):
                     "in": totals.get("input_tokens", 0),
                     "out": totals.get("output_tokens", 0) + totals.get("reasoning_output_tokens", 0),
                     "cr": totals.get("cached_input_tokens", 0), "cw": 0,
+                    "_window": (min(started or ct, mt), mt),
                 })
     return out
+
+
+def other_runs(ledger_path, run_id, until):
+    """Rollout agents already counted by other runs in the ledger, and the other runs still active."""
+    claimed = set()
+    try:
+        with open(ledger_path, "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(rec, dict) or rec.get("run_id") == run_id:
+                    continue
+                for lane in rec.get("lanes") or []:
+                    if isinstance(lane, dict) and lane.get("agent"):
+                        claimed.add(lane["agent"])
+    except OSError:
+        pass
+    open_runs = []
+    for rid, entry in load_active().items():
+        started = parse_ts((entry or {}).get("started")) if isinstance(entry, dict) else None
+        if rid == run_id or not started or started.tzinfo is None:
+            continue
+        if until - started <= ACTIVE_MAX_AGE:
+            open_runs.append({"run_id": rid, "start": started})
+    return claimed, open_runs
+
+
+def overlap_s(start, end, other_start, other_end):
+    return max(0.0, (min(end, other_end) - max(start, other_start)).total_seconds())
+
+
+def claim_rollouts(rollouts, since, until, claimed, open_runs):
+    """Split rollouts into those this run counts and those another run counts."""
+    kept, elsewhere = [], []
+    for lane in rollouts:
+        start, end = lane.pop("_window")
+        mine = overlap_s(since, until, start, end)
+        if lane["agent"] in claimed or any(
+                overlap_s(o["start"], until, start, end) > mine for o in open_runs):
+            elsewhere.append(lane)
+        else:
+            kept.append(lane)
+    return kept, elsewhere
 
 
 def pane_ref():
@@ -265,7 +325,9 @@ def main():
             lanes.append({"agent": os.path.basename(f).replace(".jsonl", ""),
                           "family": "claude", "model": model, **t})
 
-    lanes += codex_lanes(since, until)
+    claimed, open_runs = other_runs(a.ledger, a.run_id, until)
+    codex, elsewhere = claim_rollouts(codex_lanes(since, until), since, until, claimed, open_runs)
+    lanes += codex
 
     for lane in lanes:
         lane["usd_api_equiv"] = usd(lane["in"], lane["out"], lane["cr"], lane["cw"],
@@ -300,6 +362,8 @@ def main():
     for l in lanes:
         print(f"| {l['agent']} | {l['model']} | {l['in']:,} | {l['out']:,} "
               f"| {l['cr']:,} | {l['usd_api_equiv']} |")
+    if elsewhere:
+        print(f"\n_Codex rollouts in this window counted in another run, left out here: {len(elsewhere)}_")
     print(f"\n_Ledger: {'(dry-run, not written)' if a.dry_run else a.ledger}_")
 
 
