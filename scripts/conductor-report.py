@@ -29,8 +29,15 @@ Data sources (verified 2026-07-11):
                                                  isSidechain flags subagent turns
   ~/.claude/projects/<proj>/<session>/subagents/agent-*.jsonl   per-subagent lanes
   ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl   cumulative token_count events
+
+Each Codex rollout is counted once across runs (bench-factory#686). A rollout is known by its full
+file name, recorded in its lane as "rollout". A closing run counts only the remainder: the rollout's
+current totals minus what every run in the ledger has already counted for it. Reading the ledger,
+computing remainders and appending happen under an exclusive lock on <ledger>.lock.
 """
 import argparse
+import contextlib
+import fcntl
 import glob
 import json
 import os
@@ -190,8 +197,65 @@ def codex_lanes(since, until):
                     "in": totals.get("input_tokens", 0),
                     "out": totals.get("output_tokens", 0) + totals.get("reasoning_output_tokens", 0),
                     "cr": totals.get("cached_input_tokens", 0), "cw": 0,
+                    "rollout": os.path.basename(path),
                 })
     return out
+
+
+@contextlib.contextmanager
+def ledger_lock(ledger_path):
+    """Hold an exclusive lock on <ledger>.lock: one run at a time reads, decides and appends."""
+    os.makedirs(os.path.dirname(os.path.abspath(ledger_path)), exist_ok=True)
+    with open(ledger_path + ".lock", "a", encoding="utf-8") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def counted_rollouts(ledger_path):
+    """Tokens already counted, summed over every run in the ledger: {"rollout": by full file name,
+    "agent": by display name, for rows written before lanes carried "rollout"}."""
+    counted = {"rollout": {}, "agent": {}}
+    try:
+        with open(ledger_path, "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                for lane in (rec.get("lanes") or []) if isinstance(rec, dict) else []:
+                    if not isinstance(lane, dict):
+                        continue
+                    if "rollout" in lane:
+                        kind, name = "rollout", lane.get("rollout")
+                    else:
+                        kind, name = "agent", lane.get("agent")
+                    if not name:
+                        continue
+                    seen = counted[kind].setdefault(name, {"in": 0, "out": 0, "cr": 0})
+                    for key in seen:
+                        seen[key] += lane.get(key, 0) or 0
+    except OSError:
+        pass
+    return counted
+
+
+def rollout_remainders(rollouts, counted):
+    """Reduce each rollout to the tokens no run has counted yet; split off those with nothing left."""
+    kept, done = [], []
+    for lane in rollouts:
+        seen = counted["rollout"].get(lane["rollout"], {})
+        # A row written before lanes carried "rollout" names its rollout only by the display name
+        # (the first 40 characters, as codex_lanes() sets "agent"). Such a row counts toward every
+        # current rollout with that display name, so it can merge two rollouts sharing a 40-character
+        # prefix; this applies only to rows written before this change.
+        legacy = counted["agent"].get(lane["agent"], {})
+        for key in ("in", "out", "cr"):
+            lane[key] = max(0, lane[key] - (seen.get(key, 0) or 0) - (legacy.get(key, 0) or 0))
+        (kept if lane["in"] or lane["out"] or lane["cr"] else done).append(lane)
+    return kept, done
 
 
 def pane_ref():
@@ -203,7 +267,7 @@ def pane_ref():
     return None
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--session")
@@ -218,7 +282,7 @@ def main():
     ap.add_argument("--start", action="store_true",
                     help="register the run as active (opening step) and exit")
     ap.add_argument("--title", default="", help="short human title for --start")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
 
     if a.start:
         active = load_active()
@@ -265,30 +329,33 @@ def main():
             lanes.append({"agent": os.path.basename(f).replace(".jsonl", ""),
                           "family": "claude", "model": model, **t})
 
-    lanes += codex_lanes(since, until)
+    # Read, decide and append under one lock, so two runs closing at once cannot both count a rollout.
+    with (contextlib.nullcontext() if a.dry_run else ledger_lock(a.ledger)):
+        codex, done = rollout_remainders(codex_lanes(since, until), counted_rollouts(a.ledger))
+        lanes += codex
 
-    for lane in lanes:
-        lane["usd_api_equiv"] = usd(lane["in"], lane["out"], lane["cr"], lane["cw"],
-                                    price_for(lane["model"], lane["family"]))
-    totals = {k: sum(l[k] for l in lanes) for k in ("in", "out", "cr", "cw")}
-    totals["usd_api_equiv"] = round(sum(l["usd_api_equiv"] for l in lanes), 2)
+        for lane in lanes:
+            lane["usd_api_equiv"] = usd(lane["in"], lane["out"], lane["cr"], lane["cw"],
+                                        price_for(lane["model"], lane["family"]))
+        totals = {k: sum(l[k] for l in lanes) for k in ("in", "out", "cr", "cw")}
+        totals["usd_api_equiv"] = round(sum(l["usd_api_equiv"] for l in lanes), 2)
 
-    record = {
-        "run_id": a.run_id, "skill": a.skill, "repo": a.repo, "issue": a.issue,
-        "started": since.isoformat(), "ended": until.isoformat(),
-        "duration_s": int((until - since).total_seconds()),
-        "lanes": lanes, "totals": totals,
-        "outcome": a.outcome, "pane": pane_ref(), "session": os.path.basename(sess),
-    }
+        record = {
+            "run_id": a.run_id, "skill": a.skill, "repo": a.repo, "issue": a.issue,
+            "started": since.isoformat(), "ended": until.isoformat(),
+            "duration_s": int((until - since).total_seconds()),
+            "lanes": lanes, "totals": totals,
+            "outcome": a.outcome, "pane": pane_ref(), "session": os.path.basename(sess),
+        }
 
-    if not a.dry_run:
-        os.makedirs(os.path.dirname(a.ledger), exist_ok=True)
-        with open(a.ledger, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(record) + "\n")
-        active = load_active()
-        if a.run_id in active:
-            del active[a.run_id]
-            save_active(active)
+        if not a.dry_run:
+            os.makedirs(os.path.dirname(a.ledger), exist_ok=True)
+            with open(a.ledger, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(record) + "\n")
+            active = load_active()
+            if a.run_id in active:
+                del active[a.run_id]
+                save_active(active)
 
     mins = record["duration_s"] // 60
     print(f"## Run report — `{a.run_id}`")
@@ -300,6 +367,8 @@ def main():
     for l in lanes:
         print(f"| {l['agent']} | {l['model']} | {l['in']:,} | {l['out']:,} "
               f"| {l['cr']:,} | {l['usd_api_equiv']} |")
+    if done:
+        print(f"\n_Codex rollouts in this window already counted in full by earlier runs, left out here: {len(done)}_")
     print(f"\n_Ledger: {'(dry-run, not written)' if a.dry_run else a.ledger}_")
 
 
