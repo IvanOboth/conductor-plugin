@@ -134,7 +134,7 @@ Optionally supplement with:
 
 ### Step 2: Send Context to Codex
 
-Codex needs to investigate files, run tests, post issue comments, and apply fixes — so use the default `workspace-write` sandbox (don't pass `--readonly`). The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
+Codex needs to investigate files, run tests, post issue comments, and apply fixes — so pass no sandbox flag and don't pass `--readonly`. The plugin's `ask-codex` then runs in `workspace-write`; the bench's `ask-codex` passes no sandbox, so the account's config applies (`danger-full-access`, the only mode Codex works in there), and it refuses `--readonly` before the lane starts. The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
 The default reviewer is GPT-6.1 Sol at `high` (29 Sep 2026; it replaced GPT-6 Sol and GPT-6 Astra). On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about \$1.50 per task, against Astra high's 74.8% at about \$7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), run `-m gpt-6.1-sol --effort xhigh` and add a judgment review: Opus 5.5 in fresh context, labelled `same-model, fresh context` because the GPT-6.1 Sol `xhigh` pass is the cross-family check beside it (`verify-lane` at `high`, money, auth, personal data, migrations and production data included since 12 Nov 2026) for Opus-authored work since 31 Oct 2026, Opus 5.5 at `high` for Fable-authored work. Use `xhigh` also as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
 
@@ -248,7 +248,7 @@ Quick verification after your own fixes:
 ask-codex -m gpt-6.1-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
 ```
 
-Codex still runs in `workspace-write` mode here — it may want to read the updated files or run tests to confirm.
+Codex still runs with write access here (`workspace-write`, or `danger-full-access` on the bench) — it may want to read the updated files or run tests to confirm.
 
 ### Step 5: Report Summary
 
@@ -388,7 +388,7 @@ git diff --name-only         # Uncommitted changes
 
 ### Codex Invocation Pattern
 
-Use `workspace-write` (the default) when the review must run tests or apply fixes; do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files. Either way name the model and effort: `-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for a critical change. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
+Pass no sandbox flag, so the review can run tests or apply fixes (`workspace-write` with the plugin's `ask-codex`; on the bench the account's `danger-full-access`). Do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files, and the bench's `ask-codex` refuses it (exit 2). Either way name the model and effort: `-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for a critical change. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
 
 ```bash
 # Review only — Codex investigates but won't apply fixes unless told to

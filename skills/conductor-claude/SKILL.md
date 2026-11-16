@@ -47,7 +47,7 @@ codex-account list --json     # cooldown_until / cooldown_reason per account; av
 codex-account pick            # exit 3 = every account is cooling down
 ```
 
-A silent `ask-codex` past ~10 minutes with no rollout file is a wrapper or sandbox failure, not a quota failure — read the rollout jsonl before concluding anything. `--readonly` succeeding while a write lane dies is the sandbox, not the account. Quota is per **account**, not per home, and cooldowns are keyed on the account, so one login being dry says nothing about the other two.
+A silent `ask-codex` past ~10 minutes with no rollout file is a wrapper or sandbox failure, not a quota failure — read the rollout jsonl before concluding anything. Off the bench, `--readonly` succeeding while a write lane dies is the sandbox, not the account (the bench's `ask-codex` refuses `--readonly`). Quota is per **account**, not per home, and cooldowns are keyed on the account, so one login being dry says nothing about the other two.
 
 If exactly one account still has credit, the right move is usually **not** this profile: run the ordinary mixed-model `conductor` and spend that one account on the single lane where family independence matters most — the review gate on whatever ships (GPT-6.1 Sol `high`, or `xhigh` when it is critical). Reach for Conductor Claude when there is nothing left to spend, or when spending it would cost more than the independence buys.
 
