@@ -29,7 +29,7 @@ Take the cheapest rung that can prove the assertion: shell first, `sky` when not
 
 **2. Write a self-contained prompt.** Codex does not share Claude's context — spell out how to launch/reach the thing, the exact steps, the assertion, and where to leave artifacts. See *Prompt requirements* below.
 
-**3. Invoke Codex.** Default to `ask-codex` (workspace-write) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the model and effort every time: `-m gpt-6.1-sol --effort high`, including flows where the next step depends on reading the screen. Use `xhigh` only as the retry when a `high` run came back thin:
+**3. Invoke Codex.** Default to `ask-codex` (write access: `workspace-write`, or the account's `danger-full-access` on the bench) so Codex can run shell commands, launch the app, and write screenshots + a report to disk. Pass the model and effort every time: `-m gpt-6.1-sol --effort high`, including flows where the next step depends on reading the screen. Use `xhigh` only as the retry when a `high` run came back thin:
 
 ```bash
 ask-codex -m gpt-6.1-sol --effort high --browser --clean "
@@ -41,7 +41,7 @@ Write your findings to <scratchpad>/verify/report.md when done.
 
 Equivalent direct form (the reference invocation): `codex exec -m gpt-6.1-sol -c model_reasoning_effort=high -s workspace-write "<prompt>"`. Use `-s danger-full-access` when Codex must act outside the repo working tree — launching a GUI app, or writing screenshots to a scratchpad path — never for acting on real accounts or data.
 
-For a GUI target, drop to `codex exec` directly — `ask-codex` has no flag for full access (it offers only `--readonly` and workspace-write), and the lane needs to write screenshots outside the repo. This is the verified form:
+For a GUI target, drop to `codex exec` directly — the plugin's `ask-codex` has no flag for full access (it runs `workspace-write`, or the read-only sandbox with `--readonly`), and the lane needs to write screenshots outside the repo. (The bench's `ask-codex` passes no sandbox, so the account's `danger-full-access` applies there, and it refuses `--readonly`.) This is the verified form:
 
 ```bash
 codex exec -m gpt-6.1-sol -c model_reasoning_effort=high -s danger-full-access "Use node_repl + @oai/sky for this. Bootstrap once with:
