@@ -79,6 +79,17 @@ class RolloutCountingTests(unittest.TestCase):
         self.assertEqual(self.counted(), {'run-a': {FIRST: 1000}, 'run-b': {}})
         self.assertIn('already counted in full by earlier runs, left out here: 1', out_b)
 
+    def test_a_rollout_filed_under_the_day_before_the_window_is_counted(self):
+        # Codex files a rollout under the (local) date it started; a lane that started before
+        # midnight, or before the run window, lives in the previous day's folder.
+        since = self.now - timedelta(minutes=30)
+        before = since - timedelta(days=1)
+        self.day = self.home / '.codex' / 'sessions' / f'{before.year:04d}' / f'{before.month:02d}' / f'{before.day:02d}'
+        self.day.mkdir(parents=True, exist_ok=True)
+        self.write_rollout(FIRST, 1000, self.now - timedelta(minutes=10))
+        self.close_run('run-a', since)
+        self.assertEqual(self.counted(), {'run-a': {FIRST: 1000}})
+
     def test_a_rollout_that_grows_between_closes_is_counted_once_in_total(self):
         self.write_rollout(FIRST, 1_000_000, self.now - timedelta(hours=1))
         self.close_run('run-a', self.now - timedelta(hours=3))

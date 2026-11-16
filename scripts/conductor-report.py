@@ -162,8 +162,10 @@ def sum_claude_file(path, since, until):
 def codex_lanes(since, until):
     """Find codex rollouts overlapping the window; last token_count event = cumulative totals."""
     out = []
-    days, d = [], since.date()
-    while d <= until.date():
+    # Codex files a rollout under the local date it started, and a lane can start before the
+    # window does, so scan one day either side; mtime and ctime below decide what overlaps.
+    days, d = [], since.date() - timedelta(days=1)
+    while d <= until.date() + timedelta(days=1):
         days.append(d)
         d += timedelta(days=1)
     for day in days:
