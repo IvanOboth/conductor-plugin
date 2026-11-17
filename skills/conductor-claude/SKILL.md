@@ -72,7 +72,7 @@ Use them in this order. The first is the largest lever and it is free.
 4. **Objective gates the orchestrator runs.** Tests, typecheck, a runtime assertion on real state, a screenshot you read yourself. These are model-independent, so they carry more weight here than in a mixed run. Push more of the acceptance burden onto them.
 5. **Effort asymmetry.** Opus 5.5 at `high` reviewing Opus 5.5 at `medium`. The weakest substitute — same priors, more of them. Never the only one.
 
-**The gate:** nothing ships on substitute 5 alone. Critical work needs (1) plus (2) plus (4). Routine work needs (1) plus (4), or (1) with the orchestrator reading the diff. Anything that leaves the building is critical by definition.
+**The gate:** nothing ships on substitute 5 alone. Critical work needs (1) plus (4): two independent fresh-context Opus 5.5 reviews for Opus work, or an Opus 5.5 review (substitute 2) for Fable work. Routine work needs (1) plus (4), or (1) with the orchestrator reading the diff. Anything that leaves the building is critical by definition.
 
 ## Routing
 
