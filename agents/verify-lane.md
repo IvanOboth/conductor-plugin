@@ -16,7 +16,7 @@ description: >-
   (Ivan, 12 Nov 2026: Opus reviews at xhigh are unnecessary, high is good enough). On
   Opus-authored work it is a same-model reviewer in fresh context, so give it the requirements and
   the diff, not the author's rationale, and label its verdict `same-model, fresh context`; the
-  cross-family check is GPT-6.1 Sol at xhigh via codex-review, which always runs beside it on
+  cross-family check is GPT-6.1 Sol at high via codex-review, which always runs beside it on
   critical changes, with codex-computer-use (GPT-6.1 Sol at high) for runtime mechanics. When
   GPT-6.1 Sol cannot run (Conductor Claude, Codex down), a second, independent fresh-context Opus 5.5
   lane at high takes Sol's place beside this one, never Fable 5.2 (Ivan, 17 Nov 2026).
