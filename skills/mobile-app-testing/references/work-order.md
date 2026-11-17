@@ -19,7 +19,7 @@ Scope: <change, requested flows, source/artifact>
 Profile: <path; project instructions also apply>
 Execution: gpt-6.1-sol, effort <high|xhigh>, reason <task bottleneck>
 Routing record: <routing.json with actual model, effort, reason and acceptance criteria>
-Review: <active profile; fresh-context GPT-6.1 Sol xhigh review (same-model, labelled) for Conductor Core, Claude review where required; orchestrator accepts>
+Review: <active profile; fresh-context GPT-6.1 Sol high review (same-model, labelled) for Conductor Core, Claude review where required; orchestrator accepts>
 Ownership: <one device/session owner; fixture; source files permitted to change>
 Checkpoint: <private path known to orchestrator, written before provisioning>
 Instance name/tag: <run-unique provider name recorded before the start request>

@@ -43,7 +43,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  ask-codex --readonly \"What files handle auth?\""
   echo "  ask-codex --context spec.md \"Implement this feature\""
   echo "  ask-codex --clean --output plan.md \"Create an implementation plan\""
-  echo "  ask-codex --effort xhigh --readonly \"Review the uncommitted diff adversarially\""
+  echo "  ask-codex --effort high --readonly \"Review the uncommitted diff adversarially\""
   echo "  ask-codex --worktree lane/issue-19 --context order.md \"Implement the order\""
   echo "  ask-codex --resume 01a0fc4d-31bf-7df0-9335-8530299f95f3 --worktree lane/issue-19"
   exit 0
