@@ -36,6 +36,7 @@ SOL_BANNED = [
     re.compile(r'at xhigh for critical'),
     re.compile(r'you at\s+`xhigh`|beside your `xhigh` review'),
     re.compile(r'\| gpt-6\.1-sol[^|\n]*\| xhigh —'),
+    re.compile(r'--effort xhigh`? for the no-Fable case'),
 ]
 
 
@@ -76,7 +77,8 @@ class OpusReviewEffortTests(unittest.TestCase):
                     '| GPT-6.1 Sol `high` via `codex-review`; `xhigh` when the change is critical or a `high` pass came back thin |',
                     '| Diff review of GPT-6.1 Sol-authored work | gpt-6.1-sol, separate fresh-context reviewer | xhigh — labelled',
                     '`-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for critical changes)',
-                    'computer use, exploration and overflow, at xhigh for critical review; Luna'):
+                    'computer use, exploration and overflow, at xhigh for critical review; Luna',
+                    '`Bash` → `ask-codex -m gpt-6.1-sol --effort xhigh` for the no-Fable case |'):
             self.assertTrue(any(p.search(old) for p in SOL_BANNED), old)
         for kept in ('a `high` review that came back thin is retried at `xhigh`',
                      '| Retry when a GPT-6.1 Sol `high` review pass came back thin | gpt-6.1-sol | xhigh |'):
