@@ -18,8 +18,8 @@ description: >-
   the diff, not the author's rationale, and label its verdict `same-model, fresh context`; the
   cross-family check is GPT-6.1 Sol at xhigh via codex-review, which always runs beside it on
   critical changes, with codex-computer-use (GPT-6.1 Sol at high) for runtime mechanics. When
-  GPT-6.1 Sol cannot run (Conductor Claude, Codex down), the critical review of Opus work goes to a
-  plain Fable 5.2 agent at high instead, so that a different model reviews it.
+  GPT-6.1 Sol cannot run (Conductor Claude, Codex down), a second, independent fresh-context Opus 5.5
+  lane at high takes Sol's place beside this one, never Fable 5.2 (Ivan, 17 Nov 2026).
 model: opus
 effort: high
 tools: [Read, Grep, Glob, Bash, WebFetch]

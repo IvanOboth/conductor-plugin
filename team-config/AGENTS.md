@@ -277,7 +277,8 @@ something up; never at `xhigh` or `max` by default.
   - Opus-authored, critical → GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane` in fresh context
     (`high`, money, auth, personal data, migrations, production data and every `sev:1`
     item included; 31 Oct 2026, `high` throughout since 12 Nov 2026).
-    Fable 5.2 at `high` only when GPT-6.1 Sol cannot run. Unchanged for now: the 31 Oct
+    When GPT-6.1 Sol cannot run, a second fresh-context Opus 5.5 at `high` takes its
+    place, never Fable 5.2 (Ivan, 17 Nov 2026). Unchanged for now: the 31 Oct
     reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
     Fable 5.2, so a head-to-head on past critical diffs runs in
     `bench-factory/tools/model-evals`; decide by 24 Nov 2026.
