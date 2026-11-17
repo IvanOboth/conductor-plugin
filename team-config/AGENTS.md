@@ -232,8 +232,9 @@ something up; never at `xhigh` or `max` by default.
 - Plan gate on a `sev:1` or `sev:2` epic, or any critical-class epic → before wave 1,
   send the plan, the shared contract and the slice list to a fresh-context reviewer that
   is not the model that wrote the plan: Fable 5.2 at `high` when Opus 5.5 orchestrates;
-  Opus 5.5 at `high` whenever Fable 5.2 wrote the plan (a `sev:1` epic, or any epic
-  started on Fable). When Opus wrote the
+  Opus 5.5 at `high` whenever Fable 5.2 wrote the plan (any epic started on Fable, or a
+  `sev:1` epic while `~/intake-triage/EPIC_FABLE` reads `on`). Opus 5.5 orchestrates
+  every epic by default, `sev:1` included (17 Nov 2026). When Opus wrote the
   plan and Fable cannot be used at all, GPT-6.1 Sol at `xhigh` does the whole check (the
   one case where Sol judges a plan). It returns the structural
   risks, the missing contracts and a corrected slice order; the orchestrator still owns
@@ -247,8 +248,8 @@ something up; never at `xhigh` or `max` by default.
   close on the orchestrator's own read.
 - Severity (10 Nov 2026) → every issue and epic carries one label, `sev:1` to `sev:4`,
   the worse of its impact and its risk (definitions in `~/.claude/CLAUDE.md`, "Severity").
-  It sets the queue, who orchestrates (Fable 5.2 for `sev:1` epics, Opus 5.5 otherwise)
-  and where Fable 5.2 is spent. A `sev:1` item always gets the critical review (you at
+  It sets the queue and where Fable 5.2 is spent (the plan gate and the epic close; Opus
+  5.5 orchestrates every epic since 17 Nov 2026). A `sev:1` item always gets the critical review (you at
   `xhigh`, the Opus `verify-lane` at `high`); severity never lowers review depth. Older labels set a
   floor: `priority:critical`, `priority:p0`, `urgent` → at least `sev:1`; `priority:high`,
   `priority:p1`, `priority:blocking`, `revenue` → at least `sev:2`.

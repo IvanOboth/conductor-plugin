@@ -307,7 +307,7 @@ def main(argv=None):
     # effort (CLAUDE_EFFORT): a Fable session handed off at medium, and its successor orchestrated at medium.
     effort = a.effort or 'high'
     # A Fable successor falls back to Opus when Fable is overloaded or unavailable on the account
-    # (claude --fallback-model, Claude Code 2.1.322), matching the routing rule for sev:1 orchestrators.
+    # (claude --fallback-model, Claude Code 2.1.322), for a chain that runs on Fable by opt-in (EPIC_FABLE `on`) or was started on Fable.
     fallback = ['--fallback-model', 'opus'] if model == 'fable' else []
     # The successor runs unattended, so it skips permissions unless told otherwise. It does not copy this
     # session's mode: the hook records the mode at its last call, which may be plan or default after a
