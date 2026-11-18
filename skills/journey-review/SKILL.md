@@ -56,6 +56,8 @@ screen, action, input typed, taps or clicks, waits, decisions the user had to ma
 navigation, and whether the step serves the goal (essential) or the app (overhead). Save a screenshot
 per screen and, for a journey that will be redesigned, a recording: it is the "before" evidence.
 
+When you read a feature or journey file, read its pending notes (`features/notes/<id>/`, or
+`features/notes/journeys/<id>/`) and its `### Change notes` too: a pending note wins over the body.
 Read the code for each screen as you go (`how` for an unfamiliar subsystem): what the screen requires,
 what it defaults, what it validates, what it does on commit. Steps you cannot drive without writing
 shared data are walked to the confirm button and completed from source, labelled so.
