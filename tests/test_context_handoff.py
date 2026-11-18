@@ -103,7 +103,9 @@ def notify(tid, status='completed'):
             '<summary>done</summary>\n</task-notification>'}}
 
 
-class ContextWatchTest(unittest.TestCase):
+class WatchBase(unittest.TestCase):
+    mode = None  # CONDUCTOR_CONTEXT_MODE for run_hook; None leaves it unset (the default, compact)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self.tmp.name)
@@ -123,17 +125,26 @@ class ContextWatchTest(unittest.TestCase):
         lines += rows
         self.transcript.write_text(''.join(json.dumps(r) + '\n' for r in lines))
 
-    def run_hook(self, event='PostToolUse', **extra):
+    def run_hook(self, event='PostToolUse', env_extra=None, **extra):
         payload = {'hook_event_name': event, 'session_id': 's1', 'transcript_path': str(self.transcript),
                    'cwd': str(self.cwd), 'permission_mode': 'bypassPermissions', **extra}
         env = dict(os.environ, XDG_STATE_HOME=str(self.state))
         for k in ('CONDUCTOR_CONTEXT_WATCH', 'CONDUCTOR_HANDOFF_PCT', 'CONDUCTOR_HANDOFF_NOW_PCT',
-                  'CONDUCTOR_CONTEXT_WINDOW', 'CONDUCTOR_LANE_MAX_HOURS'):
+                  'CONDUCTOR_CONTEXT_WINDOW', 'CONDUCTOR_LANE_MAX_HOURS', 'CONDUCTOR_CONTEXT_MODE',
+                  'CONDUCTOR_CHECKPOINT_PCT', 'CONDUCTOR_CHECKPOINT_NOW_PCT'):
             env.pop(k, None)
+        if self.mode:
+            env['CONDUCTOR_CONTEXT_MODE'] = self.mode
+        env.update(env_extra or {})
         p = subprocess.run([sys.executable, str(WATCH)], input=json.dumps(payload), capture_output=True,
                            text=True, env=env)
         self.assertEqual(p.returncode, 0)
         return json.loads(p.stdout) if p.stdout.strip() else None
+
+
+class ContextWatchTest(WatchBase):
+    """The hand-over behaviour from before compaction in place became the default (Ivan, 18 Nov 2026)."""
+    mode = 'handoff'
 
     def test_below_threshold_is_silent(self):
         self.write(assistant(650_000))
@@ -240,6 +251,116 @@ class ContextWatchTest(unittest.TestCase):
         self.run_hook()
         (self.state / 'conductor/context/s1.handoff.json').write_text(json.dumps({'status': 'done'}))
         self.assertIsNone(self.run_hook('Stop', stop_hook_active=False))
+
+
+class CompactModeTest(WatchBase):
+    """The default: the session compacts in place and carries on (Ivan, 18 Nov 2026)."""
+
+    def ctx(self, out):
+        return out['hookSpecificOutput']['additionalContext']
+
+    def test_default_mode_is_compact_and_says_not_to_hand_over(self):
+        self.write(assistant(720_000))
+        ctx = self.ctx(self.run_hook())
+        self.assertIn('72% of its context window (720,000 of 1,000,000 tokens)', ctx)
+        self.assertIn('compact it automatically soon', ctx)
+        self.assertIn('same session', ctx)
+        self.assertIn('Do NOT write a continuation order, do NOT run conductor-handoff', ctx)
+        self.assertIn('do NOT start a successor', ctx)
+        self.assertIn('your work-list or TASKS file', ctx)
+        self.assertIn('carry on with the work', ctx)
+        self.assertNotIn('Hand off now', ctx)
+
+    def test_unknown_mode_means_compact(self):
+        self.mode = 'sideways'
+        self.write(assistant(720_000))
+        self.assertIn('Do NOT write a continuation order', self.ctx(self.run_hook()))
+
+    def test_checkpoint_is_said_once_per_level(self):
+        self.write(assistant(720_000))
+        self.assertIsNotNone(self.run_hook())
+        self.assertIsNone(self.run_hook())
+        self.write(assistant(870_000))
+        self.assertIn('87%', self.ctx(self.run_hook()))
+        self.assertIsNone(self.run_hook())
+
+    def test_checkpoint_names_the_work_list_and_the_live_lanes(self):
+        (self.cwd / '.conductor').mkdir()
+        (self.cwd / '.conductor/work-list.md').write_text('- item\n')
+        self.write(launch('a1'), launch('b1', 'bash'), assistant(720_000))
+        ctx = self.ctx(self.run_hook())
+        self.assertIn(str(self.cwd / '.conductor/work-list.md'), ctx)
+        self.assertIn('a1, b1', ctx)
+
+    def test_stop_is_never_blocked(self):
+        self.write(assistant(900_000))
+        self.assertIsNone(self.run_hook('Stop', stop_hook_active=False))
+        self.assertIsNone(self.run_hook('Stop', stop_hook_active=False))
+        self.assertIsNotNone(self.run_hook())  # the Stop did not use up the level's checkpoint
+
+    def test_checkpoint_aliases_win_over_the_handoff_names(self):
+        self.write(assistant(420_000))
+        env = {'CONDUCTOR_HANDOFF_PCT': '90', 'CONDUCTOR_HANDOFF_NOW_PCT': '95', 'CONDUCTOR_CHECKPOINT_PCT': '40'}
+        self.assertIn('42%', self.ctx(self.run_hook(env_extra=env)))
+
+    def test_bench_handoff_settings_still_set_the_levels(self):
+        self.write(assistant(410_000))
+        env = {'CONDUCTOR_HANDOFF_PCT': '40', 'CONDUCTOR_HANDOFF_NOW_PCT': '45'}
+        self.assertIsNotNone(self.run_hook(env_extra=env))
+        self.write(assistant(460_000))
+        self.assertIsNotNone(self.run_hook(env_extra=env))
+
+    def test_session_start_after_compaction_says_reread_once(self):
+        (self.cwd / '.conductor').mkdir()
+        (self.cwd / '.conductor/work-list.md').write_text('- item\n')
+        self.write(launch('a1'), assistant(750_000))
+        self.assertIsNotNone(self.run_hook())
+        out = self.run_hook('SessionStart', source='compact')
+        self.assertEqual(out['hookSpecificOutput']['hookEventName'], 'SessionStart')
+        ctx = self.ctx(out)
+        self.assertIn('just compacted', ctx)
+        self.assertIn('Before any other action, re-read', ctx)
+        self.assertIn(str(self.cwd / '.conductor/work-list.md'), ctx)
+        self.assertIn("the run's order", ctx)
+        self.assertIn('task ids', ctx)
+        self.assertIn('a1', ctx)
+        self.assertIn('Do not redo a step the work-list marks done', ctx)
+        self.assertIn('unchanged', ctx)
+        with self.transcript.open('a') as fh:
+            fh.write(json.dumps(assistant(120_000)) + '\n')
+        self.assertIsNone(self.run_hook())  # the re-read was said once, at the session start
+        with self.transcript.open('a') as fh:
+            fh.write(json.dumps(assistant(710_000)) + '\n')
+        self.assertIn('Do NOT write a continuation order', self.ctx(self.run_hook()))  # the levels count again
+
+    def test_ordinary_session_starts_say_nothing(self):
+        self.write(assistant(750_000))
+        for source in ('startup', 'resume', 'clear', 'fork', None):
+            self.assertIsNone(self.run_hook('SessionStart', source=source), source)
+        self.assertIsNotNone(self.run_hook())  # and they did not use up the checkpoint
+
+    def test_session_start_outside_a_conductor_session_says_nothing(self):
+        self.write(assistant(750_000), skill=None)
+        self.assertIsNone(self.run_hook('SessionStart', source='compact'))
+
+    def test_without_the_session_start_hook_the_first_tool_call_after_compaction_says_it(self):
+        self.write(assistant(750_000))
+        self.assertIsNotNone(self.run_hook())
+        self.write(assistant(120_000))
+        self.assertIn('just compacted', self.ctx(self.run_hook()))
+        self.assertIsNone(self.run_hook())
+
+    def test_a_stop_first_after_compaction_keeps_the_reread_for_the_next_tool_call(self):
+        self.write(assistant(750_000))
+        self.run_hook()
+        self.write(assistant(120_000))
+        self.assertIsNone(self.run_hook('Stop'))
+        self.assertIn('just compacted', self.ctx(self.run_hook()))
+
+    def test_handoff_mode_adds_nothing_at_session_start(self):
+        self.mode = 'handoff'
+        self.write(assistant(750_000))
+        self.assertIsNone(self.run_hook('SessionStart', source='compact'))
 
 
 class HandoffTest(unittest.TestCase):
@@ -580,11 +701,20 @@ class InstallTest(unittest.TestCase):
             self.assertEqual(s['hooks']['PostToolUse'][0], other)
             self.assertIn('context-watch.py', s['hooks']['PostToolUse'][1]['hooks'][0]['command'])
             self.assertIn('context-watch.py', s['hooks']['Stop'][0]['hooks'][0]['command'])
+            self.assertEqual(len(s['hooks']['SessionStart']), 1)  # registered once after two runs
+            self.assertEqual(s['hooks']['SessionStart'][0]['matcher'], 'compact')
+            self.assertIn('conductor-context-watch', s['hooks']['SessionStart'][0]['hooks'][0]['command'])
             self.assertTrue((Path(tmp) / 'bin/conductor-handoff').is_symlink())
             self.assertEqual(run('--uninstall').returncode, 0)
             s = json.loads((cfg / 'settings.json').read_text())
             self.assertEqual(s['hooks'], {'PostToolUse': [other]})
             self.assertFalse((Path(tmp) / 'bin/conductor-handoff').exists())
+
+    def test_plugin_hooks_register_the_compaction_reread(self):
+        hooks = json.loads((ROOT / 'hooks/hooks.json').read_text())['hooks']
+        self.assertEqual(sorted(hooks), ['PostToolUse', 'SessionStart', 'Stop'])
+        self.assertEqual([g['matcher'] for g in hooks['SessionStart']], ['compact'])
+        self.assertIn('context-watch.py', hooks['SessionStart'][0]['hooks'][0]['command'])
 
     def test_install_creates_a_missing_settings_dir(self):
         with tempfile.TemporaryDirectory() as tmp:

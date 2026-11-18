@@ -1,21 +1,30 @@
 #!/usr/bin/env python3
-"""context-watch — tell a long conductor run when to hand off to a fresh session.
+"""context-watch — keep a long conductor run going when its context fills up.
 
-Registered as a Claude Code hook on PostToolUse and Stop (issue #17). Hooks get
+Registered as a Claude Code hook on PostToolUse, Stop and SessionStart (issue #17). Hooks get
 no token counts, so the hook reads the session's current context size from the
 last main-chain assistant `usage` in the transcript, and the window size from
 the statusline's cache (scripts/context-statusline-tap.sh) or a model default.
 
-In a conductor session (the conductor, conductor-claude or conductor-core skill
-was loaded, or the working directory holds .conductor/work-list.md) it injects
-the handoff instruction when usage crosses CONDUCTOR_HANDOFF_PCT (default 70),
-again at CONDUCTOR_HANDOFF_NOW_PCT (default 85) and every 5 points after. The
-Stop hook blocks one stop per level, so an idle session over the threshold
-still hears it. It goes quiet once conductor-handoff writes <session>.handoff.json.
+It acts in a conductor session (the conductor, conductor-claude or conductor-core skill
+was loaded, or the working directory holds .conductor/work-list.md). The levels are
+CONDUCTOR_CHECKPOINT_PCT (else CONDUCTOR_HANDOFF_PCT, default 70), then
+CONDUCTOR_CHECKPOINT_NOW_PCT (else CONDUCTOR_HANDOFF_NOW_PCT, default 85) and every 5 points after.
 
-A session waiting on its own background lanes (Agent, Workflow or Bash run in the background, launched in the
-last CONDUCTOR_LANE_MAX_HOURS, default 12, with no task-notification yet) is not stopped: those lanes report
-to this session, so the Stop block waits for the first stop after they have all landed.
+CONDUCTOR_CONTEXT_MODE picks what happens at a level:
+
+compact (the default; any value other than `handoff`): the session compacts in place and carries on
+  (Ivan, 18 Nov 2026). PostToolUse tells it once per level to bring its work-list file up to date and not
+  to hand over. Stop is never blocked. After a compaction, SessionStart (source `compact`) tells it to
+  re-read the work-list and the run's order before anything else; if that hook is not installed, the
+  first PostToolUse after the context drops by 20 points says the same.
+
+handoff: the old behaviour. PostToolUse injects the handoff instruction once per level, and Stop blocks
+  one stop per level, so an idle session over the threshold still hears it. It goes quiet once
+  conductor-handoff writes <session>.handoff.json. A session waiting on its own background lanes (Agent,
+  Workflow or Bash run in the background, launched in the last CONDUCTOR_LANE_MAX_HOURS, default 12, with
+  no task-notification yet) is not stopped: those lanes report to this session, so the Stop block waits
+  for the first stop after they have all landed.
 
 Never fails the session: any error exits 0 with no output.
 CONDUCTOR_CONTEXT_WATCH=off disables it; =all watches every session.
@@ -241,14 +250,58 @@ def message(pct, tokens, window, now, stopping, lanes=0):
     return f'{head} {body}'
 
 
+def work_list_name(cwd):
+    path = Path(cwd or '.') / '.conductor/work-list.md'
+    return f'the work-list file {path}' if path.is_file() else 'your work-list or TASKS file'
+
+
+def checkpoint_message(pct, tokens, window, cwd, lanes=()):
+    """compact mode: the instruction at each level. The session compacts in place; nothing is handed over."""
+    lanes_line = ''
+    if lanes:
+        lanes_line = (f' Background lanes that still report to this session: {", ".join(lanes)}. '
+                      'Write each one in the work-list with its task id and its output path.')
+    return (f'Context watch (conductor): this session is at {pct}% of its context window '
+            f'({tokens:,} of {window:,} tokens). Claude Code will compact it automatically soon, and the run '
+            'continues in this same session. Do NOT write a continuation order, do NOT run conductor-handoff, '
+            'and do NOT start a successor session. The summary after the compaction may drop detail, so now bring '
+            f'{work_list_name(cwd)} up to date: what is done; what is running, with task ids and output paths; '
+            'the decisions taken and why; what comes next; and which gates and reviews still apply. '
+            f'Commit work that has landed.{lanes_line} Then carry on with the work.')
+
+
+def reground_message(cwd, lanes=()):
+    """After a compaction: what to do before anything else."""
+    lanes_line = (f' This hook still counts these background lanes as running: {", ".join(lanes)}.' if lanes else '')
+    return ('Context watch (conductor): this session was just compacted, and the run continues here. Before any '
+            f'other action, re-read {work_list_name(cwd)} and the run\'s order (the work order or issue it '
+            'names). Check the lanes in flight by their task ids (task notifications, output files, '
+            f'`orca`/`gh` status) before you start new ones.{lanes_line} Do not redo a step the work-list marks '
+            'done. The run\'s gates, reviews and authorisations are unchanged. Do not hand over to a new session.')
+
+
+def context_mode():
+    return 'handoff' if os.environ.get('CONDUCTOR_CONTEXT_MODE', '').strip().lower() == 'handoff' else 'compact'
+
+
+def env_pct(names, default):
+    for name in names:
+        value = os.environ.get(name, '').strip()
+        if value:
+            return int(value)
+    return default
+
+
 def main():
     mode = os.environ.get('CONDUCTOR_CONTEXT_WATCH', 'conductor').lower()
     if mode in ('off', '0', 'false'):
         return
     data = json.loads(sys.stdin.read() or '{}')
     event = data.get('hook_event_name')
-    if event not in ('PostToolUse', 'Stop') or data.get('agent_id'):
-        return  # subagent tool calls carry agent_id; the handoff is the orchestrator's
+    if event not in ('PostToolUse', 'Stop', 'SessionStart') or data.get('agent_id'):
+        return  # subagent tool calls carry agent_id; the context is the orchestrator's
+    if event == 'SessionStart' and data.get('source') != 'compact':
+        return  # only a compaction needs the re-read; a new, resumed or cleared session starts as it is
     sid = data.get('session_id')
     transcript = Path(data.get('transcript_path') or '')
     if not sid or not transcript.is_file():
@@ -287,25 +340,51 @@ def watch(data, event, sid, transcript, mode):
         return None
 
     live = track_lanes(transcript, state)
+    compact = context_mode() == 'compact'
+    cwd = data.get('cwd') or state.get('cwd')
+    if event == 'SessionStart':  # source `compact`; main() lets no other source through
+        out = None
+        if compact and not handed_off(sid):
+            state['regrounded'] = True  # the PostToolUse fallback below then stays quiet for this compaction
+            out = {'hookSpecificOutput': {'hookEventName': 'SessionStart',
+                                          'additionalContext': reground_message(cwd, live)}}
+        save_state(sid, state)
+        return out
+
     tokens, model = last_usage(transcript)
+    compacted = False
     if tokens:
         window = window_size(sid, model, tokens)
         pct = tokens * 100 // window
         if pct + 20 <= state.get('pct', 0):  # compacted: the levels count again
             state['told'], state['stop_blocked'] = [], []
+            compacted = True
         state.update(tokens=tokens, model=model, window=window, pct=pct, updated=int(time.time()))
     if not tokens or handed_off(sid):
         save_state(sid, state)
         return None
+    if compacted and not state.pop('regrounded', False) and compact:
+        state['reground_due'] = True  # no SessionStart hook said it (not installed): say it on the next tool call
+    if compact and event == 'PostToolUse' and state.pop('reground_due', False):
+        save_state(sid, state)
+        return {'hookSpecificOutput': {'hookEventName': 'PostToolUse',
+                                       'additionalContext': reground_message(cwd, live)}}
 
-    threshold = int(os.environ.get('CONDUCTOR_HANDOFF_PCT', 70))
-    now = int(os.environ.get('CONDUCTOR_HANDOFF_NOW_PCT', 85))
+    threshold = env_pct(('CONDUCTOR_CHECKPOINT_PCT', 'CONDUCTOR_HANDOFF_PCT'), 70)
+    now = env_pct(('CONDUCTOR_CHECKPOINT_NOW_PCT', 'CONDUCTOR_HANDOFF_NOW_PCT'), 85)
     crossed = [lv for lv in levels(threshold, now) if pct >= lv]
     if not crossed:
         save_state(sid, state)
         return None
     level = crossed[-1]
     out = None
+    if compact:  # compaction in place: tell once per level; never block a stop, there is nothing to hand over
+        if event == 'PostToolUse' and level not in state.get('told', []):
+            state.setdefault('told', []).append(level)
+            out = {'hookSpecificOutput': {'hookEventName': 'PostToolUse',
+                                          'additionalContext': checkpoint_message(pct, tokens, window, cwd, live)}}
+        save_state(sid, state)
+        return out
     if event == 'PostToolUse' and level not in state.get('told', []):
         state.setdefault('told', []).append(level)
         out = {'hookSpecificOutput': {'hookEventName': 'PostToolUse',

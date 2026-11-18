@@ -3,9 +3,10 @@
 
 A plugin install gets the hook from hooks/hooks.json. A checkout linked with
 link-personal-skills.py (or copied by install.sh) needs it in the user's
-settings.json. This adds a PostToolUse ("*") and a Stop entry that run
-scripts/context-watch.py from SCRIPT_DIR, and links bin/conductor-handoff into
-~/.local/bin. Idempotent; settings.json is backed up before the first change.
+settings.json. This adds a PostToolUse ("*"), a Stop and a SessionStart ("compact",
+the re-read after a compaction) entry that run scripts/context-watch.py from SCRIPT_DIR,
+and links bin/conductor-handoff into ~/.local/bin. Idempotent: a re-run replaces the
+entries tagged `# conductor-context-watch`; settings.json is backed up before the first change.
 
   python3 scripts/install-context-hook.py [--settings FILE] [--script-dir DIR] [--bin-dir DIR] [--no-link] [--uninstall] [--dry-run]
 """
@@ -21,6 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = 'context-watch.py'
 TAG = '# conductor-context-watch'  # ours; other tools' context-watch.py hooks are left alone
+EVENTS = ('PostToolUse', 'Stop', 'SessionStart')
 
 
 def settings_path():
@@ -30,7 +32,7 @@ def settings_path():
 
 def strip(hooks):
     """Remove our entries; drop groups left empty."""
-    for event in ('PostToolUse', 'Stop'):
+    for event in EVENTS:
         groups = []
         for g in hooks.get(event, []):
             g = dict(g, hooks=[h for h in g.get('hooks', []) if TAG not in h.get('command', '')])
@@ -63,6 +65,7 @@ def main(argv=None):
         entry = {'type': 'command', 'command': cmd, 'timeout': 10}
         hooks.setdefault('PostToolUse', []).append({'matcher': '*', 'hooks': [entry]})
         hooks.setdefault('Stop', []).append({'hooks': [dict(entry)]})
+        hooks.setdefault('SessionStart', []).append({'matcher': 'compact', 'hooks': [dict(entry)]})
     settings['hooks'] = hooks
     changed = json.dumps(settings, sort_keys=True) != before
 
@@ -70,7 +73,7 @@ def main(argv=None):
     target = ROOT / 'bin/conductor-handoff'
     if a.dry_run:
         print(json.dumps({'settings': str(path), 'changes_settings': changed,
-                          'hooks': {k: hooks.get(k) for k in ('PostToolUse', 'Stop')},
+                          'hooks': {k: hooks.get(k) for k in EVENTS},
                           'link': None if a.uninstall or a.no_link else f'{link} -> {target}'}, indent=1))
         return 0
     if changed:

@@ -103,7 +103,7 @@ for sc in conductor-report.py context-watch.py context-statusline-tap.sh install
   run cp "${SRC}/scripts/${sc}" "${DATADIR}/${sc}"
   echo "  script   ${sc}"
 done
-# The context-watch hook (issue #17): PostToolUse + Stop entries in settings.json.
+# The context-watch hook (issue #17): PostToolUse, Stop and SessionStart (compact) entries in settings.json.
 run python3 "${SRC}/scripts/install-context-hook.py" --settings "${PREFIX}/settings.json" --script-dir "${DATADIR}" --no-link
 
 for b in "${BINS[@]}"; do
