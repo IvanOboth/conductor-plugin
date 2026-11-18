@@ -96,8 +96,10 @@ the row count matched). You are not the judge of whether it **looks** right.
 
 Since 29 Sep 2026, the cross-family review of Claude-authored work, routine and critical,
 goes to `gpt-6.1-sol` (via `codex-review`: `ask-codex -m gpt-6.1-sol --effort high`).
-Critical changes (see **Critical** above) run at `high` too, beside an Opus 5.5 fresh-context judgment review at
-`high` (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review);
+Critical changes (see **Critical** above) run at `high` as well (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review).
+From 31 Oct to 18 Nov 2026 they also got an Opus 5.5 fresh-context judgment review (`verify-lane`);
+Ivan removed it on 18 Nov 2026, so your `high` review is the only one, except on work you wrote,
+which the `verify-lane` reviews;
 a `high` review that came back thin is retried at `xhigh` (`ask-codex -m gpt-6.1-sol --effort xhigh`). You do not judge design. The reviewer is always a different model
 from the author; if you authored the work, say so and decline the review. The one
 exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
@@ -253,7 +255,7 @@ something up; never at `xhigh` or `max` by default.
   the worse of its impact and its risk (definitions in `~/.claude/CLAUDE.md`, "Severity").
   It sets the queue and where Fable 5.2 is spent (the plan gate and the epic close; Opus
   5.5 orchestrates every epic since 17 Nov 2026). A `sev:1` item always gets the critical review (you at
-  `high`, the Opus `verify-lane` at `high`); severity never lowers review depth. Older labels set a
+  `high`); severity never lowers review depth. Older labels set a
   floor: `priority:critical`, `priority:p0`, `urgent` → at least `sev:1`; `priority:high`,
   `priority:p1`, `priority:blocking`, `revenue` → at least `sev:2`.
 - Adviser → a lane or the orchestrator stuck on one question (a design choice, a failing
@@ -273,19 +275,14 @@ something up; never at `xhigh` or `max` by default.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   Fable 5.2 at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
-- Reviews → always a different model from the author (29 Sep 2026), except the critical
-  judgment review (`verify-lane`, Opus 5.5 in fresh context beside your `high` review,
-  labelled `same-model, fresh context`; 31 Oct 2026):
+- Reviews → always a different model from the author (29 Sep 2026):
   - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
-  - Opus-authored, critical → GPT-6.1 Sol `high` + Opus 5.5 `verify-lane` in fresh context
-    (`high`, money, auth, personal data, migrations, production data and every `sev:1`
-    item included; 31 Oct 2026, `high` throughout since 12 Nov 2026).
-    When GPT-6.1 Sol cannot run, a second fresh-context Opus 5.5 at `high` takes its
-    place, never Fable 5.2 (Ivan, 17 Nov 2026). Unchanged for now: the 31 Oct
-    reason (Opus 5.5 beat Fable 5.1 on every published benchmark) no longer holds against
-    Fable 5.2, so a head-to-head on past critical diffs runs in
-    `bench-factory/tools/model-evals`; decide by 24 Nov 2026.
+  - Opus-authored, critical → GPT-6.1 Sol at `high`, plus the orchestrator's own read
+    of the diff. The Opus 5.5 `verify-lane` review that ran beside it from 31 Oct 2026
+    was removed by Ivan on 18 Nov 2026. When GPT-6.1 Sol cannot run, a fresh-context
+    Opus 5.5 at `high` takes its place, never Fable 5.2 (Ivan, 17 Nov 2026).
+  - GPT-6.1 Sol-authored, critical → the Opus 5.5 `verify-lane` at `high`.
   - Fable-authored → `opus` at `high`.
   - GPT-6.1 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
     fresh-context GPT-6.1 Sol reviewer at `high`, labelled `same-model, fresh context`,
