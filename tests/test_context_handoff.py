@@ -333,6 +333,25 @@ class CompactModeTest(WatchBase):
             fh.write(json.dumps(assistant(710_000)) + '\n')
         self.assertIn('Do NOT write a continuation order', self.ctx(self.run_hook()))  # the levels count again
 
+    def test_a_confirmed_compaction_rearms_the_levels_whatever_the_drop(self):
+        # Review of 18 Nov 2026: only a 20-point drop re-armed the levels, so a compaction that freed less left them
+        # used up and the next fill got no checkpoint.
+        env = {'CONDUCTOR_HANDOFF_PCT': '40', 'CONDUCTOR_HANDOFF_NOW_PCT': '45'}
+
+        def at(tokens):
+            with self.transcript.open('a') as fh:
+                fh.write(json.dumps(assistant(tokens)) + '\n')
+            return self.run_hook(env_extra=env)
+
+        self.write(assistant(410_000))
+        self.assertIn('Do NOT write a continuation order', self.ctx(self.run_hook(env_extra=env)))
+        self.assertIn('Do NOT write a continuation order', self.ctx(at(460_000)))
+        self.assertIn('just compacted', self.ctx(self.run_hook('SessionStart', env_extra=env, source='compact')))
+        self.assertIsNone(at(300_000))  # a 16-point drop: no second re-read, and nothing to checkpoint yet
+        self.assertIn('Do NOT write a continuation order', self.ctx(at(410_000)))
+        self.assertIn('Do NOT write a continuation order', self.ctx(at(460_000)))
+        self.assertIsNone(at(465_000))  # once per level
+
     def test_ordinary_session_starts_say_nothing(self):
         self.write(assistant(750_000))
         for source in ('startup', 'resume', 'clear', 'fork', None):

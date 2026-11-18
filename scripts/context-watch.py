@@ -346,6 +346,10 @@ def watch(data, event, sid, transcript, mode):
         out = None
         if compact and not handed_off(sid):
             state['regrounded'] = True  # the PostToolUse fallback below then stays quiet for this compaction
+            # The compaction is confirmed here, so the levels count again now. The 20-point drop below is only the
+            # fallback's way to notice one: a compaction that frees less than that would otherwise leave the levels
+            # used up and the next fill would get no checkpoint. pct 0 keeps that fallback from firing a second time.
+            state['told'], state['stop_blocked'], state['pct'] = [], [], 0
             out = {'hookSpecificOutput': {'hookEventName': 'SessionStart',
                                           'additionalContext': reground_message(cwd, live)}}
         save_state(sid, state)
@@ -363,7 +367,8 @@ def watch(data, event, sid, transcript, mode):
     if not tokens or handed_off(sid):
         save_state(sid, state)
         return None
-    if compacted and not state.pop('regrounded', False) and compact:
+    regrounded = state.pop('regrounded', False)  # holds only until the first hook after the SessionStart that set it
+    if compacted and not regrounded and compact:
         state['reground_due'] = True  # no SessionStart hook said it (not installed): say it on the next tool call
     if compact and event == 'PostToolUse' and state.pop('reground_due', False):
         save_state(sid, state)
