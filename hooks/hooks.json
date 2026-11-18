@@ -1,5 +1,5 @@
 {
-  "description": "Conductor context watch (issue #17): tells a long conductor run to hand off to a fresh session at 70% context.",
+  "description": "Conductor context watch (issue #17): before a long conductor run is compacted, tells it to bring its work-list up to date, and after the compaction tells it to re-read the work-list and its order. CONDUCTOR_CONTEXT_MODE=handoff restores the old hand-over to a fresh session.",
   "hooks": {
     "PostToolUse": [
       {
@@ -11,6 +11,14 @@
     ],
     "Stop": [
       {
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/context-watch.py\" || true", "timeout": 10 }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
         "hooks": [
           { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/context-watch.py\" || true", "timeout": 10 }
         ]

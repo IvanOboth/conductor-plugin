@@ -87,16 +87,25 @@ For a whole team, commit this to the project's `.claude/settings.json` instead:
 }
 ```
 
-### Context handoff for long runs
+### Long runs: compact in place
 
-A conductor run that fills its context window ends in compaction, which keeps the plan only as a summary. The `context-watch` hook tells the orchestrator when its context passes 70% and again at 85%. The orchestrator then writes a continuation order and runs `conductor-handoff --order <path>`, which starts a fresh session in a new Orca terminal in the same worktree and stands the old one down (issue #17). The successor's tab must land in a worktree Orca lists, so Ivan can see it: for an unlisted worktree (made with `git worktree add`) the tab opens in `--terminal-worktree <dir>`, else this session's listed worktree, and the script refuses with exit 6 when none is listed (`--allow-unlisted` overrides). Runs should create worktrees with `orca worktree create`. A plugin install gets the hook from `hooks/hooks.json`. A linked checkout installs it with:
+A conductor run that fills its context window is compacted by Claude Code and carries on in the same session (issue #17; the default since 18 Nov 2026). The plan lives in the run's work-list file, so the run keeps it through the compaction. The `context-watch` hook does two things:
+
+- **Before the compaction.** When the context passes 70%, again at 85% and every 5 points after, it tells the orchestrator once per level to bring the work-list up to date (done, running with task ids and output paths, decisions and reasons, next steps, gates that still apply) and to carry on. It does not ask for a hand-over and never blocks a stop.
+- **After the compaction.** A SessionStart hook (source `compact`) tells the session to re-read the work-list and the run's order before anything else, to check lanes in flight by their task ids, and not to redo finished steps. Without that hook, the first tool call after the context drops by 20 points carries the same message.
+
+Set the levels below the point where Claude Code compacts the session. With `autoCompactWindow: 500000` on a 1M window it compacts at about 47%, so the bench uses 40 and 45.
+
+**Hand-over mode.** `CONDUCTOR_CONTEXT_MODE=handoff` brings back the old behaviour: at each level the orchestrator writes a continuation order and runs `conductor-handoff --order <path>`, which starts a fresh session in a new Orca terminal in the same worktree and stands the old one down. Use it when the run must move to another machine or model. The successor's tab must land in a worktree Orca lists, so Ivan can see it: for an unlisted worktree (made with `git worktree add`) the tab opens in `--terminal-worktree <dir>`, else this session's listed worktree, and the script refuses with exit 6 when none is listed (`--allow-unlisted` overrides). Runs should create worktrees with `orca worktree create`.
+
+A plugin install gets the hook from `hooks/hooks.json`. A linked checkout installs it with (a re-run replaces its own entries):
 
 ```bash
-python3 scripts/install-context-hook.py        # PostToolUse + Stop hooks, links conductor-handoff into ~/.local/bin
+python3 scripts/install-context-hook.py        # PostToolUse, Stop and SessionStart (compact) hooks; links conductor-handoff into ~/.local/bin
 python3 scripts/install-context-hook.py --uninstall
 ```
 
-The hook only acts in conductor sessions: one that loaded a conductor skill, or one whose working directory has `.conductor/work-list.md`. Hooks are not told the window size. The hook reads it from a file the statusline writes (pipe your statusline's stdin to `scripts/context-statusline-tap.sh`); without that file it assumes 1M for Opus and Fable 5.x and 200K for other models. Settings: `CONDUCTOR_HANDOFF_PCT` (70), `CONDUCTOR_HANDOFF_NOW_PCT` (85), `CONDUCTOR_CONTEXT_WINDOW`, and `CONDUCTOR_CONTEXT_WATCH=off|all`.
+The hook only acts in conductor sessions: one that loaded a conductor skill, or one whose working directory has `.conductor/work-list.md`. Hooks are not told the window size. The hook reads it from a file the statusline writes (pipe your statusline's stdin to `scripts/context-statusline-tap.sh`); without that file it assumes 1M for Opus and Fable 5.x and 200K for other models. Settings: `CONDUCTOR_CONTEXT_MODE` (`compact`, the default, or `handoff`), `CONDUCTOR_CHECKPOINT_PCT` (70; the older name `CONDUCTOR_HANDOFF_PCT` still works), `CONDUCTOR_CHECKPOINT_NOW_PCT` (85; or `CONDUCTOR_HANDOFF_NOW_PCT`), `CONDUCTOR_CONTEXT_WINDOW`, and `CONDUCTOR_CONTEXT_WATCH=off|all`.
 
 ## What's in the box
 
@@ -117,8 +126,8 @@ The hook only acts in conductor sessions: one that loaded a conductor skill, or 
 | `agents/write-lane` | Fable 5.2 @ `high` — high-stakes prose: counterparty mail, proposals, board and investor documents, the final edit of another lane's draft |
 | `bin/ask-codex` | Codex wrapper; lands on the Bash tool's PATH automatically. `--effort LEVEL` sets the lane's reasoning effort (`low`…`max`, or `ultra` to let the lane fan out to its own subagents); `--worktree BRANCH` runs a write lane in its own named git worktree; `--resume ID` continues an interrupted session |
 | `bin/ask-claude` | The reverse direction — reach real Claude from a Codex session or a proxied main loop. Strips `ANTHROPIC_*` proxy vars by default so a "second opinion" can't silently be your own model answering |
-| `bin/conductor-handoff` | Starts the successor orchestrator in a new Orca terminal from a continuation order, records the handoff and stands the old session down |
-| `scripts/context-watch.py` | PostToolUse/Stop hook: tells a conductor session to hand off at 70% context |
+| `bin/conductor-handoff` | Hand-over mode only (`CONDUCTOR_CONTEXT_MODE=handoff`): starts the successor orchestrator in a new Orca terminal from a continuation order, records the hand-over and stands the old session down |
+| `scripts/context-watch.py` | PostToolUse, Stop and SessionStart hook: tells a conductor session to update its work-list before it is compacted, and to re-read it after |
 | `scripts/conductor-report.py` | Telemetry — parses the session + codex rollouts, emits a cost table |
 
 ## Prerequisites
