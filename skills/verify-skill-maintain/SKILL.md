@@ -49,14 +49,21 @@ alone, and file an issue if the run is authorised to).
 2. **Source wave.** One read-only lane per feature file (GPT-6.1 Sol `high` via `ask-codex`, with
    "do not edit files" in the order; Opus 5.5 `medium` when Codex quota is out), at most 6 at once
    on the bench. Prioritise the features the checker
-   flagged; a full pass covers all of them. Each lane reads the feature file and the code its
-   `sources` name and returns: a one-paragraph summary of how the feature works now, likely drift
-   with `file:line` citations (labels, routes, persona gates, new sub-features), and one live
-   recipe to confirm it. Lanes never drive the app and never edit files.
+   flagged; a full pass covers all of them. Each lane reads the feature file (with its pending notes
+   in `features/notes/<id>/` and its `### Change notes`; a pending note wins over the body, a later
+   change note over the text above it) and the code its `sources` name and returns: a
+   one-paragraph summary of how the feature works now, likely drift with `file:line` citations
+   (labels, routes, persona gates, new sub-features), and one live recipe to confirm it. Lanes
+   never drive the app and never edit files.
 
 3. **Reconcile.** Every feature file has a returned summary. Spot-check cited drift in the source
    yourself; do not re-prove claims of no drift. Merge the recipes into as few sign-ins as practical
    (group by persona).
+   Fold change notes by judgment: for each feature and journey, merge what its `### Change notes`
+   bullets and pending notes say into the body text where it belongs (the sub-feature, the recipe
+   step, the gotcha), then delete the bullets you absorbed. Leave pending note files for the daily
+   fold job, which moves them into `### Change notes` mechanically; a later pass removes those
+   bullets. A note that contradicts what the live pass shows is drift like any other.
 
 4. **Live pass.** Required even when the source looks clean. One driver owns the browser (you, or
    one Opus 5.5 lane). Use the helper's own commands. Three invariants for the whole pass:

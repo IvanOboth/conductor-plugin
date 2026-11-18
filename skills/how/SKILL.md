@@ -29,6 +29,10 @@ Say what you take the question to cover in one sentence and start; the asker can
 - **Complex** (a subsystem across many files or services, a cross-cutting flow, an architectural
   overview): explorers first. When in doubt, take the simple path; add explorers if you hit a wall.
 
+When the project has a feature map (`.claude/skills/verify-*/features/`), the feature file for the
+area is a quick start: read it with its pending notes (`features/notes/<id>/`) and its
+`### Change notes`; a pending note wins over the body, and the code wins over all of them.
+
 ### Step 2. Explore (complex only)
 
 Split the question into 2 to 4 angles that do not overlap much, for example data model and state;
