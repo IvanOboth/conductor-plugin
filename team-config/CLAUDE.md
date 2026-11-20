@@ -175,8 +175,8 @@ Judge a browser tool by its real agent interface, not its weakest entry point.
   `snapshot -i` → `@refs`, `screenshot <path>`). **This is the default local lane.**
 - **Local, cheap unattended QA:** GPT-6.2 Sol at `high` via the `codex-computer-use` skill.
   GPT-6.2 Sol drives and screenshots; **Claude then reads the pixels and judges.** GPT-6.2
-  Sol confirms mechanics only; Gemini 4 Neon (`ask-gemini --file`) may give a second read, personal-data and
-  vault captures included.
+  Sol confirms mechanics only; Gemini 4 Neon (`ask-gemini --file`) may give a second read, vault captures
+  included (client personal data stays under bench-factory#428).
 - **Cloud / CI / a deployed URL:** a hosted browser service or Playwright. Cloud browsers
   can't reach `localhost`.
 
