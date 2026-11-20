@@ -147,7 +147,7 @@ ask-gemini -m gemini-4-neon-high --no-fallback --context <context-file> --output
 
 `--no-fallback` keeps it on the Google AI Ultra subscription instead of silently switching to the paid API (\$3/\$15 per Mtok). A non-zero exit or an empty report means it could not run: then an Opus 5.5 lane at `high` in fresh context reviews, labelled `same-model, fresh context`; never Fable. Under `--fix`, Gemini only returns the findings: you (or an Opus 5.5 `exec-lane`) apply the fixes, run the project checks and send the fix diff for re-review (Step 4). Never hand Gemini a write or test-running order.
 
-**Shadow trial** (3 to 5 days from 20 Nov 2026): you may also run Gemini 4 Neon on the same diff beside GPT-6.2 Sol to compare catch rates. Record both finding lists; the Gemini review never gates a merge. For screenshots, images, video or audio in the change, `ask-gemini --file <path>` gives a second read, personal-data and vault files included (Ivan, 20 Nov 2026); you keep the final taste judgment.
+**Shadow trial** (3 to 5 days from 20 Nov 2026): you may also run Gemini 4 Neon on the same diff beside GPT-6.2 Sol to compare catch rates. Record both finding lists; the Gemini review never gates a merge. For screenshots, images, video or audio in the change, `ask-gemini --file <path>` gives a second read, vault files included, personal records in the vault too (Ivan, 20 Nov 2026); you keep the final taste judgment.
 
 GPT-6.2 Sol needs Codex CLI 0.170.0 or later, the first CLI that lists `gpt-6.2-sol`. Always pass `-m gpt-6.2-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
 
