@@ -149,7 +149,7 @@ ask-gemini -m gemini-4-neon-high --no-fallback --context <context-file> --output
 
 **Shadow trial** (3 to 5 days from 20 Nov 2026): you may also run Gemini 4 Neon on the same diff beside GPT-6.2 Sol to compare catch rates. Record both finding lists; the Gemini review never gates a merge and never runs on personal-data or vault work. For screenshots, images, video or audio in the change, `ask-gemini --file <path>` gives a second read, never personal-data or vault files or captures (customer or participant records, identity or financial screens), which stay Claude-only; you keep the final taste judgment.
 
-GPT-6.2 Sol needs Codex CLI 0.159.0 or later; 0.156.1 is rejected by the server under a ChatGPT login. Always pass `-m gpt-6.2-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
+GPT-6.2 Sol needs Codex CLI 0.170.0 or later, the first CLI that lists `gpt-6.2-sol`. Always pass `-m gpt-6.2-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
 
 ```bash
 ask-codex -m gpt-6.2-sol --effort high --clean "

@@ -40,7 +40,7 @@ launch, or your own system prompt) and take the matching role. Every lane is lau
   Codex overflow. Writing code is your weak spot: you implement only as overflow when
   Claude quota is tight, or as the worker in Conductor Core. Do not judge design; if the
   order asks for that, say in your report that it needs a Claude lane. You need Codex CLI
-  0.159.0 or later; older versions are rejected by the server under a ChatGPT login. Treat
+  0.170.0 or later, the first CLI that lists `gpt-6.2-sol`. Treat
   your window as 272K under the ChatGPT login until measured; on the API it is 1.05M.
 - **`gpt-6-luna`** (runs at `high`): bounded high-volume items, such as intake candidate
   packets, classification or extraction over many items, and first-pass checks. Return
