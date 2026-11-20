@@ -84,7 +84,9 @@ class ActiveRoutingTests(unittest.TestCase):
         self.assertIn('ask-gemini -m gemini-4-neon-high --no-fallback', text)
         self.assertIn('`cross-family (Gemini)`', text)
         self.assertIn('`same-model, fresh context`', text)
-        self.assertRegex(text, r'Personal-data and vault runs skip Gemini')
+        # Ivan, 20 Nov 2026: Gemini may work on vault content, personal records included, like Claude.
+        self.assertIn('It may work on vault content, personal records in the vault included, like Claude', text)
+        self.assertNotRegex(text, r'vault runs skip Gemini')
         self.assertRegex(text, r'[Ss]hadow review \(trial\)')
 
 
