@@ -57,7 +57,7 @@ Touch no window other than <app>."
 - **Artifacts, not stdout.** Codex's stdout is session-log noise. Have it save screenshots to a named directory and its findings to a report file — those are the deliverable.
 - **Own browser session.** If Codex drives `agent-browser`, give it its own `--session` name; never the shared one, or it collides with Claude's session.
 
-**4. Read the pixels yourself.** `Read` the screenshots Codex saved and its report. **Codex confirms mechanics** ("page loaded, no console errors, CSV downloaded"); **only you judge whether it *looks* right.** Never accept "verified" on a visual change without seeing the pixels. This is the whole point of computer-use verification — a text "looks good" is not evidence. For a second read of the screenshots or a recording, send them to Gemini 4 Neon with `ask-gemini -m gemini-4-neon-high --no-fallback --file <path>` (never for personal-data or vault captures); its read is input, and the judgment stays yours.
+**4. Read the pixels yourself.** `Read` the screenshots Codex saved and its report. **Codex confirms mechanics** ("page loaded, no console errors, CSV downloaded"); **only you judge whether it *looks* right.** Never accept "verified" on a visual change without seeing the pixels. This is the whole point of computer-use verification — a text "looks good" is not evidence. For a second read of the screenshots or a recording, send them to Gemini 4 Neon with `ask-gemini -m gemini-4-neon-high --no-fallback --file <path>`; its read is input, and the judgment stays yours.
 
 ## Prompt requirements
 
