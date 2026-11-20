@@ -39,7 +39,7 @@ Split the question into 2 to 4 angles that do not overlap much, for example data
 rendering or API surface; background jobs and side effects. Launch the explorers in one turn, each
 with `references/explorer-prompt.md` filled in (`{QUESTION}`, `{EXPLORATION_ANGLE}`):
 
-- GPT-6.1 Sol at `high`: `ask-codex -m gpt-6.1-sol --effort high --context <filled-prompt>.md --output <scratch>/explorer-N.md "Follow the prompt; your final message is the findings." </dev/null`
+- GPT-6.2 Sol at `high`: `ask-codex -m gpt-6.2-sol --effort high --context <filled-prompt>.md --output <scratch>/explorer-N.md "Follow the prompt; your final message is the findings." </dev/null`
   run in the background, with "Do not edit any file" added to the prompt. Investigation that does
   not change code is its lane.
 - When Codex quota is out, Opus 5.5 at `high` (`exec-lane`) with the same prompt and an
@@ -87,7 +87,7 @@ Run when the asker wants problems or improvements, not only understanding.
    | Critic | Model |
    |---|---|
    | A | Opus 5.5 at `high` |
-   | B | GPT-6.1 Sol at `high` (`ask-codex`) |
+   | B | GPT-6.2 Sol at `high` (`ask-codex`) |
    | C | Fable 5.2 at `high` (`Agent` with `model: "fable"`, `effort: "high"`; `verify-lane` is Opus since 31 Oct 2026), only when the area is critical (money, auth, data migrations, production) or the architecture is genuinely ambiguous; otherwise run A and B |
 
    Critics from two families mean agreement carries signal and blind spots differ.

@@ -46,7 +46,7 @@ alone, and file an issue if the run is authorised to).
    uncovered routes; each one either joins a feature's `sources` and gets a section, or goes into
    `route_ignore` with a reason.
 
-2. **Source wave.** One read-only lane per feature file (GPT-6.1 Sol `high` via `ask-codex`, with
+2. **Source wave.** One read-only lane per feature file (GPT-6.2 Sol `high` via `ask-codex`, with
    "do not edit files" in the order; Opus 5.5 `medium` when Codex quota is out), at most 6 at once
    on the bench. Prioritise the features the checker
    flagged; a full pass covers all of them. Each lane reads the feature file (with its pending notes

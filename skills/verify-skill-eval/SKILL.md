@@ -68,7 +68,7 @@ check, without looking at its arm (`judge.md` lists each trial by neutral label,
 and nothing else; score from it before you open `summary.md`, which shows the arms and the
 guidance metrics).
 Record pass, partial or fail with one line of reason. For a second opinion, give a judge from the
-other model family (GPT-6.1 Sol at `high`) the labels, the outputs and the checks, never the arms.
+other model family (GPT-6.2 Sol at `high`) the labels, the outputs and the checks, never the arms.
 Disagreement between you and the judge means the check is ambiguous: tighten it and re-judge.
 
 ## 6. Read the chain

@@ -135,9 +135,9 @@ publish a report page.
 - Lanes return the ledger and findings in their final message when the harness refuses report-like
   files from subagents; the orchestrator saves them.
 - Walking and judging intuitiveness: Opus 5.5 at `high` (taste and judgment); runtime mechanics on a
-  device can go to GPT-6.1 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
+  device can go to GPT-6.2 Sol at `high` through `mobile-app-testing`, with Claude judging the screens.
 - Design of money or client-facing flows: Fable 5.2 at `high`, or Opus 5.5 `high` plus Fable review.
-- Implementation: Opus 5.5 at `high`. Review: GPT-6.1 Sol at `high` for routine flows. A change to
-  money, stock or a client-facing flow is critical: GPT-6.1 Sol at `high` reviews the implementation
+- Implementation: Opus 5.5 at `high`. Review: GPT-6.2 Sol at `high` for routine flows. A change to
+  money, stock or a client-facing flow is critical: GPT-6.2 Sol at `high` reviews the implementation
   itself, not only the design, plus the orchestrator's own read of the diff (the Opus 5.5 `verify-lane`
   review beside it was removed on 18 Nov 2026).
