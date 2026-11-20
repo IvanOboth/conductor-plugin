@@ -47,10 +47,10 @@ class NoSecondOpusReviewTests(unittest.TestCase):
         self.assertEqual(hits, [])
 
     def test_the_old_clauses_are_caught(self):
-        for old in ('A `sev:1` item always gets the critical review (GPT-6.2 Sol `high` and the Opus `verify-lane` at `high`)',
-                    'with a copy of the rows first, GPT-6.2 Sol `high` plus `verify-lane` `high` review, and a read-back',
-                    'Opus-authored, critical → GPT-6.2 Sol `high` + Opus 5.5 `verify-lane` in fresh context',
-                    'Critical work gets GPT-6.2 Sol at `high` and an Opus 5.5 judgment review at `high` in fresh context',
+        for old in ('A `sev:1` item always gets the critical review (GPT-6.1 Sol `high` and the Opus `verify-lane` at `high`)',
+                    'with a copy of the rows first, GPT-6.1 Sol `high` plus `verify-lane` `high` review, and a read-back',
+                    'Opus-authored, critical → GPT-6.1 Sol `high` + Opus 5.5 `verify-lane` in fresh context',
+                    'Critical work gets GPT-6.1 Sol at `high` and an Opus 5.5 judgment review at `high` in fresh context',
                     'routine work gets one Opus 5.5 `high` reviewer in fresh context, critical work two independent ones'):
             self.assertTrue(any(p.search(old) for p in BANNED), old)
 

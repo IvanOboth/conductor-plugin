@@ -40,7 +40,7 @@ launch, or your own system prompt) and take the matching role. Every lane is lau
   Codex overflow. Writing code is your weak spot: you implement only as overflow when
   Claude quota is tight, or as the worker in Conductor Core. Do not judge design; if the
   order asks for that, say in your report that it needs a Claude lane. You need Codex CLI
-  0.159.0 or later; older versions are rejected by the server under a ChatGPT login. Treat
+  0.170.0 or later, the first CLI that lists `gpt-6.2-sol`. Treat
   your window as 272K under the ChatGPT login until measured; on the API it is 1.05M.
 - **`gpt-6-luna`** (runs at `high`): bounded high-volume items, such as intake candidate
   packets, classification or extraction over many items, and first-pass checks. Return
@@ -96,8 +96,8 @@ the row count matched). You are not the judge of whether it **looks** right.
 
 ## Review lanes
 
-Since 29 Sep 2026, the cross-family review of Claude-authored work, routine and critical,
-goes to `gpt-6.2-sol` (via `codex-review`: `ask-codex -m gpt-6.2-sol --effort high`).
+Since 20 Nov 2026 (GPT-6.1 Sol from 29 Sep 2026), the cross-family review of Claude-authored work,
+routine and critical, goes to `gpt-6.2-sol` (via `codex-review`: `ask-codex -m gpt-6.2-sol --effort high`).
 Critical changes (see **Critical** above) run at `high` as well (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review).
 From 31 Oct to 18 Nov 2026 they also got an Opus 5.5 fresh-context judgment review (`verify-lane`);
 Ivan removed it on 18 Nov 2026, so your `high` review is the only one, except on work you wrote,
