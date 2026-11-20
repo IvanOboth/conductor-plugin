@@ -286,9 +286,10 @@ something up; never at `xhigh` or `max` by default.
     was removed by Ivan on 18 Nov 2026. When GPT-6.2 Sol cannot run, Gemini 4 Neon
     (`ask-gemini -m gemini-4-neon-high --no-fallback`) takes its place, labelled `cross-family (Gemini)`, then a
     fresh-context Opus 5.5 at `high` (`same-model, fresh context`), never Fable 5.2 (Ivan,
-    17 Nov 2026; Gemini step 20 Nov 2026).
+    17 Nov 2026; Gemini step 20 Nov 2026). Client personal-data runs (bench-factory#428) skip Gemini.
   - Shadow trial, 3 to 5 days from 20 Nov 2026: an optional Gemini 4 Neon review may run
-    beside yours on the same diff to compare catch rates. It never gates a merge.
+    beside yours on the same diff to compare catch rates. It never gates a merge and never
+    runs on client personal-data work (bench-factory#428).
   - GPT-6.2 Sol-authored, critical → the Opus 5.5 `verify-lane` at `high`.
   - Fable-authored → `opus` at `high`.
   - GPT-6.2 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
@@ -302,7 +303,7 @@ something up; never at `xhigh` or `max` by default.
   short, move to another model.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right; Gemini 4 Neon
-  (`ask-gemini --file <path>`) may give a second read of images, video or audio, vault files included, personal records in the vault too (Ivan, 20 Nov 2026). Luna does not
+  (`ask-gemini --file <path>`) may give a second read of images, video or audio, never client personal-data files or captures (customer or participant records, identity or financial screens; bench-factory#428), which stay Claude-only. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
   flow is mechanical and Codex quota is free.
 
