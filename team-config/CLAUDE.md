@@ -94,7 +94,7 @@ Higher is better. **Cost** is cost per task as you pay it, not price per token; 
 | Judgment review of Opus-authored work | None since 18 Nov 2026 (Ivan removed the second Opus review: critical work gets the GPT-6.2 Sol `high` review alone). The Opus 5.5 `verify-lane` at `high` in fresh context still reviews critical work that GPT-6.2 Sol wrote, as its cross-family review. When GPT-6.2 Sol cannot run (Codex out of quota or down), its review goes to Gemini 4 Neon (`ask-gemini -m gemini-4-neon-high --no-fallback`, labelled `cross-family (Gemini)`; 20 Nov 2026), then to Opus 5.5 `high` in a fresh context (`same-model, fresh context`), never to Fable 5.2 (Ivan, 17 Nov 2026). Personal-data and vault runs skip Gemini and stay on Claude |
 | Review of Fable-, GPT-6.2 Sol- or Luna-authored work | Opus 5.5 `high` |
 | Runtime and computer-use verification | GPT-6.2 Sol `high` via `codex-computer-use` or `mobile-app-testing`; Claude judges the pixels |
-| Second read of screenshots, images, video or audio | Gemini 4 Neon via `ask-gemini --file <path>`; Claude keeps the final taste judgment |
+| Second read of screenshots, images, video or audio | Gemini 4 Neon via `ask-gemini --file <path>`, never personal-data or vault files or captures (customer or participant records, identity or financial screens), which stay Claude-only; Claude keeps the final taste judgment |
 | Ops, runbooks, business-workflow automation | GPT-6.2 Sol `high` |
 | Codex overflow when Claude quota is tight | GPT-6.2 Sol `high` |
 | Bounded high-volume items (intake packets, classify, extract) | Luna `high`; a stronger model reads the output |
@@ -175,7 +175,8 @@ Judge a browser tool by its real agent interface, not its weakest entry point.
   `snapshot -i` → `@refs`, `screenshot <path>`). **This is the default local lane.**
 - **Local, cheap unattended QA:** GPT-6.2 Sol at `high` via the `codex-computer-use` skill.
   GPT-6.2 Sol drives and screenshots; **Claude then reads the pixels and judges.** GPT-6.2
-  Sol confirms mechanics only; Gemini 4 Neon (`ask-gemini --file`) may give a second read.
+  Sol confirms mechanics only; Gemini 4 Neon (`ask-gemini --file`) may give a second read, never of
+  personal-data or vault captures.
 - **Cloud / CI / a deployed URL:** a hosted browser service or Playwright. Cloud browsers
   can't reach `localhost`.
 

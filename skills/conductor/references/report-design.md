@@ -1,6 +1,6 @@
 # Report design contract and evidence
 
-Reference for [Conductor](../SKILL.md)'s **Run review HTML** deliverable. Reread this file from disk before authoring or substantially revising any run report; an older report, template or injected copy is not the design authority.
+Reference for [Conductor](../SKILL.md)'s **Run review HTML** deliverable. Reread this file and the skill's browser-evidence block from disk before authoring or substantially revising any run report; an older report, template or injected copy is not the design authority.
 
 ## Report design contract
 
@@ -32,7 +32,7 @@ Use semantic headings, visible keyboard focus, adequate contrast and meaningful 
 
 ## Recording by surface
 
-Apply the evidence gate below first. For flows it selects for video, use the tool for the surface and the run assets directory:
+Apply the evidence gate in the skill's **Browser video evidence** block first. For flows it selects for video, use the tool for the surface and the run assets directory:
 
   - **Web:** first apply the evidence gate; when video is warranted, follow the Browser video evidence contract; prefer direct MP4 on verified 0.37.1. Reuse existing Playwright capture where it covers the flow.
   - **Native Android/iOS:** follow `mobile-app-testing` for device selection, durable recorder ownership, fresh UI observations, final-artifact provenance and cleanup. Mobile Next recording APIs or a durable owned ADB recorder are valid; the recorder need not belong to the orchestrator if the device lane owns its lifetime. Use the evidence gate before capture.
@@ -40,30 +40,6 @@ Apply the evidence gate below first. For flows it selects for video, use the too
   - **Native macOS app:** `screencapture -v <assets>/<flow>.mp4` (Ctrl-C to stop) — Mac only.
   - Embed with `<video controls preload="metadata" src="assets/<run-id>/<flow>.mp4">` and retain the original when converting from WebM; direct MP4 needs no duplicate. On the bench also drop the files under `~/reports/<repo>/<run>/` so they're viewable from the phone at https://bench.tailb5d047.ts.net/reports/. When recording is genuinely infeasible, a captioned screenshot sequence is the fallback — say so in the report; never present stills as if a recording existed.
 
-<!-- browser-evidence:start -->
 ## Browser video evidence
 
-## Choose evidence before recording
-
-Ivan’s 13 September 2026 instruction: video is for meaningful application evidence, not a mandatory artifact for every Conductor run. Record video only when an application has been changed and the recording demonstrates testing of that change. Name the application change, test steps, expected result and independent assertion evidence in the work order. A report being opened in a browser is not an application change.
-
-Do not record report opening, scrolling, resizing, publication checks, static document/design reviews, research, proposals, skill edits, or CLI-only work. For a static HTML report refresh, use desktop/phone screenshots and DOM/layout assertions; a browser being involved does not make video necessary. Use command output, tests or source evidence for nonvisual work. Static application changes may use screenshots when motion or interaction adds no evidence.
-
-Each verification order states the evidence choice and reason. Only orders requiring video need a recording path. Keep required application-flow recordings and their assertions; do not reduce regression coverage. The recording procedure below applies only after this gate selects video. This scope supersedes blanket recording language in older Conductor examples and browser/verification instructions for Conductor work.
-
-This contract supersedes older WebM conversion mandates elsewhere in this skill; WebM examples remain valid optional formats.
-
-For a flow selected for video by the evidence gate, use agent-browser and specify a named session, initial state, steps, expected observable result, recording path and assertion evidence. Record representative application flows, not every unit test or edit iteration.
-
-Read `agent-browser --version`, `agent-browser record --help`, and `agent-browser skills get agent-browser` for the installed command contract. Verified with 0.37.1: recording preserves the current page, DOM and login state, writes MP4 directly (H.264), and requires system ffmpeg. Older versions differ; do not assume they preserve context or support MP4. Use `agent-browser doctor` after upgrades. Upgrade through the installed package manager; avoid changing the default Node runtime for unrelated tools.
-
-1. Use an owned `--session <lane>` on every command. Establish safe demo data/auth and the intended viewport before recording. Keep auth files outside report roots.
-2. Start `agent-browser --session <lane> record start <assets>/<flow>.mp4` before the actions that matter. Omit the optional URL to preserve the current page. To capture navigation itself, start on an initialized page then issue `open <url>` separately. Wait for a visible rendered frame before very short flows; an empty capture is not evidence.
-3. Drive real actions with fresh snapshot refs. Assert the result independently: visible state, persisted data, row count, download contents or a test assertion. Video alone is not a pass.
-4. Stop with `agent-browser --session <lane> record stop`, including failure paths, and close only the owned session. Check exit status, nonempty output, ffprobe duration/codec, and actual playback. Preserve failed-flow evidence.
-5. Embed `<video controls playsinline preload="metadata" src="assets/<run>/<flow>.mp4"></video>` in the run report with steps, environment/build, expected/actual result and assertions. Verify the served report and media. On Bench use `~/bin/report-link.py <report>` and deliver its verified private Tailscale URL. On Mac use the established report push and verify the Bench URL. Keep originals when creating derivatives; run Bench media conversion through `~/bin/bench-media-run -- ffmpeg ...` with bounded threads.
-
-For bugs, capture before/after with matching steps, data and viewport when reproducible; say when the before state is unavailable. Never recreate a harmful production failure just for footage. Separate edited demonstrations from unedited verification evidence. For how-tos/journeys/features, include actor, prerequisites, step labels and successful end state; record only material approved for the intended audience.
-
-Keep existing Playwright regression tests, assertions, traces, console/network evidence and flow-contract scorecards: they provide repeatability and diagnosis beyond video. Reuse an existing Playwright video capture if it covers the same flow; do not duplicate drivers solely for recording. Use native/device capture for native apps. When recording fails, report the actual failure and use captioned screenshots plus assertions as a declared fallback. Screenshots support visual review; the mechanics lane does not self-certify design quality.
-<!-- browser-evidence:end -->
+The evidence gate (**Choose evidence before recording**) and the browser recording procedure stay in [the skill itself](../SKILL.md#browser-video-evidence), between the `browser-evidence` markers: bench-factory's `tools/browser-evidence/install.py` copies that block from `skills/conductor/SKILL.md` into the installed browser skills. Apply it before any recording below.

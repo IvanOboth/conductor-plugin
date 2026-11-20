@@ -303,7 +303,7 @@ something up; never at `xhigh` or `max` by default.
   short, move to another model.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right; Gemini 4 Neon
-  (`ask-gemini --file <path>`) may give a second read of images, video or audio. Luna does not
+  (`ask-gemini --file <path>`) may give a second read of images, video or audio, never personal-data or vault files or captures (customer or participant records, identity or financial screens), which stay Claude-only. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
   flow is mechanical and Codex quota is free.
 

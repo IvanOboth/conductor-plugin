@@ -16,7 +16,7 @@ allowed-tools: Bash(agent-browser:*)
 
 ## Choose evidence before capture
 
-For Conductor work, read the current evidence gate in the sibling `conductor/references/report-design.md` ("Choose evidence before recording"). Record video only for testing an application change. Static report opening, scrolling, resizing, publication checks, research and skill edits use screenshots or command evidence. The recording commands below are capabilities, not a requirement to record every browser visit.
+For Conductor work, read the current evidence gate in the sibling `conductor/SKILL.md`. Record video only for testing an application change. Static report opening, scrolling, resizing, publication checks, research and skill edits use screenshots or command evidence. The recording commands below are capabilities, not a requirement to record every browser visit.
 
 ## When to Use This Tool
 

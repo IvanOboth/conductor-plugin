@@ -4,6 +4,7 @@ GPT-6.2 Sol (`gpt-6.2-sol`) replaced GPT-6.1 Sol in every role (bench-factory#11
 caught against 6 of 20, same price), and Gemini 4 Neon (`ask-gemini -m gemini-4-neon-high --no-fallback`) became the
 reviewer when Sol cannot run, before the Opus 5.5 fresh-context fallback. The conductor skill was cut from 116.7 KB
 to one routing section plus cold `references/` files, so it must stay small and every reference it links must exist.
+The browser-evidence marker block stays in SKILL.md: bench-factory's tools/browser-evidence/install.py copies it.
 """
 from pathlib import Path
 import re
@@ -13,7 +14,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / 'skills/conductor/SKILL.md'
 HISTORY_FILE = 'skills/conductor/references/routing-history.md'
-MAX_SKILL_BYTES = 60_000
+MAX_SKILL_BYTES = 65_000
 
 OLD_SOL = re.compile(r'gpt-6\.1-sol|GPT-6\.1 Sol')
 # Wording that prescribes a model for a lane: an invocation, a table model cell or a role/effort clause.
@@ -123,6 +124,17 @@ class ConductorStructureTests(unittest.TestCase):
             self.assertIn(heading, text)
         self.assertIn('Review rounds: decide by round 2', text)
         self.assertIn('compact in place', text)
+
+    def test_browser_evidence_block_stays_in_the_skill(self):
+        text = SKILL.read_text()
+        self.assertRegex(text, r'(?s)<!-- browser-evidence:start -->.*## Choose evidence before recording.*<!-- browser-evidence:end -->')
+        for ref in (SKILL.parent / 'references').glob('*.md'):
+            self.assertNotIn('<!-- browser-evidence:start -->', ref.read_text(), ref.name)
+
+    def test_references_escape_dollar_digits(self):
+        raw = [f'{p.name}:{m.start()}' for p in (SKILL.parent / 'references').glob('*.md')
+               for m in re.finditer(r'(?<!\\)\$(?=\d)', p.read_text())]
+        self.assertEqual(raw, [])
 
     def test_epic_close_checks_are_present(self):
         text = re.sub(r'\s+', ' ', SKILL.read_text())
