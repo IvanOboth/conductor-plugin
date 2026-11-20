@@ -85,7 +85,7 @@ class AskCodexWorktree(unittest.TestCase):
     def test_resume_uses_exec_resume_with_sandbox_config_and_no_C(self):
         self.run_ask('--worktree', 'lane/y', 'first run')
         path = self.wt_root / 'repo' / slug('lane/y')
-        result = self.run_ask('--resume', SESSION, '--worktree', 'lane/y', '-m', 'gpt-6.1-sol',
+        result = self.run_ask('--resume', SESSION, '--worktree', 'lane/y', '-m', 'gpt-6.2-sol',
                               '-o', 'out.md')
         self.assertEqual(result.returncode, 0, result.stderr)
         call = self.calls()[1]
@@ -95,7 +95,7 @@ class AskCodexWorktree(unittest.TestCase):
         self.assertNotIn('--sandbox', argv)
         self.assertIn('sandbox_mode="workspace-write"', argv)
         self.assertIn('approval_policy=never', argv)
-        self.assertIn('gpt-6.1-sol', argv)
+        self.assertIn('gpt-6.2-sol', argv)
         self.assertEqual(argv[-2], SESSION)
         self.assertIn('Continue the same work order', argv[-1])
         self.assertNotIn('WORKTREE:', argv[-1])
@@ -110,11 +110,11 @@ class AskCodexWorktree(unittest.TestCase):
                       result.stderr)
 
     def test_resume_hint_is_complete_and_resume_uses_saved_cwd(self):
-        result = self.run_ask('--worktree', 'lane/z', '--readonly', '-m', 'gpt-6.1-sol',
+        result = self.run_ask('--worktree', 'lane/z', '--readonly', '-m', 'gpt-6.2-sol',
                               '--effort', 'xhigh', 'review it')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn(f'(continue it with: ask-codex --resume {SESSION} --worktree lane/z --readonly'
-                      ' -m gpt-6.1-sol --effort xhigh)', result.stderr)
+                      ' -m gpt-6.2-sol --effort xhigh)', result.stderr)
         # Same shape as a codex 0.160 rollout: first line is session_meta with payload.cwd.
         saved = self.root / 'saved'; saved.mkdir()
         day = self.root / 'home' / 'sessions' / '2026' / '10' / '02'; day.mkdir(parents=True)

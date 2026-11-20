@@ -50,7 +50,7 @@ class RolloutCountingTests(unittest.TestCase):
         lines = [json.dumps({'timestamp': iso(self.now - timedelta(hours=2)), 'type': 'session_meta', 'payload': {}})]
         if input_tokens is not None:
             lines.append(json.dumps({'timestamp': iso(modified), 'payload': {
-                'type': 'token_count', 'model': 'gpt-6.1-sol',
+                'type': 'token_count', 'model': 'gpt-6.2-sol',
                 'info': {'total_token_usage': {'input_tokens': input_tokens, 'output_tokens': 0}}}}))
         path = self.day / name
         path.write_text('\n'.join(lines) + '\n')
@@ -152,7 +152,7 @@ class RolloutCountingTests(unittest.TestCase):
         old_row = {'run_id': 'run-old', 'lanes': [
             {'agent': 'orchestrator', 'family': 'anthropic', 'model': 'claude-opus-5-5',
              'in': 10, 'out': 5, 'cr': 0, 'cw': 0},
-            {'agent': FIRST.replace('.jsonl', '')[:40], 'family': 'openai', 'model': 'gpt-6.1-sol',
+            {'agent': FIRST.replace('.jsonl', '')[:40], 'family': 'openai', 'model': 'gpt-6.2-sol',
              'in': 1_000_000, 'out': 0, 'cr': 0, 'cw': 0}]}
         self.ledger.write_text(json.dumps(old_row) + '\n')
         self.close_run('run-b', self.now - timedelta(minutes=150))

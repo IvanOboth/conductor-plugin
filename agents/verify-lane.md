@@ -4,20 +4,21 @@ description: >-
   Conductor's judgment verification lane. Use to adversarially check a finding, a diff, or a
   multi-step runtime flow where "did this actually work correctly" needs judgment rather than a
   green console. Since 18 Nov 2026 (Ivan removed the second Opus review of critical work) it runs
-  in two cases. One: critical work that GPT-6.1 Sol wrote, as its cross-family review. Critical
+  in two cases. One: critical work that GPT-6.2 Sol wrote, as its cross-family review. Critical
   means anything that deploys to production or changes production data; auth, payments, money or
   personal data; a schema or data migration; anything hard to reverse; a client-facing
   deliverable; or the routing and agent configuration itself; and every `sev:1` item. Two: in
-  place of the GPT-6.1 Sol review when Sol cannot run (Conductor Claude, Codex out of quota or
-  down), as the one fresh-context Opus 5.5 reviewer of Opus-authored work, never Fable 5.2 (Ivan,
-  17 Nov 2026). It no longer runs beside the GPT-6.1 Sol review on Opus-authored critical work,
-  `sev:1` items or production data changes: those get GPT-6.1 Sol at high via codex-review alone,
+  place of the GPT-6.2 Sol review when Sol cannot run (Conductor Claude, Codex out of quota or
+  down) and Gemini 4 Neon cannot stand in for it (Gemini down, or a personal-data or vault run;
+  Gemini goes first since 20 Nov 2026), as the one fresh-context Opus 5.5 reviewer of
+  Opus-authored work, never Fable 5.2 (Ivan, 17 Nov 2026). It no longer runs beside the GPT-6.2 Sol review on Opus-authored critical work,
+  `sev:1` items or production data changes: those get GPT-6.2 Sol at high via codex-review alone,
   plus the orchestrator's own read of the diff. Pinned to Opus 5.5 at high effort since 31 Oct 2026
   (Ivan; it was Fable 5.1). Dispatch it at high in every case, money, auth, personal data,
   migrations, production data and `sev:1` items included (Ivan, 12 Nov 2026: Opus reviews at xhigh
   are unnecessary, high is good enough). On Opus-authored work it is a same-model reviewer in fresh
   context, so give it the requirements and the diff, not the author's rationale, and label its
-  verdict `same-model, fresh context`; runtime mechanics go to codex-computer-use (GPT-6.1 Sol at
+  verdict `same-model, fresh context`; runtime mechanics go to codex-computer-use (GPT-6.2 Sol at
   high) when Codex can run.
 model: opus
 effort: high

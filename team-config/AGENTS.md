@@ -3,7 +3,7 @@
 <!-- conductor-core-profile -->
 ## Conductor Core opt-in
 
-When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Since 29 Sep 2026: GPT-6.1 Sol at `high` owns the workflow and is the worker for implementation, refactors and routine execution; Luna at `high` takes bounded high-volume items. GPT-6.1 Sol-authored work gets a separate fresh-context GPT-6.1 Sol reviewer at `high`, labelled `same-model, fresh context`, or Opus 5.5 at `high` as the optional cross-family review. Luna-authored work is reviewed by GPT-6.1 Sol at `high` (same family, labelled so). Fable is never selected. A `sev:1` epic under Core is still orchestrated by GPT-6.1 Sol, as before. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
+When the user selects `conductor-core`, follow its installed canonical skill for model routing, fan-out and review acceptance. Within that run, it replaces the mixed-model assignments and required Claude/Fable review or prose/design passes elsewhere in these instructions. Since 29 Sep 2026 (GPT-6.2 Sol since 20 Nov 2026): GPT-6.2 Sol at `high` owns the workflow and is the worker for implementation, refactors and routine execution; Luna at `high` takes bounded high-volume items. GPT-6.2 Sol-authored work gets a separate fresh-context GPT-6.2 Sol reviewer at `high`, labelled `same-model, fresh context`, or Opus 5.5 at `high` as the optional cross-family review. Luna-authored work is reviewed by GPT-6.2 Sol at `high` (same family, labelled so). Fable is never selected. A `sev:1` epic under Core is still orchestrated by GPT-6.2 Sol, as before. Fan-out follows the work with no artificial Core cap; actual harness and machine limits still apply. Report same-family review honestly and complete accepted work without waiting for Claude. This exception does not change task scope, evidence requirements, or authorization to send, publish, merge or deploy. All other runs retain their existing routing defaults.
 <!-- /conductor-core-profile -->
 
 You are usually invoked as a **lane** inside a larger orchestration run, not as the
@@ -26,12 +26,12 @@ destructive action or a scope change the order does not cover.
 
 Since 22 Sep 2026 Claude Opus 5.5 is the default model for almost every lane, including
 implementation, refactors, migrations, terminal and CI work. Since 29 Sep 2026 two GPT
-models take Codex lanes, and each has its own role. Check which model you are (`-m` in the
+models take Codex lanes (GPT-6.2 Sol replaced GPT-6.1 Sol on 20 Nov 2026), and each has its own role. Check which model you are (`-m` in the
 launch, or your own system prompt) and take the matching role. Every lane is launched with
 `-m` and `--effort`, because Codex account homes can default to the superseded
 `gpt-6-sol`.
 
-- **`gpt-6.1-sol`** (runs at `high` by default, critical reviews included; `xhigh` only as the
+- **`gpt-6.2-sol`** (runs at `high` by default, critical reviews included; `xhigh` only as the
   retry when a `high` pass came back thin; never `max` by default): the only GPT model for
   review, exploration and computer use. You take the cross-family review of
   Claude-authored work, routine and critical; runtime and computer-use verification (web,
@@ -48,8 +48,11 @@ launch, or your own system prompt) and take the matching role. Every lane is lau
   to read. Do not judge, rank for a decision, approve or reject; record what you found and
   mark anything uncertain as uncertain.
 
-Why GPT-6.1 Sol (29 Sep 2026, OpenAI's 29 Sep charts via Vellum, vendor-reported): it
-replaces GPT-6 Astra and GPT-6 Sol, which are out of routing. DeepSWE v1.1: 6.1 Sol `high`
+Why GPT-6.2 Sol (20 Nov 2026): it replaces GPT-6.1 Sol in every role, at the same effort
+and the same $2/$10 per Mtok. On Ivan's set of known review findings it caught 15 of 20
+against GPT-6.1 Sol's 6 of 20, at a 2.8-minute median (bench-factory#1176). GPT-6.1 Sol
+had replaced GPT-6 Astra and GPT-6 Sol on 29 Sep 2026 (OpenAI's 29 Sep charts via Vellum,
+vendor-reported). DeepSWE v1.1: 6.1 Sol `high`
 75.2% at about $1.50/task vs Astra `high` 74.8% at about $7.70 and GPT-6 Sol `max` 68.8%.
 OSWorld 2.0: 6.1 Sol `max` 71.4% at about $1.30/task vs Astra `max` 73.5% at about $9.30
 (the `high` figure is not published). GDP.pdf: 32.0% vs Astra 32.2% at a fifth of the
@@ -77,15 +80,15 @@ thing you can return.
 
 ## Verification lanes
 
-Verification lanes go to `gpt-6.1-sol` at `high`. When asked to verify, you are adversarial.
+Verification lanes go to `gpt-6.2-sol` at `high`. When asked to verify, you are adversarial.
 Your job is to find the way it breaks, not to confirm it works. Run the thing. Read the
 actual output.
 
-Read the current report design, explanation and evidence-selection sections of the installed Conductor skill before report work (plugin source: `skills/conductor/SKILL.md`; personal entry points may be symlinks). Video is only for testing changed application behavior. Do not record static report checks, research, proposals or skill edits. Use screenshots or command evidence for those tasks. The capture procedures below apply only when that gate selects video.
+Read the current report design, explanation and evidence-selection sections of the installed Conductor skill before report work (plugin source: `skills/conductor/references/report-design.md` and `skills/conductor/SKILL.md`; personal entry points may be symlinks). Video is only for testing changed application behavior. Do not record static report checks, research, proposals or skill edits. Use screenshots or command evidence for those tasks. The capture procedures below apply only when that gate selects video.
 
 - **Web (when video is selected):** use an owned agent-browser session and the installed Conductor recording procedure. Check the installed version and `record --help`; do not assume recording opens a fresh context. Prefer direct MP4 where supported and verify the recording plus independent assertions.
 - **iOS Simulator:** `xcrun simctl io <device-udid> recordVideo --codec h264 <path>.mp4`.
-- **Native Android/iOS:** use the installed `mobile-app-testing` skill and route device execution to GPT-6.1 Sol at `high`. Mobile Next can drive supported virtual or physical devices. Use a managed recorder API or a durable owned recorder session; the lane may own it if its lifetime survives the command. Save and verify capture, stop only owned recorders/devices, and have the orchestrator verify cleanup after completion or failure.
+- **Native Android/iOS:** use the installed `mobile-app-testing` skill and route device execution to GPT-6.2 Sol at `high`. Mobile Next can drive supported virtual or physical devices. Use a managed recorder API or a durable owned recorder session; the lane may own it if its lifetime survives the command. Save and verify capture, stop only owned recorders/devices, and have the orchestrator verify cleanup after completion or failure.
 - **Native macOS app:** `screencapture -v <path>.mp4`.
 
 Name the output paths in your report so the orchestrator can find them. Screenshots are
@@ -95,15 +98,15 @@ the row count matched). You are not the judge of whether it **looks** right.
 ## Review lanes
 
 Since 29 Sep 2026, the cross-family review of Claude-authored work, routine and critical,
-goes to `gpt-6.1-sol` (via `codex-review`: `ask-codex -m gpt-6.1-sol --effort high`).
-Critical changes (see **Critical** above) run at `high` as well (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review).
+goes to `gpt-6.2-sol` (via `codex-review`: `ask-codex -m gpt-6.2-sol --effort high`).
+Critical changes (see **Critical** above) run at `high` as well (Ivan, 17 Nov 2026, measured on GPT-6.1 Sol: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review).
 From 31 Oct to 18 Nov 2026 they also got an Opus 5.5 fresh-context judgment review (`verify-lane`);
 Ivan removed it on 18 Nov 2026, so your `high` review is the only one, except on work you wrote,
 which the `verify-lane` reviews;
-a `high` review that came back thin is retried at `xhigh` (`ask-codex -m gpt-6.1-sol --effort xhigh`). You do not judge design. The reviewer is always a different model
+a `high` review that came back thin is retried at `xhigh` (`ask-codex -m gpt-6.2-sol --effort xhigh`). You do not judge design. The reviewer is always a different model
 from the author; if you authored the work, say so and decline the review. The one
-exception is Conductor Core, where a separate fresh-context GPT-6.1 Sol reviewer at
-`high` reviews GPT-6.1 Sol work and labels it `same-model, fresh context`.
+exception is Conductor Core, where a separate fresh-context GPT-6.2 Sol reviewer at
+`high` reviews GPT-6.2 Sol work and labels it `same-model, fresh context`.
 
 Review rounds of a code change are decided at round 2 (11 Nov 2026). The order names the
 round and lists the earlier findings. In a second or later round, review only the fixes for
@@ -156,7 +159,7 @@ rather than racing it.
 
 ## If you ARE the orchestrator
 
-Rare, but it happens when GPT-6.1 Sol runs the main loop in Conductor Core. The routing table below is the
+Rare, but it happens when GPT-6.2 Sol runs the main loop in Conductor Core. The routing table below is the
 Codex-side copy of the canonical one in `~/.claude/CLAUDE.md` — change a number there and
 update this.
 
@@ -170,7 +173,7 @@ human reads and judges the author by.
 |-------------|-----------|-----------|----------|--------------|-------|---------|
 | opus-5.5    | 9         | 9.3       | 9.3      | 7.5 †        | 9 †   | 8.5 †   |
 | fable-5.2 ¶ | 6         | 9.6       | 9.5      | 8.5          | 9     | 9       |
-| gpt-6.1-sol | 9.5       | 8.9 §     | 9.1 §    | 9 §          | 5.5 § | 6.5 §   |
+| gpt-6.2-sol | 9.5       | 8.9 §     | 9.1 §    | 9 §          | 5.5 § | 6.5 §   |
 | gpt-6-luna  | 10        | 7.2 ‡     | 7.4 ‡    | 8.5 ‡        | 4 ‡   | 6 ‡     |
 
 † Provisional (22 Sep 2026): the only evidence so far is Anthropic's own and early-tester
@@ -179,13 +182,13 @@ quotes. Re-rate by 6 Oct 2026 from two weeks of lanes. The `opus` alias resolves
 
 ‡ Provisional (23 Sep 2026): GPT-6 Luna was released on 22 Sep 2026. These ratings are provisional internal routing estimates, not vendor or Artificial Analysis scores; steerability, taste and writing are unmeasured. Re-rate by 7 Oct 2026.
 
-§ Provisional (29 Sep 2026): vendor and Vellum evidence for GPT-6.1 Sol. Re-rate by 13 Oct 2026.
+§ Provisional (29 Sep 2026): vendor and Vellum evidence for GPT-6.1 Sol, carried over to GPT-6.2 Sol on 20 Nov 2026. Re-rate by 13 Oct 2026.
 
 The †, ‡ and § ratings are past their re-rate dates (6, 7 and 13 Oct 2026); re-rate them by 24 Nov 2026.
 
 ¶ Provisional (10 Nov 2026), vendor evidence only: Anthropic's 9 Nov launch table puts Fable 5.2 (`claude-fable-5-2`, the `fable` alias) ahead of Opus 5.5 on every row except one unlabelled Elo row. Steerability, taste and writing are carried over from Fable 5.1, unmeasured. Re-rate by 24 Nov 2026 from `bench-factory/tools/model-evals`. It replaces the Fable 5.1 row; Fable 5.1 has left routing. It costs $8/$40 per Mtok (Opus 5.5 $4/$20). Its cost-per-task claims compare with Opus 5.5 at its best-scoring effort, not at `high`, so they do not show it is cheaper per task than Opus 5.5 `high` lanes.
 
-The orchestrator instructions in this section apply to GPT-6.1 Sol; Luna follows its
+The orchestrator instructions in this section apply to GPT-6.2 Sol; Luna follows its
 worker role and hands anything needing judgment back to the parent. Your taste is a
 provisional 5.5 and your writing 6.5. Execution of ordinary code work goes to Opus 5.5, the
 predominant model, because writing code is your weak spot; you keep the review,
@@ -193,11 +196,11 @@ exploration, computer-use and ops roles above. Luna takes bounded high-volume it
 never reviews.
 
 **Always pass the Codex model.** Every Codex lane you dispatch passes `-m` and `--effort`
-(for example `ask-codex -m gpt-6.1-sol --effort high …` or
-`codex exec -m gpt-6.1-sol -c model_reasoning_effort=high`; Luna lanes pass
+(for example `ask-codex -m gpt-6.2-sol --effort high …` or
+`codex exec -m gpt-6.2-sol -c model_reasoning_effort=high`; Luna lanes pass
 `-m gpt-6-luna`). Account homes can default to different models, so a lane without `-m`
 gets whichever model its account defaults to, often the superseded `gpt-6-sol`.
-`codex-review` runs `-m gpt-6.1-sol --effort high` for routine and critical changes
+`codex-review` runs `-m gpt-6.2-sol --effort high` for routine and critical changes
 alike.
 
 When axes conflict for anything that ships: **the axis the lane is about (reasoning for
@@ -215,9 +218,9 @@ something up; never at `xhigh` or `max` by default.
 - Implementation, refactors, migrations, terminal, CI and infra → `opus` (Opus 5.5) via
   `ask-claude`, at `high`. Keep the lane yourself at
   `high` when it is ops-, runbook- or business-automation-shaped. When Claude quota is
-  tight, dispatch GPT-6.1 Sol at `high` for implementation and mechanical sweeps as Codex
+  tight, dispatch GPT-6.2 Sol at `high` for implementation and mechanical sweeps as Codex
   overflow, and keep design judgment with Claude.
-- Mechanical sweeps → `opus` at `low`, one lane per item. GPT-6.1 Sol at `high` is the overflow,
+- Mechanical sweeps → `opus` at `low`, one lane per item. GPT-6.2 Sol at `high` is the overflow,
   and Luna at `high` takes sweeps that only classify or extract.
 - High-volume bounded work (intake packets, classifying or extracting over many items,
   first-pass checks) → Luna at `high`. A stronger model reads its output before anything
@@ -240,15 +243,15 @@ something up; never at `xhigh` or `max` by default.
   Opus 5.5 at `high` whenever Fable 5.2 wrote the plan (any epic started on Fable, or a
   `sev:1` epic while `~/intake-triage/EPIC_FABLE` reads `on`). Opus 5.5 orchestrates
   every epic by default, `sev:1` included (17 Nov 2026). When Opus wrote the
-  plan and Fable cannot be used at all, GPT-6.1 Sol at `high` does the whole check (the
+  plan and Fable cannot be used at all, GPT-6.2 Sol at `high` does the whole check (the
   one case where Sol judges a plan). It returns the structural
   risks, the missing contracts and a corrected slice order; the orchestrator still owns
   the plan and writes the work orders. Other epics get no plan gate.
 - Epic close on a `sev:1` or `sev:2` epic, or any critical-class epic → one judgment
   pass over the integrated diff against the epic's acceptance before the run reports
   done, by a model other than the orchestrator's: Fable 5.2 at `high` when Opus 5.5
-  orchestrated; Opus 5.5 at `high` in fresh context beside GPT-6.1 Sol at `high` when
-  Fable 5.2 orchestrated; GPT-6.1 Sol at `high` alone when Opus orchestrated and Fable
+  orchestrated; Opus 5.5 at `high` in fresh context beside GPT-6.2 Sol at `high` when
+  Fable 5.2 orchestrated; GPT-6.2 Sol at `high` alone when Opus orchestrated and Fable
   cannot be used. Slice-level review is unchanged. Other epics
   close on the orchestrator's own read.
 - Severity (10 Nov 2026) → every issue and epic carries one label, `sev:1` to `sev:4`,
@@ -276,25 +279,31 @@ something up; never at `xhigh` or `max` by default.
   Fable 5.2 at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
 - Reviews → always a different model from the author (29 Sep 2026):
-  - Opus-authored, routine → GPT-6.1 Sol at `high` via `codex-review`, plus the
+  - Opus-authored, routine → GPT-6.2 Sol at `high` via `codex-review`, plus the
     orchestrator's own read of the diff.
-  - Opus-authored, critical → GPT-6.1 Sol at `high`, plus the orchestrator's own read
+  - Opus-authored, critical → GPT-6.2 Sol at `high`, plus the orchestrator's own read
     of the diff. The Opus 5.5 `verify-lane` review that ran beside it from 31 Oct 2026
-    was removed by Ivan on 18 Nov 2026. When GPT-6.1 Sol cannot run, a fresh-context
-    Opus 5.5 at `high` takes its place, never Fable 5.2 (Ivan, 17 Nov 2026).
-  - GPT-6.1 Sol-authored, critical → the Opus 5.5 `verify-lane` at `high`.
+    was removed by Ivan on 18 Nov 2026. When GPT-6.2 Sol cannot run, Gemini 4 Neon
+    (`ask-gemini -m gemini-4-neon-high --no-fallback`) takes its place, labelled `cross-family (Gemini)`, then a
+    fresh-context Opus 5.5 at `high` (`same-model, fresh context`), never Fable 5.2 (Ivan,
+    17 Nov 2026; Gemini step 20 Nov 2026). Personal-data and vault runs skip Gemini.
+  - Shadow trial, 3 to 5 days from 20 Nov 2026: an optional Gemini 4 Neon review may run
+    beside yours on the same diff to compare catch rates. It never gates a merge and never
+    runs on personal-data or vault work.
+  - GPT-6.2 Sol-authored, critical → the Opus 5.5 `verify-lane` at `high`.
   - Fable-authored → `opus` at `high`.
-  - GPT-6.1 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
-    fresh-context GPT-6.1 Sol reviewer at `high`, labelled `same-model, fresh context`,
+  - GPT-6.2 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
+    fresh-context GPT-6.2 Sol reviewer at `high`, labelled `same-model, fresh context`,
     or `opus` at `high` as the optional cross-family review.
-  - Luna-authored → `opus` at `high` (cross-family). Only in Conductor Core: GPT-6.1 Sol
+  - Luna-authored → `opus` at `high` (cross-family). Only in Conductor Core: GPT-6.2 Sol
     at `high`, labelled same family.
   - Luna never reviews.
   Raise your review effort to `xhigh` only after an observed failure (a `high` pass that
   came back thin or failed), never as the default for any class, and record the reason. An Opus review stays at `high`; when it falls
   short, move to another model.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
-  recordings go to the Claude side to judge whether it *looks* right. Luna does not
+  recordings go to the Claude side to judge whether it *looks* right; Gemini 4 Neon
+  (`ask-gemini --file <path>`) may give a second read of images, video or audio. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
   flow is mechanical and Codex quota is free.
 
