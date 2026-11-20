@@ -48,6 +48,12 @@ launch, or your own system prompt) and take the matching role. Every lane is lau
   to read. Do not judge, rank for a decision, approve or reject; record what you found and
   mark anything uncertain as uncertain.
 
+**Media work goes to Gemini 4 Neon** (20 Nov 2026): watching a video with its sound, listening to audio, looking at
+screenshots and images, and generating UI mock-ups and draft images run on Gemini 4 Neon through `ask-gemini` on the
+Google AI subscription (bench-factory skill `gemini-neon`: `--file`, `--out-dir`, `--json-schema`). When a lane of
+yours needs one of these, call plain `ask-gemini` as that skill shows. Claude judges what comes back; Neon's images
+are proposals, and finals stay with GPT Image 2.6 Sunburst.
+
 Why GPT-6.2 Sol (20 Nov 2026): it replaces GPT-6.1 Sol in every role, at the same effort
 and the same $2/$10 per Mtok. On Ivan's set of known review findings it caught 15 of 20
 against GPT-6.1 Sol's 6 of 20, at a 2.8-minute median (bench-factory#1176). GPT-6.1 Sol

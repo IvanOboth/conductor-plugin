@@ -155,6 +155,8 @@ The routing table lives in `skills/conductor/SKILL.md` and is the plugin's own s
 
 GPT-6.2 Sol at `high` is the cross-family reviewer of Claude-authored work. When Codex cannot run, Gemini 4 Neon (`ask-gemini -m gemini-4-neon-high --no-fallback`, labelled `cross-family (Gemini)`) takes Sol's review, then Opus 5.5 `high` in fresh context (`same-model, fresh context`); personal-data and vault runs skip Gemini, and Fable never takes that review. For 3 to 5 days from 20 Nov 2026 an optional Gemini 4 Neon shadow review may run beside Sol on the same diff to compare catch rates; it never gates a merge. `ask-gemini --file <path>` gives a second read of screenshots, images, video or audio, never personal-data or vault files or captures (customer or participant records, identity or financial screens), which stay Claude-only; Claude keeps the final taste judgment. `--no-fallback` keeps Gemini on the Google AI Ultra subscription instead of silently switching to the paid API ($3/$15 per Mtok).
 
+Media work goes to Gemini 4 Neon through `ask-gemini` on the Google AI subscription: watching a video with its sound, listening to audio, looking at screenshots and images, and generating UI mock-ups and draft images (bench-factory skill `gemini-neon`). Claude judges what comes back; finals stay with GPT Image 2.6 Sunburst.
+
 Adjust the table to your own pricing and plan — it's directional, not universal.
 
 ## Cost note
