@@ -57,7 +57,7 @@ That handoff is what Codex receives. The user just types `/codex-review` and you
 │    └─────────────────────────────────────────────┘      │
 │                                                          │
 │ 2. Build rich context and send to Codex:                │
-│    ask-codex -m gpt-6.1-sol --effort high --clean "      │
+│    ask-codex -m gpt-6.2-sol --effort high --clean "      │
 │      ## Context from Claude Session                     │
 │      Goal: ...                                          │
 │      Approach: ...                                      │
@@ -136,12 +136,12 @@ Optionally supplement with:
 
 Codex needs to investigate files, run tests, post issue comments, and apply fixes — so pass no sandbox flag and don't pass `--readonly`. The plugin's `ask-codex` then runs in `workspace-write`; the bench's `ask-codex` passes no sandbox, so the account's config applies (`danger-full-access`, the only mode Codex works in there), and it refuses `--readonly` before the lane starts. The prompt is intentionally lean: hand over the session context and one clear ask, then trust Codex to think.
 
-The default reviewer is GPT-6.1 Sol at `high` (29 Sep 2026; it replaced GPT-6 Sol and GPT-6 Astra). On OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about \$1.50 per task, against Astra high's 74.8% at about \$7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), keep `-m gpt-6.1-sol --effort high` (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review). For Opus-authored work this review is the only one, plus your own read of the diff: the Opus 5.5 `verify-lane` judgment review that ran beside it from 31 Oct 2026 was removed by Ivan on 18 Nov 2026. Fable-authored critical work still adds Opus 5.5 at `high`. Use `xhigh` only as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
+The default reviewer is GPT-6.2 Sol at `high` (20 Nov 2026, bench-factory#1176, issue #1084: on 20 known review findings from past pull requests, GPT-6.2 Sol at `high` caught 15 and GPT-6.1 Sol at `high` caught 6, at the same price (\$2/\$10 per Mtok) and a median of 2.8 against 2.4 minutes per review). GPT-6.1 Sol before it replaced GPT-6 Sol and GPT-6 Astra on 29 Sep 2026; on OpenAI's 29 Sep charts (vendor-reported, via Vellum), GPT-6.1 Sol high scores 75.2% on DeepSWE v1.1 at about \$1.50 per task, against Astra high's 74.8% at about \$7.70. For a critical change (it deploys to production or changes production data; touches auth, payments, money or personal data; is a schema or data migration or otherwise hard to reverse; is a client-facing deliverable; or changes the routing and agent configuration), keep `-m gpt-6.2-sol --effort high` (Ivan, 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more tokens per review). For Opus-authored work this review is the only one, plus your own read of the diff: the Opus 5.5 `verify-lane` judgment review that ran beside it from 31 Oct 2026 was removed by Ivan on 18 Nov 2026. Fable-authored critical work still adds Opus 5.5 at `high`. Use `xhigh` only as the retry when a `high` review of a large, risky diff came back thin. Never `max` by default.
 
-GPT-6.1 Sol needs Codex CLI 0.159.0 or later; 0.156.1 is rejected by the server under a ChatGPT login. Always pass `-m gpt-6.1-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
+GPT-6.2 Sol needs Codex CLI 0.170.0 or later, the first CLI that lists `gpt-6.2-sol` (GPT-6.1 Sol needed 0.159.0; 0.156.1 was rejected under a ChatGPT login). Always pass `-m gpt-6.2-sol` and the effort: an account home may still default to an older model, so an omitted `-m` gets the superseded model.
 
 ```bash
-ask-codex -m gpt-6.1-sol --effort high --clean "
+ask-codex -m gpt-6.2-sol --effort high --clean "
 ## Context from Claude session
 
 ### Original request
@@ -240,12 +240,12 @@ Severity lives in the reasoning, not in a label. If Codex didn't flag any blocki
 
 If the user passed `--fix` and Codex didn't already apply fixes itself, apply the blocking ones, then re-run a quick verification pass.
 
-If Codex applied fixes itself, those fixes are GPT-authored and need a review by a different model before you report: an Opus 5.5 lane at `high` reviews the fix diff (`git diff` since the review started). In Conductor Core, a separate fresh-context GPT-6.1 Sol reviewer at `high` does it instead, labelled `same-model, fresh context`.
+If Codex applied fixes itself, those fixes are GPT-authored and need a review by a different model before you report: an Opus 5.5 lane at `high` reviews the fix diff (`git diff` since the review started). In Conductor Core, a separate fresh-context GPT-6.2 Sol reviewer at `high` does it instead, labelled `same-model, fresh context`.
 
 Quick verification after your own fixes:
 
 ```bash
-ask-codex -m gpt-6.1-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
+ask-codex -m gpt-6.2-sol --effort high --clean "Quick check: did these fixes actually address the blocking issues? ${fixes}"
 ```
 
 Codex still runs with write access here (`workspace-write`, or `danger-full-access` on the bench) — it may want to read the updated files or run tests to confirm.
@@ -388,14 +388,14 @@ git diff --name-only         # Uncommitted changes
 
 ### Codex Invocation Pattern
 
-Pass no sandbox flag, so the review can run tests or apply fixes (`workspace-write` with the plugin's `ask-codex`; on the bench the account's `danger-full-access`). Do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files, and the bench's `ask-codex` refuses it (exit 2). Either way name the model and effort: `-m gpt-6.1-sol --effort high`, a critical change included. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
+Pass no sandbox flag, so the review can run tests or apply fixes (`workspace-write` with the plugin's `ask-codex`; on the bench the account's `danger-full-access`). Do not pass `--readonly`: on the bench a read-only lane can succeed while reviewing only the prompt instead of the files, and the bench's `ask-codex` refuses it (exit 2). Either way name the model and effort: `-m gpt-6.2-sol --effort high`, a critical change included. The `--fix` flag is about *whether you ask Codex to apply fixes*, not about sandbox capabilities.
 
 ```bash
 # Review only — Codex investigates but won't apply fixes unless told to
-ask-codex -m gpt-6.1-sol --effort high --clean "Review prompt (without 'apply blocking fixes')..."
+ask-codex -m gpt-6.2-sol --effort high --clean "Review prompt (without 'apply blocking fixes')..."
 
 # Review + fix — Codex applies blocking fixes itself
-ask-codex -m gpt-6.1-sol --effort high --clean "Review prompt (with 'apply blocking fixes')..."
+ask-codex -m gpt-6.2-sol --effort high --clean "Review prompt (with 'apply blocking fixes')..."
 ```
 
 ### Error Handling

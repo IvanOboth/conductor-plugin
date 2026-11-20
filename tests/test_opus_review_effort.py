@@ -3,7 +3,7 @@
 No skill, agent, team-config copy or README may prescribe the Opus 5.5 verify-lane, or any Opus review lane, at
 xhigh. Dated notes about 31 Oct to 12 Nov 2026 are history.
 
-GPT-6.1 Sol reviews run at high too, critical work and Conductor Core's fresh-context Sol review included (Ivan,
+GPT-6.2 Sol reviews run at high too, critical work and Conductor Core's fresh-context Sol review included (Ivan,
 17 Nov 2026: Sol at xhigh showed no benefit over high: 2 of 139 vs 2 of 203 final-round blocks, at about 40% more
 tokens per review). xhigh stays only as the retry after a thin or failed high pass.
 """
@@ -26,16 +26,16 @@ BANNED = [
     re.compile(r'\(`xhigh` for a review lane\)'),
 ]
 HISTORY = re.compile(r'from 31 Oct to 12 Nov 2026')
-# Clauses that ran GPT-6.1 Sol at xhigh by default, for critical work or a review class, before 17 Nov 2026.
+# Clauses that ran GPT-6.2 Sol at xhigh by default, for critical work or a review class, before 17 Nov 2026.
 SOL_BANNED = [
-    re.compile(r'GPT-6\.1 Sol,? (at )?`?xhigh`?(?! showed)'),
+    re.compile(r'GPT-6\.[12] Sol,? (at )?`?xhigh`?(?! showed)'),
     re.compile(r'Sol `xhigh` (on|for|plus|\+)'),
     re.compile(r'`?xhigh`? (when|for) (every |the )?(critical|change is critical)'),
-    re.compile(r'(fresh-context|separate) (GPT-6\.1 )?Sol (reviewer )?(review )?(at )?`xhigh`'),
+    re.compile(r'(fresh-context|separate) (GPT-6\.[12] )?Sol (reviewer )?(review )?(at )?`xhigh`'),
     re.compile(r'--effort xhigh`? (for|when) (a )?critical'),
     re.compile(r'at xhigh for critical'),
     re.compile(r'you at\s+`xhigh`|beside your `xhigh` review'),
-    re.compile(r'\| gpt-6\.1-sol[^|\n]*\| xhigh —'),
+    re.compile(r'\| gpt-6\.[12]-sol[^|\n]*\| xhigh —'),
     re.compile(r'--effort xhigh`? for the no-Fable case'),
 ]
 
@@ -73,21 +73,21 @@ class OpusReviewEffortTests(unittest.TestCase):
         self.assertEqual(hits, [])
 
     def test_the_old_sol_clauses_are_caught_and_the_retry_is_kept(self):
-        for old in ('Critical work gets GPT-6.1 Sol `xhigh` + Opus 5.5 `verify-lane`',
-                    '| GPT-6.1 Sol `high` via `codex-review`; `xhigh` when the change is critical or a `high` pass came back thin |',
-                    '| Diff review of GPT-6.1 Sol-authored work | gpt-6.1-sol, separate fresh-context reviewer | xhigh — labelled',
-                    '`-m gpt-6.1-sol --effort high` by default, `-m gpt-6.1-sol --effort xhigh` for critical changes)',
+        for old in ('Critical work gets GPT-6.2 Sol `xhigh` + Opus 5.5 `verify-lane`',
+                    '| GPT-6.2 Sol `high` via `codex-review`; `xhigh` when the change is critical or a `high` pass came back thin |',
+                    '| Diff review of GPT-6.2 Sol-authored work | gpt-6.2-sol, separate fresh-context reviewer | xhigh — labelled',
+                    '`-m gpt-6.2-sol --effort high` by default, `-m gpt-6.2-sol --effort xhigh` for critical changes)',
                     'computer use, exploration and overflow, at xhigh for critical review; Luna',
-                    '`Bash` → `ask-codex -m gpt-6.1-sol --effort xhigh` for the no-Fable case |'):
+                    '`Bash` → `ask-codex -m gpt-6.2-sol --effort xhigh` for the no-Fable case |'):
             self.assertTrue(any(p.search(old) for p in SOL_BANNED), old)
         for kept in ('a `high` review that came back thin is retried at `xhigh`',
-                     '| Retry when a GPT-6.1 Sol `high` review pass came back thin | gpt-6.1-sol | xhigh |'):
+                     '| Retry when a GPT-6.2 Sol `high` review pass came back thin | gpt-6.2-sol | xhigh |'):
             self.assertFalse(any(p.search(kept) for p in SOL_BANNED), kept)
 
     def test_the_old_verify_lane_description_is_caught(self):
         old = 'Dispatch it with effort\n  xhigh when the change touches money, auth, personal data'
         self.assertTrue(any(p.search(old) for p in BANNED))
-        self.assertFalse(any(p.search('GPT-6.1 Sol `high` and the Opus `verify-lane` at `high`') for p in BANNED))
+        self.assertFalse(any(p.search('GPT-6.2 Sol `high` and the Opus `verify-lane` at `high`') for p in BANNED))
 
 
 if __name__ == '__main__':
