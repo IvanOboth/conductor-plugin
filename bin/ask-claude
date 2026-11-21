@@ -183,22 +183,27 @@ try:
         record = next((item for item in accounts if item.get("id") == account), None)
         if not record or record.get("managedAuthRuntime", "host") != "host":
             raise ValueError("selected account is not a registered host account")
-        selected = root / "claude-accounts" / account / "auth"
+        accounts_dir = root / "claude-accounts"
+        legacy_account_dir = accounts_dir / account
+        selected = legacy_account_dir / "auth"
         profile_account_dir = profiles_dir / account
         profile_home = profile_account_dir / "home"
+        root_resolved = root.resolve()
+        expected_legacy = root_resolved / "claude-accounts" / account / "auth"
+        expected_profile = root_resolved / "claude-profiles" / account / "home"
         managed_raw = record.get("managedAuthPath")
         if not isinstance(managed_raw, str) or not managed_raw:
             raise ValueError("selected account auth path does not match its Orca directory")
-        managed_resolved = Path(managed_raw).resolve()
-        valid_targets = {selected.resolve()}
-        if not (profiles_dir.is_symlink() or profile_account_dir.is_symlink() or profile_home.is_symlink()):
-            valid_targets.add(profile_home.resolve())
-        if managed_resolved not in valid_targets:
+        managed_path = Path(managed_raw).expanduser()
+        if not managed_path.is_absolute() or ".." in managed_path.parts:
+            raise ValueError("selected account auth path does not match its Orca directory")
+        managed_resolved = managed_path.resolve()
+        if managed_resolved not in (expected_legacy, expected_profile):
             raise ValueError("selected account auth path does not match its Orca directory")
         if os.path.lexists(profile_home):
             if profiles_dir.is_symlink() or profile_account_dir.is_symlink() or profile_home.is_symlink():
                 raise ValueError("selected account profile directory must not be a symlink")
-            if profile_home.resolve() != profiles_dir.resolve() / account / "home":
+            if profile_home.resolve() != expected_profile:
                 raise ValueError("selected account profile home escapes Orca claude-profiles")
             profile_cred = profile_home / ".credentials.json"
             if os.path.lexists(profile_cred):
@@ -207,13 +212,18 @@ try:
                 if profile_home.is_dir():
                     print(profile_home)
                     sys.exit(0)
-        legacy_cred = selected / ".credentials.json"
-        if managed_resolved == selected.resolve() and os.path.lexists(legacy_cred):
-            if not stat.S_ISREG(os.lstat(legacy_cred).st_mode):
-                raise ValueError("selected Orca account credentials must be a regular file")
-            if selected.is_dir():
-                print(selected)
-                sys.exit(0)
+        if managed_resolved == expected_legacy and os.path.lexists(selected):
+            if accounts_dir.is_symlink() or legacy_account_dir.is_symlink() or selected.is_symlink():
+                raise ValueError("selected account auth directory must not be a symlink")
+            if selected.resolve() != expected_legacy:
+                raise ValueError("selected account auth path does not match its Orca directory")
+            legacy_cred = selected / ".credentials.json"
+            if os.path.lexists(legacy_cred):
+                if not stat.S_ISREG(os.lstat(legacy_cred).st_mode):
+                    raise ValueError("selected Orca account credentials must be a regular file")
+                if selected.is_dir():
+                    print(selected)
+                    sys.exit(0)
         raise ValueError("selected Orca account has no credentials; reconnect that account in Orca")
 except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
     print(f"ask-claude: cannot resolve Orca account: {error}", file=sys.stderr)

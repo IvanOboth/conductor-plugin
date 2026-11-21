@@ -220,6 +220,34 @@ class AccountRouteTests(unittest.TestCase):
             ])
             check('must not be a symlink', 2)
 
+            # Legacy claude-accounts/first/auth symlinked to second/auth with managedAuthPath pointing to second/auth rejected (exit 2)
+            second_legacy = root / 'claude-accounts' / 'acct-second' / 'auth'
+            second_legacy.mkdir(parents=True)
+            (second_legacy / '.credentials.json').write_text('{}')
+            first_legacy = root / 'claude-accounts' / 'acct-first' / 'auth'
+            first_legacy.parent.mkdir(parents=True)
+            first_legacy.symlink_to(second_legacy)
+            (first_home / '.credentials.json').write_text('{}')
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(second_legacy),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+            # Even if managedAuthPath names first_legacy (which is a symlink to second_legacy), reject (exit 2)
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(first_legacy),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+            first_legacy.unlink()
+            (first_home / '.credentials.json').unlink()
+
             # If neither profile home nor legacy auth has .credentials.json, exit 2
             write_orca_data('acct-first', [
                 {
