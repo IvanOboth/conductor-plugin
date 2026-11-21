@@ -103,7 +103,7 @@ $PROMPT"
 fi
 
 # Resolve Orca's selected Claude host account for parents without an explicit
-# CLAUDE_CONFIG_DIR. Use its existing auth directory; never copy credentials.
+# CLAUDE_CONFIG_DIR. Use its existing profile/auth directory; never copy credentials.
 if [[ "$KEEP_ENV" != "true" && -z "${CLAUDE_CONFIG_DIR:-}" ]]; then
   ORCA_CLAUDE_CONFIG_DIR=$(python3 - <<'PY_ACCOUNT'
 import json
@@ -112,10 +112,36 @@ from pathlib import Path
 import sys
 
 root = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "orca"
-index = root / "orca-profile-index.json"
-if not index.exists():
-    sys.exit(0)
+pointer = root / "claude-profiles" / "selected-host"
 try:
+    if pointer.is_file():
+        raw = pointer.read_text().strip()
+        if not raw:
+            sys.exit(0)
+        if "\n" in raw or "\r" in raw or "\0" in raw:
+            raise ValueError("invalid selected-host pointer")
+        raw_path = Path(raw).expanduser()
+        if not raw_path.is_absolute() or ".." in raw_path.parts:
+            raise ValueError("invalid selected-host pointer")
+        profiles_root = (root / "claude-profiles").resolve()
+        home = raw_path.resolve()
+        try:
+            rel = home.relative_to(profiles_root)
+        except ValueError:
+            raise ValueError("selected-host pointer escapes Orca claude-profiles") from None
+        if len(rel.parts) != 2 or rel.parts[1] != "home":
+            raise ValueError("selected-host pointer is not a claude-profiles/<id>/home path")
+        account_id = rel.parts[0]
+        if not account_id or Path(account_id).name != account_id or account_id in (".", "..") or account_id.startswith("."):
+            raise ValueError("invalid selected account")
+        if not home.is_dir() or not (home / ".credentials.json").is_file():
+            raise ValueError("selected Orca account has no credentials; reconnect that account in Orca")
+        print(home)
+        sys.exit(0)
+
+    index = root / "orca-profile-index.json"
+    if not index.exists():
+        sys.exit(0)
     profile = json.loads(index.read_text())["activeProfileId"]
     if not isinstance(profile, str) or not profile or Path(profile).name != profile or profile in (".", ".."):
         raise ValueError("invalid active profile")
@@ -125,16 +151,30 @@ try:
     if account is not None:
         if not isinstance(account, str) or not account or Path(account).name != account or account in (".", ".."):
             raise ValueError("invalid selected account")
-        selected = root / "claude-accounts" / account / "auth"
         accounts = settings.get("claudeManagedAccounts", [])
         record = next((item for item in accounts if item.get("id") == account), None)
         if not record or record.get("managedAuthRuntime", "host") != "host":
             raise ValueError("selected account is not a registered host account")
-        if Path(record.get("managedAuthPath", "")).resolve() != selected.resolve():
+        profiles_root = (root / "claude-profiles").resolve()
+        profile_home = root / "claude-profiles" / account / "home"
+        if profile_home.is_dir() and (profile_home / ".credentials.json").is_file():
+            resolved_profile = profile_home.resolve()
+            try:
+                rel = resolved_profile.relative_to(profiles_root)
+            except ValueError:
+                raise ValueError("selected account profile home escapes Orca claude-profiles") from None
+            if len(rel.parts) != 2 or rel.parts[0] != account or rel.parts[1] != "home":
+                raise ValueError("selected account profile home does not match its Orca directory")
+            print(profile_home)
+            sys.exit(0)
+        selected = root / "claude-accounts" / account / "auth"
+        managed_path = record.get("managedAuthPath", "")
+        if managed_path and Path(managed_path).resolve() not in (selected.resolve(), profile_home.resolve()):
             raise ValueError("selected account auth path does not match its Orca directory")
-        if not (selected / ".credentials.json").is_file():
-            raise ValueError("selected Orca account has no credentials; reconnect that account in Orca")
-        print(selected)
+        if managed_path and Path(managed_path).resolve() == selected.resolve() and (selected / ".credentials.json").is_file():
+            print(selected)
+            sys.exit(0)
+        raise ValueError("selected Orca account has no credentials; reconnect that account in Orca")
 except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
     print(f"ask-claude: cannot resolve Orca account: {error}", file=sys.stderr)
     sys.exit(2)
