@@ -125,7 +125,33 @@ class AccountRouteTests(unittest.TestCase):
             symlink_home.parent.mkdir(parents=True)
             symlink_home.symlink_to(outside)
             pointer.write_text(str(symlink_home))
-            check('escapes Orca claude-profiles', 2)
+            check('must not be a symlink', 2)
+
+            # Account A home symlinked to Account B home rejected (exit 2)
+            cross_acct_home = profiles / 'acct-cross' / 'home'
+            cross_acct_home.parent.mkdir(parents=True)
+            cross_acct_home.symlink_to(second_home)
+            pointer.write_text(str(cross_acct_home))
+            check('must not be a symlink', 2)
+
+            # Symlinked .credentials.json in pointed home rejected (exit 2)
+            sym_cred_home = profiles / 'acct-symcred' / 'home'
+            sym_cred_home.mkdir(parents=True)
+            (sym_cred_home / '.credentials.json').symlink_to(outside / '.credentials.json')
+            pointer.write_text(str(sym_cred_home))
+            check('credentials must be a regular file', 2)
+
+            # Dangling and regular symlink selected-host pointer rejected (exit 2)
+            pointer.unlink()
+            pointer.symlink_to(base / 'does-not-exist')
+            check('must be a regular file', 2)
+
+            external_ptr = base / 'external-ptr'
+            external_ptr.write_text(str(second_home))
+            pointer.unlink()
+            pointer.symlink_to(external_ptr)
+            check('must be a regular file', 2)
+            pointer.unlink()
 
             # 3. Missing .credentials.json in pointed home rejected (exit 2)
             (first_home / '.credentials.json').unlink()
@@ -137,39 +163,71 @@ class AccountRouteTests(unittest.TestCase):
             (root / 'orca-profile-index.json').write_text(json.dumps({'activeProfileId': 'test'}))
             profile = root / 'profiles' / 'test'
             profile.mkdir(parents=True)
-            (profile / 'orca-data.json').write_text(json.dumps({
-                'settings': {
-                    'activeClaudeManagedAccountIdsByRuntime': {'host': 'acct-second'},
-                    'claudeManagedAccounts': [
-                        {
-                            'id': 'acct-second',
-                            'managedAuthRuntime': 'host',
-                            'managedAuthPath': str(root / 'claude-accounts' / 'acct-second' / 'auth'),
-                        },
-                        {
-                            'id': 'acct-first',
-                            'managedAuthRuntime': 'host',
-                            'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
-                        },
-                    ],
-                }
-            }))
+            def write_orca_data(active, accounts):
+                (profile / 'orca-data.json').write_text(json.dumps({
+                    'settings': {
+                        'activeClaudeManagedAccountIdsByRuntime': {'host': active},
+                        'claudeManagedAccounts': accounts,
+                    }
+                }))
+            write_orca_data('acct-second', [
+                {
+                    'id': 'acct-second',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-second' / 'auth'),
+                },
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
+                },
+            ])
             # Legacy claude-accounts/acct-second/auth does NOT exist, but claude-profiles/acct-second/home/.credentials.json does
             check(str(second_home))
 
+            # Empty selected-host suppresses a conflicting JSON selection (returns HOST_DEFAULT)
+            pointer.write_text('   \n')
+            check('HOST_DEFAULT')
+            pointer.unlink()
+
+            # Inconsistent managedAuthPath in JSON fallback rejected even when claude-profiles/<id>/home/.credentials.json exists
+            write_orca_data('acct-second', [
+                {
+                    'id': 'acct-second',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(outside),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+
+            # Symlinked .credentials.json in JSON fallback rejected (exit 2)
+            write_orca_data('acct-symcred', [
+                {
+                    'id': 'acct-symcred',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-symcred' / 'auth'),
+                },
+            ])
+            check('credentials must be a regular file', 2)
+
+            # Cross-account symlinked home in JSON fallback rejected (exit 2)
+            write_orca_data('acct-cross', [
+                {
+                    'id': 'acct-cross',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-cross' / 'auth'),
+                },
+            ])
+            check('must not be a symlink', 2)
+
             # If neither profile home nor legacy auth has .credentials.json, exit 2
-            (profile / 'orca-data.json').write_text(json.dumps({
-                'settings': {
-                    'activeClaudeManagedAccountIdsByRuntime': {'host': 'acct-first'},
-                    'claudeManagedAccounts': [
-                        {
-                            'id': 'acct-first',
-                            'managedAuthRuntime': 'host',
-                            'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
-                        },
-                    ],
-                }
-            }))
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
+                },
+            ])
             check('has no credentials', 2)
 
 if __name__=='__main__': unittest.main()
