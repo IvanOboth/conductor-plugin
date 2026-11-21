@@ -40,6 +40,6 @@ Skip this section unless you route Claude Code's main loop through a local proxy
 Write your report to <scratchpad>/claude-N-report.md when done." \
       --output-format text < /dev/null
   ```
-  `--model opus` for taste/design lanes; `--model claude-fable-5-2` when the lane needs top-shelf judgment or is a high-stakes writing lane. Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
+  `--model opus` for taste/design lanes; `--model claude-fable-5-2` when the lane needs top-shelf judgment (high-stakes writing defaults to Gemini 4 Neon as of 21 Nov 2026). Write the work order to a file first; launch long lanes with `run_in_background: true` and a generous timeout — the report file is the deliverable. Same file-collision rule as codex lanes: these shell-outs write to the shared working tree with no isolation.
 - **Codex lanes are unchanged** but become *same-family* with the orchestrator. Cross-family verification therefore routes the other way: send diff-taste review and anything user-facing to a Claude shell-out lane, and treat `codex-review` as a mechanics-only second pass, not the independent perspective.
 - Everything else holds: the orchestrator still never delegates the plan, work orders, or final review; still Reads screenshots itself; still runs the end gates and closes with `run-report`.

@@ -51,4 +51,211 @@ class AccountRouteTests(unittest.TestCase):
             check('cannot resolve Orca account',2)
             print('PASS: requested launchers; no Orca, selected account, switch, explicit override, host default, missing auth, invalid account, corrupt profile')
 
+    def test_orca_1_4_225_selected_host_pointer_and_profile_home(self):
+        launchers = [ROOT / 'bin/ask-claude']
+        installed = os.environ.get('ORCA_TEST_INSTALLED_HELPERS')
+        if installed:
+            launchers.append(Path(installed) / 'ask-claude')
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / 'orca'
+            profiles = root / 'claude-profiles'
+            profiles.mkdir(parents=True)
+            binary = base / 'claude'
+            binary.write_text('#!/usr/bin/env python3\nimport os\nprint(os.environ.get("CLAUDE_CONFIG_DIR", "HOST_DEFAULT"))\n')
+            binary.chmod(0o755)
+            env = {k: v for k, v in os.environ.items() if k != 'CLAUDE_CONFIG_DIR'}
+            env.update(XDG_CONFIG_HOME=tmp, PATH=tmp + os.pathsep + env['PATH'])
+
+            def check(expected, code=0, override=None, args=()):
+                for launcher in launchers:
+                    e = dict(env)
+                    if override:
+                        e['CLAUDE_CONFIG_DIR'] = override
+                    p = subprocess.run(['bash', str(launcher), *args, 'probe'], env=e, text=True, capture_output=True)
+                    self.assertEqual(p.returncode, code, p.stderr)
+                    self.assertIn(expected, p.stdout if code == 0 else p.stderr)
+
+            # 1. Live Orca 1.4.225+ claude-profiles/selected-host pointer
+            pointer = profiles / 'selected-host'
+            first_home = profiles / 'acct-first' / 'home'
+            second_home = profiles / 'acct-second' / 'home'
+            for h in (first_home, second_home):
+                h.mkdir(parents=True)
+                (h / '.credentials.json').write_text('{}')
+
+            pointer.write_text(f'{first_home}\n')
+            check(str(first_home.resolve()))
+
+            pointer.write_text(str(second_home))
+            check(str(second_home.resolve()))
+
+            # Override and --keep-env still bypass pointer
+            check('/explicit/home', override='/explicit/home')
+            check('HOST_DEFAULT', args=('--keep-env',))
+
+            # Empty pointer means system default
+            pointer.write_text('   \n')
+            check('HOST_DEFAULT')
+
+            # 2. Traversal / escape / malformed pointers rejected (exit 2)
+            outside = base / 'outside' / 'home'
+            outside.mkdir(parents=True)
+            (outside / '.credentials.json').write_text('{}')
+
+            pointer.write_text('../escape')
+            check('cannot resolve Orca account', 2)
+
+            pointer.write_text(str(outside))
+            check('escapes Orca claude-profiles', 2)
+
+            pointer.write_text(f'{profiles}/acct-first/../acct-second/home')
+            check('invalid selected-host pointer', 2)
+
+            pointer.write_text(f'{profiles}/acct-first/auth')
+            check('claude-profiles/<id>/home', 2)
+
+            dot_home = profiles / '.hidden' / 'home'
+            dot_home.mkdir(parents=True)
+            (dot_home / '.credentials.json').write_text('{}')
+            pointer.write_text(str(dot_home))
+            check('invalid selected account', 2)
+
+            symlink_home = profiles / 'symlinked' / 'home'
+            symlink_home.parent.mkdir(parents=True)
+            symlink_home.symlink_to(outside)
+            pointer.write_text(str(symlink_home))
+            check('must not be a symlink', 2)
+
+            # Account A home symlinked to Account B home rejected (exit 2)
+            cross_acct_home = profiles / 'acct-cross' / 'home'
+            cross_acct_home.parent.mkdir(parents=True)
+            cross_acct_home.symlink_to(second_home)
+            pointer.write_text(str(cross_acct_home))
+            check('must not be a symlink', 2)
+
+            # Symlinked .credentials.json in pointed home rejected (exit 2)
+            sym_cred_home = profiles / 'acct-symcred' / 'home'
+            sym_cred_home.mkdir(parents=True)
+            (sym_cred_home / '.credentials.json').symlink_to(outside / '.credentials.json')
+            pointer.write_text(str(sym_cred_home))
+            check('credentials must be a regular file', 2)
+
+            # Dangling and regular symlink selected-host pointer rejected (exit 2)
+            pointer.unlink()
+            pointer.symlink_to(base / 'does-not-exist')
+            check('must be a regular file', 2)
+
+            external_ptr = base / 'external-ptr'
+            external_ptr.write_text(str(second_home))
+            pointer.unlink()
+            pointer.symlink_to(external_ptr)
+            check('must be a regular file', 2)
+            pointer.unlink()
+
+            # 3. Missing .credentials.json in pointed home rejected (exit 2)
+            (first_home / '.credentials.json').unlink()
+            pointer.write_text(str(first_home))
+            check('has no credentials', 2)
+
+            # 4. Fallback to orca-data.json resolves claude-profiles/<id>/home even without legacy claude-accounts auth
+            pointer.unlink()
+            (root / 'orca-profile-index.json').write_text(json.dumps({'activeProfileId': 'test'}))
+            profile = root / 'profiles' / 'test'
+            profile.mkdir(parents=True)
+            def write_orca_data(active, accounts):
+                (profile / 'orca-data.json').write_text(json.dumps({
+                    'settings': {
+                        'activeClaudeManagedAccountIdsByRuntime': {'host': active},
+                        'claudeManagedAccounts': accounts,
+                    }
+                }))
+            write_orca_data('acct-second', [
+                {
+                    'id': 'acct-second',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-second' / 'auth'),
+                },
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
+                },
+            ])
+            # Legacy claude-accounts/acct-second/auth does NOT exist, but claude-profiles/acct-second/home/.credentials.json does
+            check(str(second_home))
+
+            # Empty selected-host suppresses a conflicting JSON selection (returns HOST_DEFAULT)
+            pointer.write_text('   \n')
+            check('HOST_DEFAULT')
+            pointer.unlink()
+
+            # Inconsistent managedAuthPath in JSON fallback rejected even when claude-profiles/<id>/home/.credentials.json exists
+            write_orca_data('acct-second', [
+                {
+                    'id': 'acct-second',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(outside),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+
+            # Symlinked .credentials.json in JSON fallback rejected (exit 2)
+            write_orca_data('acct-symcred', [
+                {
+                    'id': 'acct-symcred',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-symcred' / 'auth'),
+                },
+            ])
+            check('credentials must be a regular file', 2)
+
+            # Cross-account symlinked home in JSON fallback rejected (exit 2)
+            write_orca_data('acct-cross', [
+                {
+                    'id': 'acct-cross',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-cross' / 'auth'),
+                },
+            ])
+            check('must not be a symlink', 2)
+
+            # Legacy claude-accounts/first/auth symlinked to second/auth with managedAuthPath pointing to second/auth rejected (exit 2)
+            second_legacy = root / 'claude-accounts' / 'acct-second' / 'auth'
+            second_legacy.mkdir(parents=True)
+            (second_legacy / '.credentials.json').write_text('{}')
+            first_legacy = root / 'claude-accounts' / 'acct-first' / 'auth'
+            first_legacy.parent.mkdir(parents=True)
+            first_legacy.symlink_to(second_legacy)
+            (first_home / '.credentials.json').write_text('{}')
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(second_legacy),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+            # Even if managedAuthPath names first_legacy (which is a symlink to second_legacy), reject (exit 2)
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(first_legacy),
+                },
+            ])
+            check('does not match its Orca directory', 2)
+            first_legacy.unlink()
+            (first_home / '.credentials.json').unlink()
+
+            # If neither profile home nor legacy auth has .credentials.json, exit 2
+            write_orca_data('acct-first', [
+                {
+                    'id': 'acct-first',
+                    'managedAuthRuntime': 'host',
+                    'managedAuthPath': str(root / 'claude-accounts' / 'acct-first' / 'auth'),
+                },
+            ])
+            check('has no credentials', 2)
+
 if __name__=='__main__': unittest.main()
