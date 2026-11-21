@@ -3,7 +3,12 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import os
+import shutil
 import tempfile
+
+
+def _move_entry(src, dst):
+    shutil.move(str(src), str(dst))
 
 
 def main(skill="conductor"):
@@ -19,6 +24,14 @@ def main(skill="conductor"):
         roots = [r for r in roots if r[0] == 'claude']
     targets = [(name, root / 'skills' / skill) for name, root in roots]
     # Preflight every target before modifying any of them.
+    seen_destinations = {}
+    for name, target in targets:
+        resolved_dest = target.parent.resolve() / target.name
+        if resolved_dest in seen_destinations:
+            raise SystemExit(
+                f'Refusing aliased skill destination: {seen_destinations[resolved_dest]} and {name} both resolve to {resolved_dest}'
+            )
+        seen_destinations[resolved_dest] = name
     pending = []
     try:
         source_ref = '~/' + str((source / 'SKILL.md').relative_to(home))
@@ -44,10 +57,11 @@ def main(skill="conductor"):
         else:
             if target.exists() and not target.is_dir() and not target.is_symlink():
                 raise SystemExit(f'Refusing non-directory skill entry: {target}')
-            target.parent.mkdir(parents=True, exist_ok=True)
             pending.append((name, target))
     if not pending:
         return
+    for _, target in pending:
+        target.parent.mkdir(parents=True, exist_ok=True)
     state = home / '.local/state/conductor-link'
     state.mkdir(parents=True, exist_ok=True, mode=0o700)
     state.chmod(0o700)
@@ -57,7 +71,7 @@ def main(skill="conductor"):
         for name, target in pending:
             saved = backup / name
             if target.exists() or target.is_symlink():
-                target.rename(saved)
+                _move_entry(target, saved)
             changed.append((target, saved))
             if name == 'codex':
                 target.mkdir()
@@ -80,7 +94,7 @@ def main(skill="conductor"):
                     child.unlink()
                 target.rmdir()
             if saved.exists() or saved.is_symlink():
-                saved.rename(target)
+                _move_entry(saved, target)
         raise
     print(f'Previous installs preserved: {backup}')
 

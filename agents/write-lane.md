@@ -1,6 +1,6 @@
 ---
 name: write-lane
-description: Conductor's high-stakes writing lane. Use for prose a human will read and judge the author by — a counterparty email, a proposal, an investor or board document, a script or narration, the final edit of a draft another lane produced. Pinned to `fable` at high effort (Fable 5.2 since 10 Nov 2026) so voice-critical work does not silently inherit a low session effort or a cheaper model. Volume writing (prompt packages, generated-video blocks, storyboards, internal docs, first drafts) goes to an Opus 5.5 lane at medium, not here.
+description: Conductor's optional Fable 5.2 second-opinion and cold-read lane for high-stakes writing. Since 21 Nov 2026 Gemini 4 Neon (`high`, `ask-gemini -m gemini-4-neon-high --no-fallback`) is the primary author for high-stakes prose (counterparty mail, proposals, board/investor and client-facing documents); dispatch `write-lane` (pinned to `fable` at `high`, Fable 5.2 since 10 Nov 2026) when you want an optional cold read, second opinion, or targeted edit pass on voice-critical work without silently inheriting a lower effort or cheaper model. Volume writing (prompt packages, generated-video blocks, storyboards, internal docs, first drafts) goes to an Opus 5.5 lane at medium, not here.
 model: fable
 effort: high
 ---

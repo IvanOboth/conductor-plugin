@@ -237,8 +237,9 @@ something up; never at `xhigh` or `max` by default.
   unattended-lane paragraph below in the order. Fable 5.2 at `high` for ambiguous
   architecture, or when Opus 5.5 has fallen short. Documents, spreadsheets, decks,
   proposals and pricing papers from a blank page → `opus` for routine and internal work,
-  with Fable 5.2 at `high` as the first escalation; Fable 5.2 at `high` starts
-  client-facing deliverables.
+  with Fable 5.2 at `high` as the first escalation; Gemini 4 Neon at `high`
+  (`ask-gemini -m gemini-4-neon-high --no-fallback`) starts client-facing deliverables
+  (Fable 5.2 or Opus 5.5 as optional second opinion).
   Browser-, ops- or automation-shaped long lanes can stay with you, with
   `model_context_window` raised for the lane (272K by default under a ChatGPT login).
 - Research and synthesis (deep research, agentic search, reading many sources into one

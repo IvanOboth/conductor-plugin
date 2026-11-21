@@ -5,7 +5,7 @@ description: Orchestrate Gemini-first Conductor runs in Antigravity with Gemini 
 
 # Conductor Gemini
 
-Run the full Conductor workflow in Antigravity with **Gemini 4 Neon (`high`)** as the orchestrator and primary builder. Gemini 4 Neon handles grounding, planning, work orders, implementation, refactors, migrations, tests, high-stakes writing, volume writing, media inspection, integration, and final acceptance. Independent cross-family verification goes to **GPT-6.2 Sol (`high`)** through `ask-codex` and/or **Claude Opus 5.5 (`high`) / Fable 5.2** through `ask-claude`.
+Run the full Conductor workflow in Antigravity with **standalone Gemini 4 Neon High** (`gemini-4-neon-high`) as the orchestrator and primary builder. Before dispatching any lane, confirm the parent Antigravity session is set to standalone **Gemini 4 Neon High** (`gemini-4-neon-high`) — do not rely on Medium or Antigravity's built-in Orchestrator mode (which can delegate sub-steps to Hydrogen), because `invoke_subagent` and `run_workflow` (`model="inherit"`) inherit the parent session's model selection. Gemini 4 Neon handles grounding, planning, work orders, implementation, refactors, migrations, tests, high-stakes writing, volume writing, media inspection, integration, and final acceptance. Independent cross-family verification goes to **GPT-6.2 Sol (`high`)** through `ask-codex` and/or **Claude Opus 5.5 (`high`) / Fable 5.2** through `ask-claude`.
 
 **This profile exists to finish ambitious work on Google AI Ultra while keeping every provider subscription-clean.** Long-running migrations, multi-surface features, high-stakes client documents, media-heavy QA, vault work, and epics across sessions all belong here. Verification is part of the machinery that lets large work ship safely, not a reason to attempt less.
 
@@ -26,7 +26,7 @@ Every family bills to its own subscription. Never cross-bill a model onto the wr
   - **`invoke_subagent`** for 1–2 bounded parallel Gemini lanes. Give parallel writers `workspace: "share"` (shared repo object store, isolated working tree) or `workspace: "branch"` (isolated clone); keep readers and verifiers on `workspace: "inherit"`.
   - **`run_workflow`** (Python `parallel()` / `pipeline()` over Gemini 4 Neon agents) for an enumerated work-list of 3+ independent items, staged build -> review pipelines, competing drafts, or fix-until-green loops.
   - When invoked headlessly from another harness, Gemini runs via `ask-gemini -m gemini-4-neon-high --no-fallback` (add `--write` for writable lanes). Always pass `--no-fallback` so the wrapper never silently switches to the paid API (`\$3/\$15` per Mtok, no tools).
-- **Claude Opus 5.5 and Fable 5.2** MUST be dispatched via **`ask-claude`** (`ask-claude --plan -m opus`, `ask-claude --accept-edits -m opus`, `ask-claude --plan -m fable`) so they bill to Ivan's **Claude subscriptions** (Orca accounts). **NEVER** dispatch Claude through Antigravity `/swarm` Opus (which counts against Google AI Ultra quota) unless Ivan explicitly invokes `/swarm` or Claude accounts are exhausted.
+- **Claude Opus 5.5 and Fable 5.2** MUST be dispatched exclusively via **`ask-claude`** (`ask-claude --plan -m opus`, `ask-claude --accept-edits -m opus`, `ask-claude --plan -m fable`) so they bill to Ivan's **Claude subscriptions** (Orca accounts). **NEVER** dispatch Claude through Antigravity `/swarm` Opus (which counts against Google AI Ultra quota), even if Claude accounts are exhausted — if Claude accounts are unavailable, report Claude unavailable and rely on GPT-6.2 Sol (`ask-codex`). Keep `/swarm` strictly for interactive multi-agent Gemini boards if Ivan explicitly invokes `/swarm`.
 - **GPT-6.2 Sol (`high`)** MUST be dispatched via **`ask-codex -m gpt-6.2-sol --effort high`** so it bills to Ivan's **ChatGPT/Codex subscriptions**. Always pass `-m` and `--effort` explicitly; never rely on `~/.codex/config.toml` defaults.
 
 ## Full scope (all repositories)
@@ -35,8 +35,8 @@ Every family bills to its own subscription. Never cross-bill a model onto the wr
 
 When working inside the vault (`~/dev/ivan-oboth`), follow vault git discipline strictly:
 
-- Run `git pull --ff-only` before starting edits and before pushing.
-- Commit only explicit paths (`git add <file1> <file2>`), then push at checkpoints.
+- **Interactive Antigravity `conductor-gemini` session:** run `git pull --ff-only` before starting edits and before pushing, commit only explicit paths (`git add <file1> <file2>`), and push at checkpoints directly in `~/dev/ivan-oboth`.
+- **Headless `ask-gemini --write` lanes inside the vault:** write only the assigned files and leave all git mutations (`git add`, `git commit`, `git push`) to the orchestrator.
 - Never run `git add -A`, `git stash`, `git reset`, or `git checkout` on the shared vault tree.
 
 ## Routing
@@ -119,7 +119,7 @@ Use honest coverage labels in every report:
 
 **4. Review and integrate — orchestrator.** Read every lane's report and actual diff (`git diff --stat` and the changed files). Merge isolated branches/workspaces yourself, resolve conflicts by hand, and run the full applicable test suite and checks before accepting. Rejected work returns as a revised work order naming what was wrong and what correct looks like.
 
-**5. Publish the HTML report — mandatory on extensive work.** On any extensive run (multi-lane build, feature, migration, audit, research/document build, or cross-family reviewed change), build or update a self-contained, desktop-and-phone responsive HTML report under `<repo>/.conductor/reports/` (keyed `issue-<n>.html` or `<YYYY-MM-DD-slug>.html`; ensure `.conductor/` is gitignored) following [references/report-design.md](../conductor/references/report-design.md):
+**5. Publish the HTML report (mandatory deliverable).** Matching the shared Conductor contract, every `conductor-gemini` run builds or updates a self-contained, desktop-and-phone responsive HTML report under `<repo>/.conductor/reports/` (keyed `issue-<n>.html` or `<YYYY-MM-DD-slug>.html`; ensure `.conductor/` is gitignored) following [references/report-design.md](../conductor/references/report-design.md) — scaled concisely for small runs, and carrying full evidence, diagrams, and visual proof on larger runs:
 
 - **Contents:** what was asked and built, decisions made and why, tests run (exact commands and results), cross-family review verdicts with honest coverage labels, and visual proof (screenshots or video strictly per the shared **Choose evidence before recording** gate — never record video of opening a static report).
 - **Publish and verify (Bench):** run `~/bin/report-link.py <report-path>`, verify HTTP 200 and rendering at desktop and 390px phone widths at `https://bench.tailb5d047.ts.net/reports/<repo>/<file>.html`, and give Ivan the clickable URL labelled **private — Tailscale access required** — never a local disk path.

@@ -135,4 +135,75 @@ class SkillInstallTest(unittest.TestCase):
             self.assertFalse(p.is_symlink())
             self.assertEqual((p / 'original').read_text(), family)
 
+    def test_rejects_aliased_destination_roots_before_any_change(self):
+        existing_claude = self.home / '.claude/skills/conductor'
+        existing_claude.mkdir(parents=True)
+        (existing_claude / 'sentinel.txt').write_text('untouched')
+        codex_dir = self.home / '.codex'
+        codex_dir.mkdir(parents=True)
+        aliased_gemini = self.home / 'gemini-alias'
+        aliased_gemini.symlink_to(codex_dir, target_is_directory=True)
+        for env in ({'GEMINI_CONFIG_DIR': str(codex_dir)}, {'GEMINI_CONFIG_DIR': str(aliased_gemini)}):
+            with patch.object(linker.os, 'environ', env):
+                with self.assertRaises(SystemExit) as ctx:
+                    linker.main('conductor')
+                self.assertIn('aliased skill destination', str(ctx.exception))
+        # Preflight failed closed before modifying or backing up anything.
+        self.assertFalse(existing_claude.is_symlink())
+        self.assertEqual((existing_claude / 'sentinel.txt').read_text(), 'untouched')
+        self.assertFalse((self.home / '.local/state/conductor-link').exists())
+
+    def test_cross_filesystem_backup_and_rollback_on_exdev(self):
+        import errno
+        custom_gemini = self.home / 'other-fs-gemini'
+        orig_dir = custom_gemini / 'skills/conductor'
+        orig_dir.mkdir(parents=True)
+        (orig_dir / 'keep.txt').write_text('gemini-dir')
+        old_target = self.home / 'old-target'
+        old_target.mkdir()
+        orig_claude = self.home / '.claude/skills/conductor'
+        orig_claude.parent.mkdir(parents=True)
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        def exdev_rename(src, dst):
+            raise OSError(errno.EXDEV, 'Invalid cross-device link')
+
+        # Backup succeeds across EXDEV for both symlink (claude) and directory (gemini).
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            with patch.object(linker.shutil.os, 'rename', side_effect=exdev_rename):
+                linker.main('conductor')
+        self.assertTrue((custom_gemini / 'skills/conductor').is_symlink())
+        self.assertTrue(orig_claude.is_symlink())
+        backups = list((self.home / '.local/state/conductor-link').glob('*/gemini/keep.txt'))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text(), 'gemini-dir')
+        claude_backups = list((self.home / '.local/state/conductor-link').glob('*/claude'))
+        self.assertEqual(len(claude_backups), 1)
+        self.assertTrue(claude_backups[0].is_symlink())
+        self.assertEqual(claude_backups[0].resolve(), old_target.resolve())
+
+        # Rollback also succeeds across EXDEV when a later target fails.
+        custom_gemini2 = self.home / 'other-fs-gemini-2'
+        orig_dir2 = custom_gemini2 / 'skills/conductor'
+        orig_dir2.mkdir(parents=True)
+        (orig_dir2 / 'keep2.txt').write_text('gemini-rollback')
+        orig_claude.unlink()
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+        orig_symlink = Path.symlink_to
+
+        def fail_gemini_symlink(p, *a, **kw):
+            if p == orig_dir2:
+                raise OSError('injected third-target failure')
+            return orig_symlink(p, *a, **kw)
+
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini2)}):
+            with patch.object(linker.shutil.os, 'rename', side_effect=exdev_rename):
+                with patch.object(Path, 'symlink_to', fail_gemini_symlink):
+                    with self.assertRaises(OSError):
+                        linker.main('conductor')
+        self.assertFalse(orig_dir2.is_symlink())
+        self.assertEqual((orig_dir2 / 'keep2.txt').read_text(), 'gemini-rollback')
+        self.assertTrue(orig_claude.is_symlink())
+        self.assertEqual(orig_claude.resolve(), old_target.resolve())
+
 if __name__ == '__main__': unittest.main()
