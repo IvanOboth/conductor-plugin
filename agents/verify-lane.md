@@ -9,7 +9,7 @@ description: >-
   personal data; a schema or data migration; anything hard to reverse; a client-facing
   deliverable; or the routing and agent configuration itself; and every `sev:1` item. Two: in
   place of the GPT-6.2 Sol review when Sol cannot run (Conductor Claude, Codex out of quota or
-  down) and Gemini 4 Neon cannot stand in for it (Gemini down, or a client personal-data run, bench-factory#428;
+  down) and Gemini 4 Neon cannot stand in for it (Gemini down or a one-vendor run;
   Gemini goes first since 20 Nov 2026), as the one fresh-context Opus 5.5 reviewer of
   Opus-authored work, never Fable 5.2 (Ivan, 17 Nov 2026). It no longer runs beside the GPT-6.2 Sol review on Opus-authored critical work,
   `sev:1` items or production data changes: those get GPT-6.2 Sol at high via codex-review alone,

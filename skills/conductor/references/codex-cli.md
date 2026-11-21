@@ -19,8 +19,8 @@ Cold reference for [Conductor](../SKILL.md). The routing (which model, which eff
 
 - `ask-gemini` runs Gemini 4 Neon headless through the Antigravity CLI (`agy`) on Ivan's Google AI Ultra subscription. Pass the model every time: `ask-gemini -m gemini-4-neon-high --no-fallback --context <order> --output <report> "<prompt>"`. `--no-fallback` forbids the silent switch to the paid API path (USD 3/15 per Mtok, no tools, no repository): when agy cannot serve the run, the lane fails and the reviewer chain moves on. stderr always names the path that ran (`path=subscription` or `path=api`).
 - Repository runs are read-only by default (git read commands only); `--write` allows every command and edit, so state the scope in the order. A review lane never needs `--write`.
-- Media runs (`--file <path>`, repeatable) copy images, video, audio or documents into a scratch workspace under `~/runs/ask-gemini/`; agy views them there. Use them for the multimodal second read, never client personal-data files or captures (customer or participant records, identity or financial screens; bench-factory#428), which stay Claude-only.
-- It may run in the vault and read vault files, personal records included (Ivan, 20 Nov 2026). It refuses to start in a folder above the vault (`~/dev`, `~` or `/`). Client personal-data runs (bench-factory#428) stay Claude-only.
+- Media runs (`--file <path>`, repeatable) copy images, video, audio or documents into a scratch workspace under `~/runs/ask-gemini/`; agy views them there.
+- It works across all repositories — product repos, client personal-data runs, and the vault (personal records included; Ivan, 21 Nov 2026). It refuses to start in a folder above the vault (`~/dev`, `~` or `/`).
 - Exit status: 0 only with an answer; 3 agy error or timeout (`--print-timeout`, default 20m), 2 refused to start, 4 `--output` given and no answer. Judge the report file, not stdout. Launch with `run_in_background: true` like a Codex lane.
 
 ## Running under a proxied orchestrator (optional)

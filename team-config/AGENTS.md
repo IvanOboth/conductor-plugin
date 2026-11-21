@@ -237,8 +237,9 @@ something up; never at `xhigh` or `max` by default.
   unattended-lane paragraph below in the order. Fable 5.2 at `high` for ambiguous
   architecture, or when Opus 5.5 has fallen short. Documents, spreadsheets, decks,
   proposals and pricing papers from a blank page → `opus` for routine and internal work,
-  with Fable 5.2 at `high` as the first escalation; Fable 5.2 at `high` starts
-  client-facing deliverables.
+  with Fable 5.2 at `high` as the first escalation; Gemini 4 Neon at `high`
+  (`ask-gemini -m gemini-4-neon-high --no-fallback`) starts client-facing deliverables
+  (Fable 5.2 or Opus 5.5 as optional second opinion).
   Browser-, ops- or automation-shaped long lanes can stay with you, with
   `model_context_window` raised for the lane (272K by default under a ChatGPT login).
 - Research and synthesis (deep research, agentic search, reading many sources into one
@@ -282,7 +283,7 @@ something up; never at `xhigh` or `max` by default.
 - Writing, volume or structured → `opus` at `medium`, with the no-mannered-prose rule in
   the order.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
-  Fable 5.2 at `high`. **Your writing rating is 6.5.** Do not self-certify voice on anything
+  Gemini 4 Neon at `high` (`ask-gemini -m gemini-4-neon-high --no-fallback`), with Opus 5.5 or Fable 5.2 as optional second opinion / cold read. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
 - Reviews → always a different model from the author (29 Sep 2026):
   - Opus-authored, routine → GPT-6.2 Sol at `high` via `codex-review`, plus the
@@ -292,10 +293,9 @@ something up; never at `xhigh` or `max` by default.
     was removed by Ivan on 18 Nov 2026. When GPT-6.2 Sol cannot run, Gemini 4 Neon
     (`ask-gemini -m gemini-4-neon-high --no-fallback`) takes its place, labelled `cross-family (Gemini)`, then a
     fresh-context Opus 5.5 at `high` (`same-model, fresh context`), never Fable 5.2 (Ivan,
-    17 Nov 2026; Gemini step 20 Nov 2026). Client personal-data runs (bench-factory#428) skip Gemini.
+    17 Nov 2026; Gemini step 20 Nov 2026).
   - Shadow trial, 3 to 5 days from 20 Nov 2026: an optional Gemini 4 Neon review may run
-    beside yours on the same diff to compare catch rates. It never gates a merge and never
-    runs on client personal-data work (bench-factory#428).
+    beside yours on the same diff to compare catch rates. It never gates a merge.
   - GPT-6.2 Sol-authored, critical → the Opus 5.5 `verify-lane` at `high`.
   - Fable-authored → `opus` at `high`.
   - GPT-6.2 Sol-authored → `opus` at `high` (cross-family). In Conductor Core, a separate
@@ -309,7 +309,7 @@ something up; never at `xhigh` or `max` by default.
   short, move to another model.
 - Runtime verification (mechanics) → you, at `high`, on every run. Screenshots and
   recordings go to the Claude side to judge whether it *looks* right; Gemini 4 Neon
-  (`ask-gemini --file <path>`) may give a second read of images, video or audio, never client personal-data files or captures (customer or participant records, identity or financial screens; bench-factory#428), which stay Claude-only. Luna does not
+  (`ask-gemini --file <path>`) may give a second read of images, video or audio. Luna does not
   verify. Judgment while driving → `opus` driving a browser, or you at `high` when the
   flow is mechanical and Codex quota is free.
 

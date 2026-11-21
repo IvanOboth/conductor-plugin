@@ -21,13 +21,41 @@ class SkillInstallTest(unittest.TestCase):
         linker.main()
         claude = self.home / '.claude/skills/conductor'
         codex = self.home / '.codex/skills/conductor'
+        gemini = self.home / '.gemini/config/skills/conductor'
         self.assertTrue(claude.is_symlink())
         self.assertFalse(codex.is_symlink())
+        self.assertTrue(gemini.is_symlink())
+        self.assertEqual(gemini.resolve(), claude.resolve())
         self.assertIn(str(claude.resolve() / 'SKILL.md'), (codex / 'SKILL.md').read_text())
         self.assertNotIn('## Report design contract', (codex / 'SKILL.md').read_text())
         before = list((self.home / '.local/state/conductor-link').iterdir())
         linker.main()
         self.assertEqual(before, list((self.home / '.local/state/conductor-link').iterdir()))
+
+    def test_conductor_gemini_and_gemini_config_dir_install(self):
+        custom_gemini = self.home / 'custom-antigravity'
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            linker.main('conductor-gemini')
+            source = Path(linker.__file__).resolve().parents[1] / 'skills/conductor-gemini'
+            claude = self.home / '.claude/skills/conductor-gemini'
+            codex = self.home / '.codex/skills/conductor-gemini'
+            gemini = custom_gemini / 'skills/conductor-gemini'
+            self.assertTrue(claude.is_symlink())
+            self.assertTrue((claude / 'SKILL.md').samefile(source / 'SKILL.md'))
+            self.assertFalse(codex.is_symlink())
+            bootstrap = (codex / 'SKILL.md').read_text()
+            self.assertEqual(bootstrap.splitlines()[1], 'name: conductor-gemini')
+            self.assertIn(str(source / 'SKILL.md'), bootstrap)
+            self.assertTrue(gemini.is_symlink())
+            self.assertTrue((gemini / 'SKILL.md').samefile(source / 'SKILL.md'))
+            before = list((self.home / '.local/state/conductor-link').iterdir())
+            linker.main('conductor-gemini')
+            self.assertEqual(before, list((self.home / '.local/state/conductor-link').iterdir()))
+            # conductor-claude stays Claude-only (skips both Codex and Antigravity/Gemini).
+            linker.main('conductor-claude')
+            self.assertTrue((self.home / '.claude/skills/conductor-claude').is_symlink())
+            self.assertFalse((self.home / '.codex/skills/conductor-claude').exists())
+            self.assertFalse((custom_gemini / 'skills/conductor-claude').exists())
     def test_mobile_install_shares_canonical_references(self):
         linker.main('mobile-app-testing')
         claude = self.home / '.claude/skills/mobile-app-testing'
@@ -106,5 +134,164 @@ class SkillInstallTest(unittest.TestCase):
             p = self.home / family / 'skills/conductor'
             self.assertFalse(p.is_symlink())
             self.assertEqual((p / 'original').read_text(), family)
+
+    def test_rejects_aliased_destination_roots_before_any_change(self):
+        existing_claude = self.home / '.claude/skills/conductor'
+        existing_claude.mkdir(parents=True)
+        (existing_claude / 'sentinel.txt').write_text('untouched')
+        codex_dir = self.home / '.codex'
+        codex_dir.mkdir(parents=True)
+        aliased_gemini = self.home / 'gemini-alias'
+        aliased_gemini.symlink_to(codex_dir, target_is_directory=True)
+        for env in ({'GEMINI_CONFIG_DIR': str(codex_dir)}, {'GEMINI_CONFIG_DIR': str(aliased_gemini)}):
+            with patch.object(linker.os, 'environ', env):
+                with self.assertRaises(SystemExit) as ctx:
+                    linker.main('conductor')
+                self.assertIn('aliased skill destination', str(ctx.exception))
+        # Preflight failed closed before modifying or backing up anything.
+        self.assertFalse(existing_claude.is_symlink())
+        self.assertEqual((existing_claude / 'sentinel.txt').read_text(), 'untouched')
+        self.assertFalse((self.home / '.local/state/conductor-link').exists())
+
+    def test_cross_filesystem_backup_and_rollback_on_exdev(self):
+        import errno
+        real_rename = linker.os.rename
+
+        def exdev_cross_fs_rename(src, dst):
+            if Path(src).parent != Path(dst).parent:
+                raise OSError(errno.EXDEV, 'Invalid cross-device link')
+            return real_rename(src, dst)
+
+        custom_gemini = self.home / 'other-fs-gemini'
+        orig_dir = custom_gemini / 'skills/conductor'
+        orig_dir.mkdir(parents=True)
+        (orig_dir / 'keep.txt').write_text('gemini-dir')
+        old_target = self.home / 'old-target'
+        old_target.mkdir()
+        orig_claude = self.home / '.claude/skills/conductor'
+        orig_claude.parent.mkdir(parents=True)
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        # Backup succeeds across EXDEV for both symlink (claude) and directory (gemini).
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            with patch.object(linker.os, 'rename', side_effect=exdev_cross_fs_rename):
+                linker.main('conductor')
+        self.assertTrue((custom_gemini / 'skills/conductor').is_symlink())
+        self.assertTrue(orig_claude.is_symlink())
+        backups = list((self.home / '.local/state/conductor-link').glob('*/gemini/keep.txt'))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_text(), 'gemini-dir')
+        claude_backups = list((self.home / '.local/state/conductor-link').glob('*/claude'))
+        self.assertEqual(len(claude_backups), 1)
+        self.assertTrue(claude_backups[0].is_symlink())
+        self.assertEqual(claude_backups[0].resolve(), old_target.resolve())
+        # No temporary staged entries left behind.
+        self.assertEqual(list((custom_gemini / 'skills').glob('.conductor.conductor-link-tmp-*')), [])
+
+        # Rollback succeeds atomically on same-FS staged copy when cross-FS copy fails midway.
+        custom_gemini2 = self.home / 'other-fs-gemini-copy-fail'
+        orig_dir2 = custom_gemini2 / 'skills/conductor'
+        (orig_dir2 / 'sub').mkdir(parents=True)
+        (orig_dir2 / 'keep2.txt').write_text('gemini-copy-fail')
+        (orig_dir2 / 'sub/nested.txt').write_text('nested-intact')
+        orig_claude.unlink()
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        def fail_copytree(src, dst, **kw):
+            raise OSError('injected cross-fs copy failure')
+
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini2)}):
+            with patch.object(linker.os, 'rename', side_effect=exdev_cross_fs_rename):
+                with patch.object(linker.shutil, 'copytree', side_effect=fail_copytree):
+                    with self.assertRaises(OSError):
+                        linker.main('conductor')
+        self.assertFalse(orig_dir2.is_symlink())
+        self.assertEqual((orig_dir2 / 'keep2.txt').read_text(), 'gemini-copy-fail')
+        self.assertEqual((orig_dir2 / 'sub/nested.txt').read_text(), 'nested-intact')
+        self.assertEqual(list((custom_gemini2 / 'skills').glob('.conductor.conductor-link-tmp-*')), [])
+        self.assertTrue(orig_claude.is_symlink())
+        self.assertEqual(orig_claude.resolve(), old_target.resolve())
+
+        # Rollback also leaves live skill 100% intact if cross-FS staged cleanup fails midway (e.g. read-only subdir).
+        custom_gemini3 = self.home / 'other-fs-gemini-cleanup-fail'
+        orig_dir3 = custom_gemini3 / 'skills/conductor'
+        (orig_dir3 / 'ro').mkdir(parents=True)
+        (orig_dir3 / 'keep3.txt').write_text('gemini-cleanup-fail')
+        (orig_dir3 / 'ro/inner.txt').write_text('inner-intact')
+        orig_claude.unlink()
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        def partial_fail_rmtree(path):
+            # Simulate partial deletion of staged before failing on a read-only subdir.
+            (Path(path) / 'keep3.txt').unlink()
+            raise PermissionError('read-only subdir inside staged')
+
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini3)}):
+            with patch.object(linker.os, 'rename', side_effect=exdev_cross_fs_rename):
+                with patch.object(linker.shutil, 'rmtree', side_effect=partial_fail_rmtree):
+                    with self.assertRaises(PermissionError):
+                        linker.main('conductor')
+        self.assertFalse(orig_dir3.is_symlink())
+        self.assertEqual((orig_dir3 / 'keep3.txt').read_text(), 'gemini-cleanup-fail')
+        self.assertEqual((orig_dir3 / 'ro/inner.txt').read_text(), 'inner-intact')
+        self.assertTrue(orig_claude.is_symlink())
+        self.assertEqual(orig_claude.resolve(), old_target.resolve())
+
+    def test_rollback_continues_on_single_entry_restore_failure_and_cleans_temp(self):
+        import errno
+        real_rename = linker.os.rename
+        real_copytree = linker.shutil.copytree
+        real_rmtree = linker.shutil.rmtree
+
+        def exdev_cross_fs_rename(src, dst):
+            if Path(src).parent != Path(dst).parent:
+                raise OSError(errno.EXDEV, 'Invalid cross-device link')
+            return real_rename(src, dst)
+
+        old_target = self.home / 'old-target-rb'
+        old_target.mkdir()
+        orig_claude = self.home / '.claude/skills/conductor'
+        orig_claude.parent.mkdir(parents=True)
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        orig_codex = self.home / '.codex/skills/conductor'
+        orig_codex.mkdir(parents=True)
+        (orig_codex / 'codex.txt').write_text('codex-orig')
+
+        custom_gemini = self.home / 'other-fs-gemini-enospc'
+        orig_gemini = custom_gemini / 'skills/conductor'
+        orig_gemini.mkdir(parents=True)
+        (orig_gemini / 'keep.txt').write_text('gemini-orig')
+
+        def fail_cleanup(path):
+            p = Path(path)
+            if custom_gemini in p.parents and '.conductor-link-tmp-' in p.name:
+                raise PermissionError('staged cleanup blocked')
+            return real_rmtree(path)
+
+        def enospc_on_gemini_restore(src, dst, **kw):
+            dst_path = Path(dst)
+            if custom_gemini in dst_path.parents and '.conductor-link-restore-' in dst_path.name:
+                dst_path.mkdir(parents=True, exist_ok=True)
+                (dst_path / 'partial.txt').write_text('half-written')
+                raise OSError(errno.ENOSPC, 'No space left on device')
+            return real_copytree(src, dst, **kw)
+
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            with patch.object(linker.os, 'rename', side_effect=exdev_cross_fs_rename):
+                with patch.object(linker.shutil, 'copytree', side_effect=enospc_on_gemini_restore):
+                    with patch.object(linker.shutil, 'rmtree', side_effect=fail_cleanup):
+                        with self.assertRaises(PermissionError):
+                            linker.main('conductor')
+
+        # Claude and Codex were both restored despite Gemini's ENOSPC during restore.
+        self.assertTrue(orig_claude.is_symlink())
+        self.assertEqual(orig_claude.resolve(), old_target.resolve())
+        self.assertFalse(orig_codex.is_symlink())
+        self.assertEqual((orig_codex / 'codex.txt').read_text(), 'codex-orig')
+        # Failed Gemini restore cleaned up its temp dir and never published a half-copied dir at target.
+        self.assertEqual(list((custom_gemini / 'skills').glob('.conductor.conductor-link-restore-*')), [])
+        self.assertTrue(orig_gemini.is_symlink())
+        self.assertFalse((orig_gemini / 'partial.txt').exists())
 
 if __name__ == '__main__': unittest.main()
