@@ -5,6 +5,7 @@ from pathlib import Path
 import errno
 import os
 import shutil
+import sys
 import tempfile
 
 
@@ -24,13 +25,31 @@ def _remove_entry(path):
         shutil.rmtree(path)
 
 
-def _restore_entry(saved, target):
+def _remove_replacement(target):
+    if target.is_symlink():
+        target.unlink()
+    elif target.is_dir():
+        # Only our newly created Codex entry exists here.
+        for child in target.iterdir():
+            child.unlink()
+        target.rmdir()
+
+
+def _restore_entry(saved, target, tag):
+    restore_tmp = target.parent / f'.{target.name}.conductor-link-restore-{os.getpid()}-{tag}'
     try:
-        os.rename(saved, target)
-    except OSError as exc:
-        if exc.errno != errno.EXDEV:
-            raise
-        _copy_entry(saved, target)
+        try:
+            os.rename(saved, restore_tmp)
+        except OSError as exc:
+            if exc.errno != errno.EXDEV:
+                raise
+            _copy_entry(saved, restore_tmp)
+    except BaseException:
+        if restore_tmp.exists() or restore_tmp.is_symlink():
+            _remove_entry(restore_tmp)
+        raise
+    _remove_replacement(target)
+    os.rename(restore_tmp, target)
 
 
 def main(skill="conductor"):
@@ -131,17 +150,16 @@ def main(skill="conductor"):
             entry[3] = 'moved'
     except BaseException:
         for target, staged, saved, status in reversed(changed):
-            if target.is_symlink():
-                target.unlink()
-            elif target.is_dir():
-                # Only our newly created Codex entry exists here.
-                for child in target.iterdir():
-                    child.unlink()
-                target.rmdir()
-            if status == 'staged' and staged is not None and (staged.exists() or staged.is_symlink()):
-                staged.rename(target)
-            elif status in ('moved', 'deleting_staged') and (saved.exists() or saved.is_symlink()):
-                _restore_entry(saved, target)
+            try:
+                if status == 'staged' and staged is not None and (staged.exists() or staged.is_symlink()):
+                    _remove_replacement(target)
+                    staged.rename(target)
+                elif status in ('moved', 'deleting_staged') and (saved.exists() or saved.is_symlink()):
+                    _restore_entry(saved, target, backup.name)
+                else:
+                    _remove_replacement(target)
+            except Exception as rollback_exc:
+                print(f'Rollback failed for {target}: {rollback_exc}', file=sys.stderr)
         raise
     print(f'Previous installs preserved: {backup}')
 

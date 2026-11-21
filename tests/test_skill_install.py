@@ -237,4 +237,61 @@ class SkillInstallTest(unittest.TestCase):
         self.assertTrue(orig_claude.is_symlink())
         self.assertEqual(orig_claude.resolve(), old_target.resolve())
 
+    def test_rollback_continues_on_single_entry_restore_failure_and_cleans_temp(self):
+        import errno
+        real_rename = linker.os.rename
+        real_copytree = linker.shutil.copytree
+        real_rmtree = linker.shutil.rmtree
+
+        def exdev_cross_fs_rename(src, dst):
+            if Path(src).parent != Path(dst).parent:
+                raise OSError(errno.EXDEV, 'Invalid cross-device link')
+            return real_rename(src, dst)
+
+        old_target = self.home / 'old-target-rb'
+        old_target.mkdir()
+        orig_claude = self.home / '.claude/skills/conductor'
+        orig_claude.parent.mkdir(parents=True)
+        orig_claude.symlink_to(old_target, target_is_directory=True)
+
+        orig_codex = self.home / '.codex/skills/conductor'
+        orig_codex.mkdir(parents=True)
+        (orig_codex / 'codex.txt').write_text('codex-orig')
+
+        custom_gemini = self.home / 'other-fs-gemini-enospc'
+        orig_gemini = custom_gemini / 'skills/conductor'
+        orig_gemini.mkdir(parents=True)
+        (orig_gemini / 'keep.txt').write_text('gemini-orig')
+
+        def fail_cleanup(path):
+            p = Path(path)
+            if custom_gemini in p.parents and '.conductor-link-tmp-' in p.name:
+                raise PermissionError('staged cleanup blocked')
+            return real_rmtree(path)
+
+        def enospc_on_gemini_restore(src, dst, **kw):
+            dst_path = Path(dst)
+            if custom_gemini in dst_path.parents and '.conductor-link-restore-' in dst_path.name:
+                dst_path.mkdir(parents=True, exist_ok=True)
+                (dst_path / 'partial.txt').write_text('half-written')
+                raise OSError(errno.ENOSPC, 'No space left on device')
+            return real_copytree(src, dst, **kw)
+
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            with patch.object(linker.os, 'rename', side_effect=exdev_cross_fs_rename):
+                with patch.object(linker.shutil, 'copytree', side_effect=enospc_on_gemini_restore):
+                    with patch.object(linker.shutil, 'rmtree', side_effect=fail_cleanup):
+                        with self.assertRaises(PermissionError):
+                            linker.main('conductor')
+
+        # Claude and Codex were both restored despite Gemini's ENOSPC during restore.
+        self.assertTrue(orig_claude.is_symlink())
+        self.assertEqual(orig_claude.resolve(), old_target.resolve())
+        self.assertFalse(orig_codex.is_symlink())
+        self.assertEqual((orig_codex / 'codex.txt').read_text(), 'codex-orig')
+        # Failed Gemini restore cleaned up its temp dir and never published a half-copied dir at target.
+        self.assertEqual(list((custom_gemini / 'skills').glob('.conductor.conductor-link-restore-*')), [])
+        self.assertTrue(orig_gemini.is_symlink())
+        self.assertFalse((orig_gemini / 'partial.txt').exists())
+
 if __name__ == '__main__': unittest.main()
