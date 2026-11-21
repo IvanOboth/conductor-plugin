@@ -2,13 +2,35 @@
 """Install shared skills: Claude/Antigravity symlinks and Codex discovery bootstrap."""
 from datetime import datetime, timezone
 from pathlib import Path
+import errno
 import os
 import shutil
 import tempfile
 
 
-def _move_entry(src, dst):
-    shutil.move(str(src), str(dst))
+def _copy_entry(src, dst):
+    if src.is_symlink():
+        dst.symlink_to(os.readlink(src))
+    elif src.is_dir():
+        shutil.copytree(src, dst, symlinks=True)
+    else:
+        shutil.copy2(src, dst)
+
+
+def _remove_entry(path):
+    if path.is_symlink() or not path.is_dir():
+        path.unlink()
+    else:
+        shutil.rmtree(path)
+
+
+def _restore_entry(saved, target):
+    try:
+        os.rename(saved, target)
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+        _copy_entry(saved, target)
 
 
 def main(skill="conductor"):
@@ -68,11 +90,14 @@ def main(skill="conductor"):
     backup = Path(tempfile.mkdtemp(prefix=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S-'), dir=state))
     changed = []
     try:
-        for name, target in pending:
+        # Phase 1: Stage existing entries atomically on the same filesystem, then install new entries.
+        for idx, (name, target) in enumerate(pending):
             saved = backup / name
+            staged = None
             if target.exists() or target.is_symlink():
-                _move_entry(target, saved)
-            changed.append((target, saved))
+                staged = target.parent / f'.{target.name}.conductor-link-tmp-{os.getpid()}-{idx}-{backup.name}'
+                target.rename(staged)
+            changed.append([target, staged, saved, 'staged' if staged is not None else 'none'])
             if name == 'codex':
                 target.mkdir()
                 (target / 'SKILL.md').write_text(bootstrap)
@@ -84,8 +109,28 @@ def main(skill="conductor"):
                 if not (target / 'SKILL.md').samefile(source / 'SKILL.md'):
                     raise RuntimeError(f'Link verification failed: {target}')
                 print(f'Linked: {target} -> {source}')
+        # Phase 2: Archive staged originals into backup (same-FS rename, or cross-FS copy preserving symlinks).
+        cross_fs_staged = []
+        for entry in changed:
+            target, staged, saved, status = entry
+            if staged is None:
+                continue
+            try:
+                os.rename(staged, saved)
+                entry[3] = 'moved'
+            except OSError as exc:
+                if exc.errno != errno.EXDEV:
+                    raise
+                _copy_entry(staged, saved)
+                cross_fs_staged.append(entry)
+        # Phase 3: Remove cross-FS staged copies only after every backup copy is complete.
+        for entry in cross_fs_staged:
+            staged = entry[1]
+            entry[3] = 'deleting_staged'
+            _remove_entry(staged)
+            entry[3] = 'moved'
     except BaseException:
-        for target, saved in reversed(changed):
+        for target, staged, saved, status in reversed(changed):
             if target.is_symlink():
                 target.unlink()
             elif target.is_dir():
@@ -93,8 +138,10 @@ def main(skill="conductor"):
                 for child in target.iterdir():
                     child.unlink()
                 target.rmdir()
-            if saved.exists() or saved.is_symlink():
-                _move_entry(saved, target)
+            if status == 'staged' and staged is not None and (staged.exists() or staged.is_symlink()):
+                staged.rename(target)
+            elif status in ('moved', 'deleting_staged') and (saved.exists() or saved.is_symlink()):
+                _restore_entry(saved, target)
         raise
     print(f'Previous installs preserved: {backup}')
 

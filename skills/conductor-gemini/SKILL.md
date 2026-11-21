@@ -26,7 +26,7 @@ Every family bills to its own subscription. Never cross-bill a model onto the wr
   - **`invoke_subagent`** for 1–2 bounded parallel Gemini lanes. Give parallel writers `workspace: "share"` (shared repo object store, isolated working tree) or `workspace: "branch"` (isolated clone); keep readers and verifiers on `workspace: "inherit"`.
   - **`run_workflow`** (Python `parallel()` / `pipeline()` over Gemini 4 Neon agents) for an enumerated work-list of 3+ independent items, staged build -> review pipelines, competing drafts, or fix-until-green loops.
   - When invoked headlessly from another harness, Gemini runs via `ask-gemini -m gemini-4-neon-high --no-fallback` (add `--write` for writable lanes). Always pass `--no-fallback` so the wrapper never silently switches to the paid API (`\$3/\$15` per Mtok, no tools).
-- **Claude Opus 5.5 and Fable 5.2** MUST be dispatched exclusively via **`ask-claude`** (`ask-claude --plan -m opus`, `ask-claude --accept-edits -m opus`, `ask-claude --plan -m fable`) so they bill to Ivan's **Claude subscriptions** (Orca accounts). **NEVER** dispatch Claude through Antigravity `/swarm` Opus (which counts against Google AI Ultra quota), even if Claude accounts are exhausted — if Claude accounts are unavailable, report Claude unavailable and rely on GPT-6.2 Sol (`ask-codex`). Keep `/swarm` strictly for interactive multi-agent Gemini boards if Ivan explicitly invokes `/swarm`.
+- **Claude Opus 5.5 and Fable 5.2** MUST be dispatched exclusively via **`ask-claude`** (`ask-claude --plan -m opus`, `ask-claude --accept-edits -m opus`, `ask-claude --plan -m fable`) so they bill to Ivan's **Claude subscriptions** (Orca accounts). **NEVER** dispatch Claude through Antigravity `/swarm` Opus (which counts against Google AI Ultra quota), even if Claude accounts are exhausted — **GPT-6.2 Sol (`high`, `ask-codex`)** is the required cross-family gate for Gemini-authored work (routine and critical alike), and Opus 5.5 (`high`, `ask-claude`) is added on critical work when Claude accounts are available. If Claude accounts are exhausted, a passing GPT-6.2 Sol (`high`) review still clears critical work (labelled `cross-family (Sol); Opus skipped — Claude quota exhausted`); if both Sol and Opus are unavailable on a critical change, shipping is blocked. Keep `/swarm` strictly for interactive multi-agent Gemini boards if Ivan explicitly invokes `/swarm`.
 - **GPT-6.2 Sol (`high`)** MUST be dispatched via **`ask-codex -m gpt-6.2-sol --effort high`** so it bills to Ivan's **ChatGPT/Codex subscriptions**. Always pass `-m` and `--effort` explicitly; never rely on `~/.codex/config.toml` defaults.
 
 ## Full scope (all repositories)
@@ -48,7 +48,7 @@ When working inside the vault (`~/dev/ivan-oboth`), follow vault git discipline 
 | High-stakes writing (counterparty mail, proposals, board/client documents) | Gemini 4 Neon (`high`) | Primary author; optional second opinion / cold read via Opus 5.5 or Fable 5.2 (`ask-claude --plan -m opus` or `ask-claude --plan -m fable`) |
 | Volume writing (internal docs, drafts, storyboards, routine mail) | Gemini 4 Neon (`high`) | Inline or `run_workflow` `parallel()`; external copy gets an edit pass |
 | Media inspection (screenshots, recordings, images, audio) | Gemini 4 Neon (`high`) | Native Antigravity `read_file` or `ask-gemini -m gemini-4-neon-high --no-fallback --file <path>` |
-| Cross-family diff review of Gemini-authored work | GPT-6.2 Sol (`high`) and/or Opus 5.5 (`high`) | `ask-codex -m gpt-6.2-sol --effort high` and/or `ask-claude --plan -m opus`; run **both** for critical work or when requested. Retry Sol at `xhigh` only after a thin `high` pass; `high` is the ceiling for Opus 5.5 |
+| Cross-family diff review of Gemini-authored work | GPT-6.2 Sol (`high`) required; add Opus 5.5 (`high`) on critical work when Claude accounts are available | `ask-codex -m gpt-6.2-sol --effort high` is the required cross-family gate (routine and critical); add `ask-claude --plan -m opus` in parallel on critical work when Claude accounts are available or when requested. If Claude accounts are exhausted, a passing Sol review clears critical work; if both Sol and Opus are unavailable on a critical change, shipping is blocked. Retry Sol at `xhigh` only after a thin `high` pass; `high` is the ceiling for Opus 5.5 |
 | Runtime and computer-use verification (mechanics) | GPT-6.2 Sol (`high`) | `ask-codex -m gpt-6.2-sol --effort high` (via `codex-computer-use` or [mobile-app-testing](../mobile-app-testing/SKILL.md)); Gemini 4 Neon or Opus 5.5 judges the pixels/UI |
 | Optional UI design taste pass / second opinion | Opus 5.5 (`high`) | `ask-claude --plan -m opus` for critique (`ask-claude --accept-edits -m opus` only for an authorized exclusive-ownership UI slice) |
 | Optional high-stakes writing second opinion / cold read | Opus 5.5 (`high`) or Fable 5.2 (`high`) | `ask-claude --plan -m opus` or `ask-claude --plan -m fable` |
@@ -101,8 +101,8 @@ ask-claude --plan -m fable --context <brief-and-draft.md> \
 
 **3. Cross-verify — different family eyes.** Every Gemini-authored change that ships gets cross-family review in fresh context (requirements and diff only, never the author's verdict):
 
-- **Routine changes:** GPT-6.2 Sol (`high`, `ask-codex -m gpt-6.2-sol --effort high`) **or** Opus 5.5 (`high`, `ask-claude --plan -m opus`).
-- **Critical changes or when requested:** **both** GPT-6.2 Sol (`high`) and Opus 5.5 (`high`), launched in parallel.
+- **Routine changes:** **GPT-6.2 Sol (`high`, `ask-codex -m gpt-6.2-sol --effort high`)** is the required cross-family gate (or Opus 5.5 `high` via `ask-claude --plan -m opus` if Codex is unavailable).
+- **Critical changes or when requested:** **GPT-6.2 Sol (`high`)** is the required cross-family gate, and **Opus 5.5 (`high`, `ask-claude --plan -m opus`)** is added in parallel whenever Claude accounts are available. If Claude accounts are exhausted, a passing GPT-6.2 Sol (`high`) review still clears critical work (labelled `cross-family (Sol); Opus skipped — Claude quota exhausted`). If Codex is unavailable, a passing Opus 5.5 (`high`) review clears it (`cross-family (Opus)`). If **both** GPT-6.2 Sol and Opus 5.5 are unavailable on a critical change, **shipping is blocked** — never ship a critical change on Gemini self-review alone.
 - **Runtime / UI verification:** GPT-6.2 Sol (`high`) runs the app, executes assertions, and captures screenshots or video (per the shared evidence gate). Gemini 4 Neon inspects the pixels directly (and may add an Opus 5.5 taste pass via `ask-claude --plan -m opus` for flagship UI). "Verified" from Codex means *it functioned*, never *it looks right*.
 - **Review rounds: decide by round 2.** Follow the shared round-2 stop rule and significant-findings rule in [Conductor](../conductor/SKILL.md#review-gates-non-negotiable): round 1 lists blockers; round 2 reviews only the fixes and what they changed; from round 2 on, only significant findings block merge, and non-significant items go into "Left as is".
 
@@ -111,9 +111,10 @@ Use honest coverage labels in every report:
 | Label | Means |
 |---|---|
 | `cross-family (Sol + Opus)` | Both GPT-6.2 Sol (`high`) and Opus 5.5 (`high`) reviewed Gemini-authored work in fresh context |
+| `cross-family (Sol); Opus skipped — Claude quota exhausted` | GPT-6.2 Sol (`high`) cleared a critical change while Claude accounts were exhausted |
 | `cross-family (Sol)` | GPT-6.2 Sol (`high`) via `ask-codex` reviewed Gemini-authored work in fresh context |
 | `cross-family (Opus)` | Opus 5.5 (`high`) via `ask-claude` reviewed Gemini-authored work in fresh context |
-| `same-model, fresh context` | A separate Gemini 4 Neon lane reviewed in fresh context when neither Codex nor Claude could run |
+| `same-model, fresh context` | A separate Gemini 4 Neon lane reviewed a routine change in fresh context when neither Codex nor Claude could run (never used to clear a critical change) |
 | `objective-gate` | Exact tests, typechecks, runtime assertions, or screenshots verified by the orchestrator |
 | `orchestrator-only` | Inline work without a separate reviewer |
 
