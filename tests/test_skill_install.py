@@ -21,13 +21,41 @@ class SkillInstallTest(unittest.TestCase):
         linker.main()
         claude = self.home / '.claude/skills/conductor'
         codex = self.home / '.codex/skills/conductor'
+        gemini = self.home / '.gemini/config/skills/conductor'
         self.assertTrue(claude.is_symlink())
         self.assertFalse(codex.is_symlink())
+        self.assertTrue(gemini.is_symlink())
+        self.assertEqual(gemini.resolve(), claude.resolve())
         self.assertIn(str(claude.resolve() / 'SKILL.md'), (codex / 'SKILL.md').read_text())
         self.assertNotIn('## Report design contract', (codex / 'SKILL.md').read_text())
         before = list((self.home / '.local/state/conductor-link').iterdir())
         linker.main()
         self.assertEqual(before, list((self.home / '.local/state/conductor-link').iterdir()))
+
+    def test_conductor_gemini_and_gemini_config_dir_install(self):
+        custom_gemini = self.home / 'custom-antigravity'
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            linker.main('conductor-gemini')
+            source = Path(linker.__file__).resolve().parents[1] / 'skills/conductor-gemini'
+            claude = self.home / '.claude/skills/conductor-gemini'
+            codex = self.home / '.codex/skills/conductor-gemini'
+            gemini = custom_gemini / 'skills/conductor-gemini'
+            self.assertTrue(claude.is_symlink())
+            self.assertTrue((claude / 'SKILL.md').samefile(source / 'SKILL.md'))
+            self.assertFalse(codex.is_symlink())
+            bootstrap = (codex / 'SKILL.md').read_text()
+            self.assertEqual(bootstrap.splitlines()[1], 'name: conductor-gemini')
+            self.assertIn(str(source / 'SKILL.md'), bootstrap)
+            self.assertTrue(gemini.is_symlink())
+            self.assertTrue((gemini / 'SKILL.md').samefile(source / 'SKILL.md'))
+            before = list((self.home / '.local/state/conductor-link').iterdir())
+            linker.main('conductor-gemini')
+            self.assertEqual(before, list((self.home / '.local/state/conductor-link').iterdir()))
+            # conductor-claude stays Claude-only (skips both Codex and Antigravity/Gemini).
+            linker.main('conductor-claude')
+            self.assertTrue((self.home / '.claude/skills/conductor-claude').is_symlink())
+            self.assertFalse((self.home / '.codex/skills/conductor-claude').exists())
+            self.assertFalse((custom_gemini / 'skills/conductor-claude').exists())
     def test_mobile_install_shares_canonical_references(self):
         linker.main('mobile-app-testing')
         claude = self.home / '.claude/skills/mobile-app-testing'

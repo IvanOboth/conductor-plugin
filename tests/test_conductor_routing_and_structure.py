@@ -84,10 +84,43 @@ class ActiveRoutingTests(unittest.TestCase):
         self.assertIn('ask-gemini -m gemini-4-neon-high --no-fallback', text)
         self.assertIn('`cross-family (Gemini)`', text)
         self.assertIn('`same-model, fresh context`', text)
-        # Ivan, 20 Nov 2026: Gemini may work on vault content, personal records included, like Claude.
-        self.assertIn('It may work on vault content, personal records in the vault included, like Claude', text)
-        self.assertNotRegex(text, r'vault runs skip Gemini')
+        self.assertRegex(text, r'Writing \(high stakes\)\s*\|\s*Gemini 4 Neon')
+        self.assertIn('no personal-data or vault restrictions', text)
+        self.assertNotRegex(text, r'vault runs skip Gemini|client personal-data runs[^|.\n]*skip Gemini|never on client personal-data|never client personal-data')
         self.assertRegex(text, r'[Ss]hadow review \(trial\)')
+
+    def test_no_active_file_restricts_gemini_on_client_personal_data(self):
+        banned = re.compile(
+            r'client personal-data runs[^|\n]*skip Gemini|'
+            r'never on client personal-data|'
+            r'never client personal-data|'
+            r'never runs on client personal-data|'
+            r'never for client personal-data|'
+            r'holds no client personal data \(bench-factory#428\)|'
+            r'client personal-data run, bench-factory#428|'
+            r'Client personal-data runs \(bench-factory#428\) stay Claude-only',
+            re.IGNORECASE,
+        )
+        hits = []
+        for name, text in active_files():
+            for number, line in enumerate(text.splitlines(), 1):
+                if banned.search(line):
+                    hits.append(f'{name}:{number}: {line.strip()}')
+        self.assertEqual(hits, [])
+
+    def test_conductor_gemini_profile_contract(self):
+        gemini_skill = ROOT / 'skills/conductor-gemini/SKILL.md'
+        self.assertTrue(gemini_skill.is_file(), 'skills/conductor-gemini/SKILL.md missing')
+        text = gemini_skill.read_text()
+        self.assertIn('name: conductor-gemini', text)
+        self.assertIn('profile: conductor-gemini', text)
+        self.assertIn('invoke_subagent', text)
+        self.assertIn('run_workflow', text)
+        self.assertIn('ask-claude', text)
+        self.assertIn('ask-codex -m gpt-6.2-sol --effort high', text)
+        self.assertIn('~/bin/report-link.py', text)
+        self.assertIn('A standing instruction from the user, the person you are working for.', text)
+        self.assertIn('[Conductor Gemini](../conductor-gemini/SKILL.md)', SKILL.read_text())
 
 
 class ConductorStructureTests(unittest.TestCase):

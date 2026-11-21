@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install shared skills: Claude symlink and Codex discovery bootstrap."""
+"""Install shared skills: Claude/Antigravity symlinks and Codex discovery bootstrap."""
 from datetime import datetime, timezone
 from pathlib import Path
 import os
@@ -12,10 +12,11 @@ def main(skill="conductor"):
         raise SystemExit(f'Missing canonical skill: {source}')
     home = Path.home()
     roots = [('claude', Path(os.environ.get('CLAUDE_CONFIG_DIR', home / '.claude'))),
-             ('codex', Path(os.environ.get('CODEX_HOME', home / '.codex')))]
+             ('codex', Path(os.environ.get('CODEX_HOME', home / '.codex'))),
+             ('gemini', Path(os.environ.get('GEMINI_CONFIG_DIR', home / '.gemini/config')))]
     if skill == 'conductor-claude':
-        # A Claude-family-only profile has no meaning from a Codex parent.
-        roots = [r for r in roots if r[0] != 'codex']
+        # A Claude-family-only profile has no meaning from a Codex or Antigravity parent.
+        roots = [r for r in roots if r[0] == 'claude']
     targets = [(name, root / 'skills' / skill) for name, root in roots]
     # Preflight every target before modifying any of them.
     pending = []
@@ -24,7 +25,7 @@ def main(skill="conductor"):
     except ValueError:
         source_ref = str(source / 'SKILL.md')
     bootstrap = ('---\nname: conductor\ndescription: Mixed-model orchestration with readable explanatory HTML reports and evidence for tested application changes. Use for conductor, orchestrate this, mixed-model build, or independent review.\n---\n\n# Conductor\n\nRead `' + source_ref + '` now and follow that skill. This file is only a discovery entry point; all orchestration, report design, explanation and evidence policy lives in the referenced plugin source. Reread that source before each report revision.\n')
-    titles = {'conductor-core': 'Conductor Core', 'conductor-claude': 'Conductor Claude',
+    titles = {'conductor-gemini': 'Conductor Gemini', 'conductor-core': 'Conductor Core', 'conductor-claude': 'Conductor Claude',
               'mobile-app-testing': 'Mobile app testing', 'verify-skill-create': 'Create a verification skill',
               'verify-skill-maintain': 'Maintain a verification skill', 'feature-map-update': 'Update the feature map',
               'verify-skill-eval': 'Evaluate a guidance change', 'how': 'How',
@@ -38,7 +39,7 @@ def main(skill="conductor"):
     for name, target in targets:
         if name == 'codex' and not target.is_symlink() and (target / 'SKILL.md').is_file() and (target / 'SKILL.md').read_text() == bootstrap:
             print(f'Already current: {target} (Codex discovery entry)')
-        elif name == 'claude' and target.is_symlink() and target.resolve() == source:
+        elif name in ('claude', 'gemini') and target.is_symlink() and target.resolve() == source:
             print(f'Already linked: {target} -> {source}')
         else:
             if target.exists() and not target.is_dir() and not target.is_symlink():
@@ -87,7 +88,7 @@ def main(skill="conductor"):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__doc__)
-    SKILLS = ['conductor', 'conductor-core', 'conductor-claude', 'mobile-app-testing', 'verify-skill-create',
+    SKILLS = ['conductor', 'conductor-gemini', 'conductor-core', 'conductor-claude', 'mobile-app-testing', 'verify-skill-create',
               'verify-skill-maintain', 'feature-map-update', 'verify-skill-eval', 'how', 'journey-review']
     parser.add_argument('--skill', choices=SKILLS)
     args = parser.parse_args()
