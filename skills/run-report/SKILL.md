@@ -1,6 +1,6 @@
 ---
 name: run-report
-description: The closing convention for any substantial agent run (conductor, feature implementation, nightly shift, cloud routine). Use at the END of a run to publish the run report to GitHub, flip status labels, and append the telemetry ledger. Trigger when a run wraps, when the user says "close out the run", "run report", "log this run", or when another skill's instructions say to invoke run-report as its final step.
+description: The closing convention for any substantial agent run (conductor, feature implementation, automated bench runs, cloud routine). Use at the END of a run to publish the run report to GitHub, flip status labels, and append the telemetry ledger. Trigger when a run wraps, when the user says "close out the run", "run report", "log this run", or when another skill's instructions say to invoke run-report as its final step.
 ---
 
 # run-report — the closing convention
