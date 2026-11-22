@@ -50,7 +50,7 @@ When working inside the vault (`~/dev/ivan-oboth`), follow vault git discipline 
 | Media inspection (screenshots, recordings, images, audio) | Gemini 4 Neon (`high`) | Native Antigravity `read_file` or `ask-gemini -m gemini-4-neon-high --no-fallback --file <path>` |
 | Cross-family diff review of Gemini-authored work | GPT-6.2 Sol (`high`) required; add Opus 5.5 (`high`) on critical work when Claude accounts are available | `ask-codex -m gpt-6.2-sol --effort high` is the required cross-family gate (routine and critical); add `ask-claude --plan -m opus` in parallel on critical work when Claude accounts are available or when requested. If Claude accounts are exhausted, a passing Sol review clears critical work; if both Sol and Opus are unavailable on a critical change, shipping is blocked. Retry Sol at `xhigh` only after a thin `high` pass; `high` is the ceiling for Opus 5.5 |
 | Runtime and computer-use verification (mechanics) | GPT-6.2 Sol (`high`) | `ask-codex -m gpt-6.2-sol --effort high` (via `codex-computer-use` or [mobile-app-testing](../mobile-app-testing/SKILL.md)); Gemini 4 Neon or Opus 5.5 judges the pixels/UI |
-| Optional UI design taste pass / second opinion | Opus 5.5 (`high`) | `ask-claude --plan -m opus` for critique (`ask-claude --accept-edits -m opus` only for an authorized exclusive-ownership UI slice) |
+| Creative frontend & presentation design (presentations, websites, flagship visual surfaces) | **Fable 5.2 (`high`) and/or Opus 5.5 (`high`)** with the `frontend-design` skill; **Gemini 4 Neon (`high`)** owns content, facts, brief, browser QA, and acceptance | Lean on `ask-claude --accept-edits -m fable` and/or `ask-claude --accept-edits -m opus` (exclusive output paths, citing `frontend-design` + brand tokens) whenever visual craft, stage presence, or out-of-the-box UI design is the acceptance test. Gemini still owns the strategy, verified facts, narrative spine, pixel/Playwright audit, and final integration — and may optionally build a competing lens to compare. (Does not override `gemini-filmmaking.md` for film scripts/audits.) |
 | Optional high-stakes writing second opinion / cold read | Opus 5.5 (`high`) or Fable 5.2 (`high`) | `ask-claude --plan -m opus` or `ask-claude --plan -m fable` |
 | Bounded high-volume classify / extract | Gemini 4 Neon (`high`) or GPT-6 Luna (`high`) | `run_workflow` `parallel()`, or `ask-codex -m gpt-6-luna --effort high`; orchestrator reads output before acting |
 
@@ -93,6 +93,10 @@ ask-codex -m gpt-6.2-sol --effort high --context <order.md> --output <scratchpad
 # Cross-family diff review or taste pass via Opus 5.5 (Claude subscription)
 ask-claude --plan -m opus --context <order.md> \
   "Review the diff against the acceptance criteria in the context file. List only problems that block merge: file, line, why it is wrong, and how to show it fails. Mark anything you could not confirm." > <scratchpad>/opus-review.md
+
+# Creative frontend or presentation design execution via Fable 5.2 or Opus 5.5 (Claude subscription)
+ask-claude --accept-edits -m fable --context <design-brief.md> \
+  "Apply the frontend-design skill and locked brand tokens to build the exclusive target file named in the brief. Keep all verified facts intact; do not touch other files." > <scratchpad>/fable-design.log
 
 # High-stakes writing cold read via Fable 5.2 (Claude subscription)
 ask-claude --plan -m fable --context <brief-and-draft.md> \
