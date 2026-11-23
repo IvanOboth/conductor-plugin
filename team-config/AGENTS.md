@@ -122,11 +122,13 @@ it is for; a wrong amount or figure; data lost or recorded wrongly; a security o
 fault; personal data exposed; behaviour the base branch has and the change breaks; a step
 that is hard to reverse; a red check, or another merge gate the change fails (its way back,
 the verify pass). If you judge another finding significant, mark it `blocking` and say why.
-Mark every other finding `follow-up`; the orchestrator lists it under "Left as is" on the
-pull request, files it as an issue only when it is significant (a wrong amount or figure,
-data lost or recorded wrongly, a security or access fault, personal data exposed, behaviour
-the base branch has and the change breaks, or something a client sees or asked for), and
-merges. A third round covers one significant finding's fix and nothing else. This does not
+List only `blocking` findings and nothing else: no `follow-up` findings, no "Left as is"
+list, no out-of-scope observations, suggestions or hardening ideas. The one exception is at
+most two `LIVE-FIRE: <file>:<line> — <harm now> — <evidence>` lines for harm on production
+now outside the change (wrong money or figures, data being lost or written wrongly, an
+external or unauthenticated person reaching data, personal data exposed). You never file
+issues; the orchestrator owns the judgment, drops what it does not fix, and merges
+(23 Nov 2026). A third round covers one significant finding's fix and nothing else. This does not
 lower the review class or effort, and a significant finding is never deferred. Why: review
 loops without a stop rule drift to ever-rarer cases and hold finished work for hours.
 

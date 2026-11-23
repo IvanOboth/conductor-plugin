@@ -194,19 +194,20 @@ ${userAdditionalContext}
 
 ## Review request
 
-You're a second pair of eyes on work Claude just did. Your job is to find what a careful reviewer would care about *for this specific change* — not run a checklist. If the change is small, your review should be small. If the implementation is sound, say so plainly.
+You're a second pair of eyes on work Claude just did. Your job is to find what a careful reviewer would care about *for this specific change* — not run a checklist. If the change is small, your review should be small. If the implementation is sound, say so plainly: a clean review is the verdict alone.
 
-Things worth raising:
+What to look for, in this change only:
 - Anything that would break in production (data loss, security holes, race conditions, broken migrations).
 - Mismatches between the stated goal and what was actually implemented.
-- Each uncertainty Claude flagged — validate the choice or push back with reasoning.
+- Each uncertainty Claude flagged — check it, and raise it only when the answer is itself a blocking finding.
 - Patterns that work locally but won't survive real load or real users.
-- Simpler approaches that would make the change clearer or smaller.
 
-Things probably not worth raising:
-- Style nits the linter already covers.
-- 'Could also test X' suggestions when existing tests are reasonable.
-- Architectural rewrites of code that wasn't part of this change.
+Never raise (23 Nov 2026, bench-factory#1253):
+- Non-blocking notes, suggestions, hardening ideas or style nits.
+- 'Could also test X' suggestions.
+- Anything outside this change, including adjacent problems and architectural rewrites. The one exception is at most two \`LIVE-FIRE: <file>:<line> — <harm now> — <evidence>\` lines for harm on production now: wrong money or figures, data being lost or written wrongly, an external or unauthenticated person reaching data, or personal data exposed. 'Could', 'might', 'older code', 'inconsistent', 'missing test' and 'naming' are never live fires.
+
+Never file an issue; the orchestrator owns the judgment.
 
 You can read files, grep, run tests, and verify claims directly. If the user invoked \`--fix\`, apply blocking fixes; otherwise describe them. If a GitHub issue is in scope, post your verdict as a comment when you're done.
 
@@ -217,9 +218,7 @@ Open with a 1–2 sentence verdict: is this ready to ship as-is?
 Then include only the sections that have content — don't pad:
 
 - **Blocking issues** — what would you stop the merge for? Use \`file:line\` plus a sentence on *why* it's blocking ('this would corrupt user data on retry' is more useful than 'P0').
-- **Worth raising** — flagged but not blocking.
-- **Claude's uncertainties** — address each one by name.
-- **What's good** — only if something specifically stands out.
+- **LIVE-FIRE** — at most two lines, only as defined above.
 - **Fixes applied** — what you changed and why, if you changed anything.
 "
 ```
@@ -230,20 +229,12 @@ Read Codex's prose response and pull out what matters for the user-facing summar
 
 ```yaml
 codexReview:
-  verdict: "Ships, but rate limiting on /refresh is worth a follow-up."
+  verdict: "Does not ship until the hardcoded JWT secret moves to the environment."
   blocking:
     - description: "JWT secret hardcoded in config — would leak if the repo goes public"
       location: "src/config/auth.ts:8"
       reasoning: "secret should come from env, not source"
-  worthRaising:
-    - description: "No rate limiting on /login or /refresh"
-      location: "src/auth/login.ts:42"
-      reasoning: "credential stuffing is the obvious attack here"
-  claudeUncertainties:
-    - claudeAsked: "Token rotation logic on refresh"
-      codexResponse: "Logic is correct; the rotation window is fine"
-  whatGood:
-    - "Refresh tokens in httpOnly cookies — right call"
+  liveFire: []   # at most two LIVE-FIRE lines; usually empty
   fixesApplied:
     - "Moved JWT secret to NEXTAUTH_SECRET env var"
 ```
@@ -284,16 +275,6 @@ Blocking:
     Credential stuffing is the obvious attack on this endpoint.
     → Fixed: added rateLimit middleware (60/min per IP).
 
-Worth raising:
-  - Consider rotating refresh tokens on use; not blocking,
-    but reduces blast radius if one leaks.
-
-Claude's uncertainties:
-  - Token rotation logic — verified correct, rotation window is fine.
-
-What's good:
-  - Refresh tokens in httpOnly cookies — right call.
-
 Files modified: src/config/auth.ts, src/auth/login.ts
 ```
 
@@ -306,7 +287,6 @@ Files modified: src/config/auth.ts, src/auth/login.ts
 | `<description>` | Optional description of what was done |
 | `--files <glob>` | Specific files to include in review |
 | `--fix` | Apply blocking fixes directly (Codex modifies files) |
-| `--fix-all` | Apply both blocking fixes and worth-raising fixes |
 | `--no-git` | Don't include git diff context |
 | `--verbose` | Include full Codex response |
 
