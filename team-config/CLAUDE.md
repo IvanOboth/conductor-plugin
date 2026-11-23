@@ -96,7 +96,7 @@ Higher is better. **Cost** is cost per task as you pay it, not price per token; 
 | Watching video with sound, listening to audio, looking at screenshots and images inside a skill (cold film watches, keyframe QA, UI critique) | Gemini 4 Neon `high` via `ask-gemini --file <path>` on the Google AI subscription (bench-factory skill `gemini-neon`; findings as JSON through `--json-schema`); Claude judges what comes back, except cold film watches and other film audits, which Gemini 4 Neon `high` judges in fresh context (film rule of 21 Nov 2026) |
 | UI mock-ups and draft images | Gemini 4 Neon via `ask-gemini --out-dir <dir>` (the `ui-directions` look-and-mock step, `image-gen --model neon`); the images are proposals for Claude and the user to judge; finals, exact labels and identity-critical images stay with GPT Image 2.6 Sunburst |
 | Runtime and computer-use verification | GPT-6.2 Sol `high` via `codex-computer-use` or `mobile-app-testing`; Claude judges the pixels |
-| Second read of screenshots, images, video or audio | Gemini 4 Neon via `ask-gemini --file <path>`; Claude keeps the final taste judgment |
+| Second read of screenshots, images, video or audio | Gemini 4 Neon via `ask-gemini --file <path>`; Claude keeps the final taste judgment (a film cut or rough cut: Gemini 4 Neon judges, per the film rule) |
 | Ops, runbooks, business-workflow automation | GPT-6.2 Sol `high` |
 | Codex overflow when Claude quota is tight | GPT-6.2 Sol `high` |
 | Bounded high-volume items (intake packets, classify, extract) | Luna `high`; a stronger model reads the output |

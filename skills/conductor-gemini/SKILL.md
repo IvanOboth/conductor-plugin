@@ -115,7 +115,7 @@ Use honest coverage labels in every report:
 | `cross-family (Sol); Opus skipped — Claude quota exhausted` | GPT-6.2 Sol (`high`) cleared a critical change while Claude accounts were exhausted |
 | `cross-family (Sol)` | GPT-6.2 Sol (`high`) via `ask-codex` reviewed Gemini-authored work in fresh context |
 | `cross-family (Opus)` | Opus 5.5 (`high`) via `ask-claude` reviewed Gemini-authored work in fresh context |
-| `same-model, fresh context` | A separate Gemini 4 Neon lane reviewed a routine change in fresh context when neither Codex nor Claude could run (never used to clear a critical change) |
+| `same-model, fresh context` | A separate Gemini 4 Neon lane reviewed a routine change in fresh context when neither Codex nor Claude could run (never used to clear a critical change, except a film deliverable under the film rule, which Gemini 4 Neon reviews in fresh context) |
 | `objective-gate` | Exact tests, typechecks, runtime assertions, or screenshots verified by the orchestrator |
 | `orchestrator-only` | Inline work without a separate reviewer |
 
