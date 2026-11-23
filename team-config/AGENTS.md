@@ -139,9 +139,6 @@ merge: file, line, why it is wrong, and how to show it fails.
 
 ## Writing lanes
 
-Filmmaking writing and film audits (story room, scripts, dialogue, shot lists, storyboards,
-Seedance and other generated-video block prompts, cold reads, pre- and post-forge reviews)
-belong to Gemini 4 Neon at `high` only (21 Nov 2026); never take them, not even as overflow.
 Opus 5.5 is the default volume writer. When you are dispatched as the writer, it is
 usually quota overflow for internal docs, first drafts and routine mail.
 The brief names audience, register, length ceiling, the one thing the reader must do,
@@ -285,10 +282,8 @@ something up; never at `xhigh` or `max` by default.
   cream or off-white background, italic accent words in headings, numbered "01 / 02 / 03"
   section labels, monospace labels, pill-shaped buttons). **Your taste rating is a provisional
   5.5.** Do not take design work and do not self-assess it.
-- Filmmaking writing and film audits → Gemini 4 Neon at `high` only (21 Nov 2026); never
-  GPT-6.2 Sol, Codex, Opus 5.5 or Fable 5.2.
-- Writing, volume or structured (internal docs, first drafts, routine mail) → `opus` at
-  `medium`, with the no-mannered-prose rule in the order.
+- Writing, volume or structured → `opus` at `medium`, with the no-mannered-prose rule in
+  the order.
 - Writing, high stakes (counterparty email, proposal, investor or board document) →
   Gemini 4 Neon at `high` (`ask-gemini -m gemini-4-neon-high --no-fallback`), with Opus 5.5 or Fable 5.2 as optional second opinion / cold read. **Your writing rating is 6.5.** Do not self-certify voice on anything
   external.
