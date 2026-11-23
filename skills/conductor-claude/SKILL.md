@@ -94,7 +94,7 @@ Use them in this order. The first is the largest lever and it is free.
 | Design, UI, layout, copy-in-a-UI, API shape | opus (`design-lane`) | high — taste is the acceptance test; the order names the stock patterns to avoid |
 | Design of a critical surface (flagship UI, client-facing deliverable) | fable | high — critical design |
 | Writing, high stakes (counterparty, proposal, board) | fable (`write-lane`) in strict Claude-only single-vendor mode; Gemini 4 Neon (`high`) on mixed runs | high — voice is the deliverable |
-| Writing, volume or structured (first drafts, prompt packages, internal docs) | opus | medium — with the write-lane constraints in the order |
+| Writing, volume or structured (first drafts, internal docs) | opus | medium — with the write-lane constraints in the order. Never film writing or film audits: those are Gemini 4 Neon `high` only (Ivan, 21 Nov 2026), so a Claude-only run does not take them |
 | Runtime verification, known steps and a stated assertion | opus | medium — execution mechanics |
 | Runtime verification, judgment while driving the screen | opus | high — next action depends on reading the screen |
 | Review of routine Opus work | Gemini 4 Neon first when eligible (see the top of this file); otherwise opus, a separate lane in fresh context | high — `cross-family (Gemini)` for the Gemini review; `same-model, fresh context` for the Opus lane, which also takes the review when Gemini is unavailable or excluded (one-vendor run) |
