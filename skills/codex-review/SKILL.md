@@ -194,12 +194,12 @@ ${userAdditionalContext}
 
 ## Review request
 
-You're a second pair of eyes on work Claude just did. Your job is to find what a careful reviewer would care about *for this specific change* — not run a checklist. If the change is small, your review should be small. If the implementation is sound, say so plainly.
+You're a second pair of eyes on work Claude just did. Your job is to find what a careful reviewer would care about *for this specific change* — not run a checklist. If the change is small, your review should be small. If the implementation is sound, say so plainly: a clean review is the verdict alone.
 
 What to look for, in this change only:
 - Anything that would break in production (data loss, security holes, race conditions, broken migrations).
 - Mismatches between the stated goal and what was actually implemented.
-- Each uncertainty Claude flagged — validate the choice or push back with reasoning.
+- Each uncertainty Claude flagged — check it, and raise it only when the answer is itself a blocking finding.
 - Patterns that work locally but won't survive real load or real users.
 
 Never raise (23 Nov 2026, bench-factory#1253):
@@ -219,8 +219,6 @@ Then include only the sections that have content — don't pad:
 
 - **Blocking issues** — what would you stop the merge for? Use \`file:line\` plus a sentence on *why* it's blocking ('this would corrupt user data on retry' is more useful than 'P0').
 - **LIVE-FIRE** — at most two lines, only as defined above.
-- **Claude's uncertainties** — address each one by name.
-- **What's good** — only if something specifically stands out.
 - **Fixes applied** — what you changed and why, if you changed anything.
 "
 ```
@@ -237,11 +235,6 @@ codexReview:
       location: "src/config/auth.ts:8"
       reasoning: "secret should come from env, not source"
   liveFire: []   # at most two LIVE-FIRE lines; usually empty
-  claudeUncertainties:
-    - claudeAsked: "Token rotation logic on refresh"
-      codexResponse: "Logic is correct; the rotation window is fine"
-  whatGood:
-    - "Refresh tokens in httpOnly cookies — right call"
   fixesApplied:
     - "Moved JWT secret to NEXTAUTH_SECRET env var"
 ```
@@ -281,12 +274,6 @@ Blocking:
   - No rate limiting on /login (src/auth/login.ts:42)
     Credential stuffing is the obvious attack on this endpoint.
     → Fixed: added rateLimit middleware (60/min per IP).
-
-Claude's uncertainties:
-  - Token rotation logic — verified correct, rotation window is fine.
-
-What's good:
-  - Refresh tokens in httpOnly cookies — right call.
 
 Files modified: src/config/auth.ts, src/auth/login.ts
 ```
