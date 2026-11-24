@@ -56,6 +56,27 @@ class SkillInstallTest(unittest.TestCase):
             self.assertTrue((self.home / '.claude/skills/conductor-claude').is_symlink())
             self.assertFalse((self.home / '.codex/skills/conductor-claude').exists())
             self.assertFalse((custom_gemini / 'skills/conductor-claude').exists())
+
+    def test_council_install_across_claude_codex_and_gemini(self):
+        custom_gemini = self.home / 'custom-antigravity-council'
+        with patch.object(linker.os, 'environ', {'GEMINI_CONFIG_DIR': str(custom_gemini)}):
+            linker.main('council')
+            source = Path(linker.__file__).resolve().parents[1] / 'skills/council'
+            claude = self.home / '.claude/skills/council'
+            codex = self.home / '.codex/skills/council'
+            gemini = custom_gemini / 'skills/council'
+            self.assertTrue(claude.is_symlink())
+            self.assertTrue((claude / 'SKILL.md').samefile(source / 'SKILL.md'))
+            self.assertTrue((claude / 'references/peer-review-protocol.md').samefile(source / 'references/peer-review-protocol.md'))
+            self.assertFalse(codex.is_symlink())
+            bootstrap = (codex / 'SKILL.md').read_text()
+            self.assertEqual(bootstrap.splitlines()[1], 'name: council')
+            self.assertIn(str(source / 'SKILL.md'), bootstrap)
+            self.assertTrue(gemini.is_symlink())
+            self.assertTrue((gemini / 'SKILL.md').samefile(source / 'SKILL.md'))
+            before = list((self.home / '.local/state/conductor-link').iterdir())
+            linker.main('council')
+            self.assertEqual(before, list((self.home / '.local/state/conductor-link').iterdir()))
     def test_mobile_install_shares_canonical_references(self):
         linker.main('mobile-app-testing')
         claude = self.home / '.claude/skills/mobile-app-testing'
@@ -75,6 +96,8 @@ class SkillInstallTest(unittest.TestCase):
         subprocess.run(['bash', str(root / 'install.sh'), '--prefix', str(prefix), '--bin', str(bindir)], check=True, capture_output=True, text=True)
         self.assertTrue((prefix / 'skills/mobile-app-testing/references/evidence.md').is_file())
         self.assertTrue((prefix / 'skills/conductor/../mobile-app-testing/SKILL.md').is_file())
+        self.assertTrue((prefix / 'skills/council/SKILL.md').is_file())
+        self.assertTrue((prefix / 'skills/council/references/peer-review-protocol.md').is_file())
 
     def test_core_install_identity_references_and_idempotence(self):
         linker.main('conductor-core')
