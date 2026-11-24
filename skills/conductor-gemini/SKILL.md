@@ -5,11 +5,21 @@ description: Orchestrate Gemini-first Conductor runs in Antigravity with Gemini 
 
 # Conductor Gemini
 
-Run the full Conductor workflow in Antigravity with **standalone Gemini 4 Neon High** (`gemini-4-neon-high`) as the orchestrator and primary builder. Before dispatching any lane, confirm the parent Antigravity session is set to standalone **Gemini 4 Neon High** (`gemini-4-neon-high`) — do not rely on Medium or Antigravity's built-in Orchestrator mode (which can delegate sub-steps to Hydrogen), because `invoke_subagent` and `run_workflow` (`model="inherit"`) inherit the parent session's model selection. Gemini 4 Neon handles grounding, planning, work orders, implementation, refactors, migrations, tests, high-stakes writing, volume writing, media inspection, integration, and final acceptance. Independent cross-family verification goes to **GPT-6.2 Sol (`high`)** through `ask-codex` and/or **Claude Opus 5.5 (`high`) / Fable 5.2** through `ask-claude`.
+Run the full Conductor workflow in Antigravity with **standalone Gemini 4 Neon High** (`gemini-4-neon-high`) as the orchestrator and primary builder. For multi-lane `/conductor-gemini` runs, high-stakes code, and all filmmaking work, keep the parent Antigravity session on **standalone Gemini 4 Neon High** (`gemini-4-neon-high`) — never Antigravity Orchestrator mode, because `agy` v1.5.16 only permits `gemini-4-hydrogen` or `claude-sonnet-5-5` as Orchestrator executors (`gemini-4-neon` is planner-only) and `invoke_subagent` / `run_workflow` (`model="inherit"`) inherit the parent session's model selection. Use Antigravity Orchestrator (`Neon High` planner + `Hydrogen High` executor) only as an explicit opt-in for bounded CRUD, UI, mechanical sweeps, and test lanes (see **The 3-layer stack** below). Gemini 4 Neon handles grounding, planning, work orders, implementation, refactors, migrations, tests, high-stakes writing, volume writing, media inspection, integration, and final acceptance. Independent cross-family verification goes to **GPT-6.2 Sol (`high`)** through `ask-codex` and/or **Claude Opus 5.5 (`high`) / Fable 5.2 (`high`)** through `ask-claude`.
 
 **This profile exists to finish ambitious work on Google AI Ultra while keeping every provider subscription-clean.** Long-running migrations, multi-surface features, high-stakes client documents, media-heavy QA, vault work, and epics across sessions all belong here. Verification is part of the machinery that lets large work ship safely, not a reason to attempt less.
 
 **The orchestrator never delegates three things: the plan, the work orders, the final review.** That holds in every profile.
+
+## The 3-layer stack
+
+Pick the lightest layer that matches the work's complexity and risk — do not over-orchestrate bounded lanes, and do not under-verify high-stakes forks:
+
+| Layer | Role | Model setup & when to use *(verified on `agy` v1.5.16)* |
+|---|---|---|
+| **1. Antigravity Orchestrator** | Within-lane `plan -> execute -> remand` loop | **Opt-in only for bounded CRUD, UI, mechanical sweeps, and test lanes:** run **`Neon High` (Planner) + `Hydrogen High` (Executor)** for ~24% quota savings and automatic remand on test failure. In `agy` v1.5.16, eligible Orchestrator executors are **only `gemini-4-hydrogen` and `claude-sonnet-5-5`** (`gemini-4-neon` is planner-only, never an executor — there is no `Neon + Neon` Orchestrator mode; stay on `Hydrogen High`, never `Sonnet`, on Google AI Ultra). In headless `agy -p` (`ask-gemini`), `"orchestrator"` settings overrides are ignored and `--model gemini-pro-orchestrator-neon` always runs `Neon High` + `Hydrogen High`. **For high-stakes code (money, payments, auth/RBAC, schema/data migrations, production data) and 100% of filmmaking: always use standalone `Gemini 4 Neon (High)` (`gemini-4-neon-high`), never Orchestrator.** |
+| **2. `/conductor-gemini`** *(this skill)* | Multi-lane orchestration, parallel fan-out, and cross-family verification | Parent on **standalone `Neon High`** coordinating parallel `invoke_subagent` / `run_workflow` lanes plus subscription-clean cross-family handoffs to **Opus 5.5 / Fable 5.2 (`ask-claude`)** for frontend taste, design critique, and high-stakes cold reads, and **GPT-6.2 Sol (`ask-codex`)** for independent code review and runtime verification. |
+| **3. [`/council`](../council/SKILL.md)** | High-stakes multi-model audit & peer-review consensus | Use for hard architecture forks, ambiguous root causes, major design bets, or high-risk PRs where one reviewer is not enough. **Mode A (Review Council)** runs 3 independent model families read-only in parallel for `/10` PR scorecard rounds; **Mode B (Consensus Deliberation Council)** runs blind Round 1 investigation -> anonymized Round 2 peer review (`Proposal A/B/C`) -> Round 3 consensus verdict & dissent ledger. Never use `/council` for filmmaking (Gemini 4 Neon only) or trivial 1-file fixes. |
 
 ## Profile and shared authority
 
@@ -64,10 +74,11 @@ Apply the shared **What earns an agent** gate first (scouting is yours via `read
 
 | Shape | Mode |
 |---|---|
-| Single-file edit, scouting, or coupled chain | **Inline** — no subagent overhead |
+| Single-file edit, scouting, or coupled chain | **Inline** — **standalone `Neon High`** for high-stakes code & film; opt-in Antigravity Orchestrator (`Neon High` planner + `Hydrogen High` executor) only for bounded CRUD/UI/test lanes |
 | 1–2 bounded parallel lanes, or next step depends on judging the previous result | **`invoke_subagent`** (`workspace: "share"` or `"branch"` for parallel writers; `inherit` for readers) |
 | Enumerated work-list of 3+ independent items, build -> review pipeline, competing drafts, or fix-until-green loop | **`run_workflow`** — Python `parallel()` / `pipeline()` over Gemini 4 Neon agents |
 | Cross-family diff review, runtime mechanics, or Claude taste / cold-read pass | Background shell command (`run_command`) calling `ask-codex` or `ask-claude` |
+| High-risk PR `/10` multi-provider audit or ambiguous architecture / root-cause fork | **[`/council`](../council/SKILL.md)** — Mode A (fast 3-family review rounds) or Mode B (blind investigation + anonymized peer-review consensus) |
 
 Do not poll background subagents, workflows, or commands in a loop: the harness notifies you automatically when they finish. Do independent work meanwhile or end your turn to wait for completion.
 

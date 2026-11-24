@@ -120,7 +120,30 @@ class ActiveRoutingTests(unittest.TestCase):
         self.assertIn('ask-codex -m gpt-6.2-sol --effort high', text)
         self.assertIn('~/bin/report-link.py', text)
         self.assertIn('A standing instruction from the user, the person you are working for.', text)
+        self.assertIn('The 3-layer stack', text)
+        self.assertIn('../council/SKILL.md', text)
         self.assertIn('[Conductor Gemini](../conductor-gemini/SKILL.md)', SKILL.read_text())
+
+    def test_council_skill_contract(self):
+        council_skill = ROOT / 'skills/council/SKILL.md'
+        protocol = ROOT / 'skills/council/references/peer-review-protocol.md'
+        self.assertTrue(council_skill.is_file(), 'skills/council/SKILL.md missing')
+        self.assertTrue(protocol.is_file(), 'skills/council/references/peer-review-protocol.md missing')
+        text = council_skill.read_text()
+        self.assertIn('name: council', text)
+        self.assertIn('Mode A', text)
+        self.assertIn('Mode B', text)
+        self.assertIn('ask-gemini -m gemini-4-neon-high --no-fallback', text)
+        self.assertIn('ask-claude --plan -m opus', text)
+        self.assertIn('ask-codex -m gpt-6.2-sol --effort high', text)
+        self.assertIn('Proposal A', text)
+        self.assertIn('ENDORSE WITH AMENDMENTS', text)
+        self.assertIn('references/peer-review-protocol.md', text)
+        self.assertEqual(
+            [m.start() for m in re.finditer(r'(?<!\\)\$(?=\d)', protocol.read_text())],
+            [],
+            'peer-review-protocol.md contains unescaped $<digit>',
+        )
 
 
 class ConductorStructureTests(unittest.TestCase):
@@ -147,6 +170,8 @@ class ConductorStructureTests(unittest.TestCase):
     def test_cross_references_resolve(self):
         files = [ROOT / 'README.md', *sorted((ROOT / 'team-config').glob('*.md')),
                  *sorted((ROOT / 'skills').glob('conductor*/SKILL.md')),
+                 ROOT / 'skills/council/SKILL.md',
+                 *sorted((ROOT / 'skills/council/references').glob('*.md')),
                  *sorted((ROOT / 'skills/conductor/references').glob('*.md'))]
         broken = [f'{f.relative_to(ROOT)}: {t}' for f in files for t, r in local_links(f) if not r.exists()]
         self.assertEqual(broken, [])
